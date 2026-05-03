@@ -1099,10 +1099,10 @@ export default function Home() {
       </AnimatePresence>
 
       <main
-        className="w-full pb-24 overflow-y-auto"
+        className="w-full overflow-y-auto"
         style={{
           paddingTop: headerHeight,
-          minHeight: '100dvh',
+          paddingBottom: 'max(env(safe-area-inset-bottom), 12px)',
           maxHeight: '100dvh',
           overscrollBehavior: 'contain',
         }}
@@ -1259,6 +1259,7 @@ export default function Home() {
         <MenuPopup
           onClose={() => setMenuOpen(false)}
           onOpenInvite={() => { setMenuOpen(false); setInviteOpen(true); }}
+          onOpenWithdraw={() => { setMenuOpen(false); setWithdrawPopupOpen(true); }}
         />
       )}
       {dailyActivityOpen && (
