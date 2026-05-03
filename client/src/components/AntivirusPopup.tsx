@@ -162,7 +162,7 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
               )}
             </div>
 
-            {/* Duration row — level-based on min of all 3 machine levels */}
+            {/* Duration row */}
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-white/25" />
@@ -176,14 +176,12 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
               </div>
             </div>
 
-            {/* Level upgrade hint */}
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3">
               <p className="text-white/30 text-[11px] leading-relaxed">
                 Antivirus level = <span className="text-white/50">lowest level among Mining, Capacity & CPU.</span> Upgrade all three equally to increase duration by +10 min per level.
               </p>
             </div>
 
-            {/* Info note */}
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3">
               <p className="text-white/30 text-[11px] leading-relaxed">
                 Antivirus <span className="text-white/50">only protects your AXN balance</span> — machine health decreases naturally over time regardless.

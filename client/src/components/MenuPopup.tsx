@@ -79,7 +79,7 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
 
       <motion.div
         className="relative w-full max-w-sm rounded-3xl overflow-hidden"
-        style={{ background: "#0d0f14", border: "1px solid #22252d" }}
+        style={{ background: "#0a0a0a", border: "1px solid #1c1c1e" }}
         initial={{ scale: 0.88, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.88, opacity: 0, y: 20 }}
@@ -96,7 +96,7 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
           {/* ── MAIN MENU (sets card height) ── */}
           <div style={{ visibility: overlay ? "hidden" : "visible" }}>
             {/* Profile */}
-            <div className="px-5 py-4 border-b border-[#22252d]">
+            <div className="px-5 py-4 border-b border-[#1c1c1e]">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center flex-shrink-0 bg-[#22252d]">
                   {profileImageUrl
@@ -151,7 +151,7 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                 exit={{ opacity: 0, x: 24 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 className="absolute inset-0 flex flex-col"
-                style={{ background: "#0d0f14" }}
+                style={{ background: "#0a0a0a" }}
               >
                 {/* Scrollable content */}
                 <div className="flex-1 overflow-y-auto min-h-0">
@@ -284,11 +284,11 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                 </div>
 
                 {/* Back button — pinned at bottom */}
-                <div className="flex-shrink-0 px-4 py-3 border-t border-[#22252d]">
+                <div className="flex-shrink-0 px-4 py-3 border-t border-[#1c1c1e]">
                   <button
                     onClick={() => setOverlay(null)}
                     className="w-full h-10 rounded-2xl flex items-center justify-center gap-2 text-white/50 text-sm font-black uppercase tracking-wider active:scale-[0.97] transition-all"
-                    style={{ background: "#22252d", border: "1px solid rgba(255,255,255,0.06)" }}
+                    style={{ background: "#1c1c1e", border: "1px solid rgba(255,255,255,0.06)" }}
                   >
                     <ArrowLeft className="w-4 h-4" />
                     Back

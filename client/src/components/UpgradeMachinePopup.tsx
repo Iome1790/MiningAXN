@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Activity, HardDrive, Cpu, Settings } from "lucide-react";
+import { Loader2, Activity, HardDrive, Cpu, Settings, ChevronRight } from "lucide-react";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -90,7 +90,7 @@ export default function UpgradeMachinePopup({ onClose }: UpgradeMachinePopupProp
           exit={{ scale: 0.88, opacity: 0, y: 20 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
         >
-          {/* Header — matches Repair / Antivirus / Energy style */}
+          {/* Header */}
           <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
             {subView ? subViewIcon : <Settings className="w-5 h-5 text-white/60 flex-shrink-0" />}
             <div className="flex-1 min-w-0">
@@ -141,7 +141,6 @@ export default function UpgradeMachinePopup({ onClose }: UpgradeMachinePopupProp
                   onClick={() => setSubView("cpu")}
                 />
 
-                {/* Close button — same style as Repair/Antivirus/Energy */}
                 <button
                   onClick={onClose}
                   className="w-full h-11 rounded-2xl font-bold text-sm text-white/40 active:scale-[0.97] transition-transform"
@@ -251,9 +250,7 @@ function UpgradeRow({ icon, label, sublabel, level, levelColor, isMax, onClick }
           <p className="text-white/35 text-xs">{sublabel}</p>
         </div>
         {!isMax && (
-          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/5 flex items-center justify-center">
-            <span className="text-white/25 text-xs">›</span>
-          </div>
+          <ChevronRight className="w-4 h-4 text-white/20 flex-shrink-0" />
         )}
       </div>
     </button>
@@ -292,13 +289,11 @@ function UpgradeDetail({
       transition={{ duration: 0.15 }}
       className="px-5 py-4 space-y-2.5"
     >
-      {/* Icon + description */}
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 mt-0.5">{icon}</div>
         <p className="text-white/40 text-xs leading-relaxed">{description}</p>
       </div>
 
-      {/* Stats card */}
       <div className="rounded-2xl px-4 py-4 space-y-3" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="flex items-center justify-between">
           <span className="text-white/30 text-xs font-bold uppercase tracking-wider">Level</span>
@@ -355,7 +350,6 @@ function UpgradeDetail({
         </button>
       )}
 
-      {/* Back button — same style as Close in other popups */}
       <button
         onClick={onBack}
         className="w-full h-11 rounded-2xl font-bold text-sm text-white/40 active:scale-[0.97] transition-transform"

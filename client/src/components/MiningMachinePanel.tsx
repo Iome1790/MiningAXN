@@ -3,12 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Shield, ShieldOff, Cpu, HardDrive, Activity,
-  Wrench, Play, AlertTriangle, Loader2, ChevronRight, Settings
+  Wrench, Play, AlertTriangle, Loader2, Settings, ChevronRight
 } from "lucide-react";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 import RepairPopup from "@/components/RepairPopup";
-import AntivirusPopup, { AV_DURATION_MS } from "@/components/AntivirusPopup";
+import AntivirusPopup from "@/components/AntivirusPopup";
 import UpgradeMachinePopup from "@/components/UpgradeMachinePopup";
 import EnergyPopup from "@/components/EnergyPopup";
 
@@ -36,9 +36,6 @@ interface MachineState {
   pendingVirusDamage: number;
   nextVirusIn: number;
 }
-
-const AV_ACTIVE_KEY = "av_activated_at";
-const AV_DURATION_SECONDS = AV_DURATION_MS / 1000;
 
 function formatTime(seconds: number): string {
   if (seconds <= 0) return "00:00";
@@ -239,62 +236,6 @@ export default function MiningMachinePanel() {
     return () => clearInterval(t);
   }, [state?.cpuRunning, state?.miningRate, state?.capacity, state?.machineHealth]);
 
-  const [avSecondsLeft, setAvSecondsLeft] = useState(0);
-  const avIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const startAvCountdown = useCallback((activatedAt: number) => {
-    if (avIntervalRef.current) clearInterval(avIntervalRef.current);
-    const tick = () => {
-      const elapsed = Math.floor((Date.now() - activatedAt) / 1000);
-      const remaining = AV_DURATION_SECONDS - elapsed;
-      if (remaining <= 0) {
-        setAvSecondsLeft(0);
-        if (avIntervalRef.current) clearInterval(avIntervalRef.current);
-        antivirusDeactivateMutation.mutate();
-      } else {
-        setAvSecondsLeft(remaining);
-      }
-    };
-    tick();
-    avIntervalRef.current = setInterval(tick, 1000);
-  }, []);
-
-  const antivirusDeactivateMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/axn-mining/toggle-antivirus").then(r => r.json()),
-    onSuccess: () => {
-      localStorage.removeItem(AV_ACTIVE_KEY);
-      if (avIntervalRef.current) clearInterval(avIntervalRef.current);
-      setAvSecondsLeft(0);
-      queryClient.refetchQueries({ queryKey: ["/api/axn-mining/state"] });
-    },
-    onError: () => {},
-  });
-
-  useEffect(() => {
-    if (!state) return;
-    if (state.antivirusActive) {
-      const stored = localStorage.getItem(AV_ACTIVE_KEY);
-      if (stored) {
-        const activatedAt = parseInt(stored, 10);
-        const elapsed = Math.floor((Date.now() - activatedAt) / 1000);
-        if (elapsed < AV_DURATION_SECONDS) {
-          startAvCountdown(activatedAt);
-        } else {
-          localStorage.removeItem(AV_ACTIVE_KEY);
-          antivirusDeactivateMutation.mutate();
-        }
-      } else {
-        const now = Date.now();
-        localStorage.setItem(AV_ACTIVE_KEY, String(now));
-        startAvCountdown(now);
-      }
-    } else {
-      if (avIntervalRef.current) clearInterval(avIntervalRef.current);
-      setAvSecondsLeft(0);
-      localStorage.removeItem(AV_ACTIVE_KEY);
-    }
-  }, [state?.antivirusActive]);
-
   const invalidate = useCallback(() => {
     queryClient.refetchQueries({ queryKey: ["/api/axn-mining/state"] });
     queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
@@ -355,31 +296,6 @@ export default function MiningMachinePanel() {
       <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-1">AXN Mining Machine</p>
 
       <div className="bg-[#000000] border border-[#1c1c1e] rounded-2xl overflow-hidden">
-
-        {/* Antivirus Status Bar — only protects balance */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-[#1c1c1e]">
-          {state.antivirusActive ? (
-            <div className="flex items-center gap-2">
-              <Shield className="w-3.5 h-3.5 text-green-400" />
-              <span className="text-green-400 text-[11px] font-black uppercase tracking-wider">
-                Antivirus active — balance protected
-              </span>
-              {avSecondsLeft > 0 && (
-                <span className="text-green-400/50 text-[10px] tabular-nums">({formatTime(avSecondsLeft)})</span>
-              )}
-            </div>
-          ) : (
-            <button
-              onClick={() => setAntivirusOpen(true)}
-              className="flex items-center gap-2 active:scale-95 transition-transform"
-            >
-              <ShieldOff className="w-3.5 h-3.5 text-red-400 animate-pulse" />
-              <span className="text-red-400 text-[11px] font-black uppercase tracking-wider">
-                No antivirus — balance at risk
-              </span>
-            </button>
-          )}
-        </div>
 
         {/* Level Labels Row */}
         <div className="flex items-center justify-center gap-3 px-4 py-2 border-b border-[#1c1c1e]">
@@ -452,7 +368,6 @@ export default function MiningMachinePanel() {
               </p>
               <p className="text-white/30 text-[9px] uppercase tracking-wide mt-0.5">CPU</p>
             </div>
-            {/* Health — always decreases naturally, unrelated to antivirus */}
             <button
               onClick={() => setRepairOpen(true)}
               className="bg-[#1c1c1e] rounded-xl p-2.5 text-center active:scale-95 transition-transform"
@@ -527,7 +442,7 @@ export default function MiningMachinePanel() {
             )}
           </div>
 
-          {/* Action Buttons */}
+          {/* Primary Action Buttons */}
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -581,7 +496,7 @@ export default function MiningMachinePanel() {
               </button>
             </div>
 
-            {/* Secondary: Repair / Antivirus / Upgrade — original card list style */}
+            {/* Secondary: Repair / Antivirus / Upgrade — card list style */}
             <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)', background: '#141414' }}>
               <button
                 onClick={() => setRepairOpen(true)}
@@ -641,6 +556,7 @@ export default function MiningMachinePanel() {
           antivirusCost={state.antivirusCost}
           antivirusActive={state.antivirusActive}
           balance={state.balance}
+          miningLevel={state.miningLevel}
           onClose={() => setAntivirusOpen(false)}
         />
       )}

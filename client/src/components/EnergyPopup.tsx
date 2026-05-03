@@ -122,7 +122,6 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
           </div>
 
           <div className="px-5 py-4 space-y-2.5">
-            {/* Status */}
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap className="w-3.5 h-3.5 text-white/25" />
@@ -134,14 +133,12 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
               </div>
             </div>
 
-            {/* Info */}
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3">
               <p className="text-white/30 text-[11px] leading-relaxed">
                 Your CPU needs energy to mine AXN. <span className="text-white/50">Watch an ad for free</span> or pay AXN to refill instantly.
               </p>
             </div>
 
-            {/* Cooldown info — always visible */}
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-white/25" />
@@ -154,7 +151,6 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
               )}
             </div>
 
-            {/* Free button */}
             <button
               onClick={handleFreeRefill}
               disabled={cooldown > 0 || adWatching || freeMutation.isPending}
@@ -170,7 +166,6 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
               )}
             </button>
 
-            {/* Paid button */}
             <button
               onClick={() => paidMutation.mutate()}
               disabled={paidMutation.isPending || !canAfford}
