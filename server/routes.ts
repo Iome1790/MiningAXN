@@ -1858,6 +1858,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         minimum_withdrawal_sat: parseFloat(getSetting('minimum_withdrawal_sat', '20')),
         withdrawal_fee_sat: parseFloat(getSetting('withdrawal_fee_sat', '10')),
         withdraw_ads_required: getSetting('withdraw_ads_required', 'false') === 'true',
+        minTradeAmount: parseInt(getSetting('min_trade_amount', '1000')),
+        popupAdsEnabled: getSetting('popup_ads_enabled', 'true') === 'true',
+        popupAdInterval: parseInt(getSetting('popup_ad_interval', '60')),
       });
     } catch (error) {
       console.error("Error fetching app settings:", error);
@@ -3767,6 +3770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         partnerReward: parseInt(getSetting('partner_task_reward', '5')),
         minimumConvertAXN: parseInt(getSetting('minimum_convert_pad', '100')),
         minimumClicks: parseInt(getSetting('minimum_clicks', '100')),
+        minTradeAmount: parseInt(getSetting('min_trade_amount', '1000')),
         seasonBroadcastActive: getSetting('season_broadcast_active', 'false') === 'true',
         referralRewardEnabled: getSetting('referral_reward_enabled', 'false') === 'true',
         referralRewardTON: parseFloat(getSetting('referral_reward_usd', '0.0005')),
@@ -3860,7 +3864,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section1_limit: 'ad_section1_limit',
         ad_section2_reward: 'ad_section2_reward',
         ad_section2_limit: 'ad_section2_limit',
-        withdraw_ads_required: 'withdraw_ads_required'
+        withdraw_ads_required: 'withdraw_ads_required',
+        minTradeAmount: 'min_trade_amount',
       };
 
       for (const [feKey, dbKey] of Object.entries(settingMap)) {
@@ -3919,6 +3924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         partnerTaskReward: 'partner_task_reward',
         minimumConvertAXN: 'minimum_convert_pad',
         minimumClicks: 'minimum_clicks',
+        minTradeAmount: 'min_trade_amount',
         seasonBroadcastActive: 'season_broadcast_active',
         referralRewardEnabled: 'referral_reward_enabled',
         referralRewardTON: 'referral_reward_usd',
@@ -3944,7 +3950,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section1_limit: 'ad_section1_limit',
         ad_section2_reward: 'ad_section2_reward',
         ad_section2_limit: 'ad_section2_limit',
-        withdraw_ads_required: 'withdraw_ads_required'
+        withdraw_ads_required: 'withdraw_ads_required',
+        minTradeAmount: 'min_trade_amount',
       };
 
       for (const [feKey, dbKey] of Object.entries(settingMap)) {

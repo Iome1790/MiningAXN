@@ -46,6 +46,13 @@ import { MINING_LEVELS, getMiningLevel } from "../shared/miningLevels";
 import { db } from "./db";
 import { eq, desc, and, gte, lt, sql } from "drizzle-orm";
 import crypto from "crypto";
+import { sendUserTelegramNotification } from "./telegram";
+
+// Cooldown tracking for mining notifications (in-memory, resets on server restart)
+const _healthNotifCooldown = new Map<string, number>(); // userId -> last sent ms
+const _capacityNotifCooldown = new Map<string, number>(); // userId -> last sent ms
+const HEALTH_NOTIF_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours
+const CAPACITY_NOTIF_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
 // Payment system configuration
 export interface PaymentSystem {
@@ -631,6 +638,20 @@ export class DatabaseStorage implements IStorage {
 
     const balance = parseFloat(user?.balance || '0');
 
+    // Terminal log + notification when capacity is full
+    if (minedAxn >= capacity && machine.cpuStartTime) {
+      console.log(`[MINING] ⚠️ Capacity FULL for user ${userId} — ${minedAxn.toFixed(4)} / ${capacity} AXN. User should claim now!`);
+      const now = Date.now();
+      const lastCapNotif = _capacityNotifCooldown.get(userId) || 0;
+      if (now - lastCapNotif > CAPACITY_NOTIF_COOLDOWN_MS && user?.telegram_id) {
+        _capacityNotifCooldown.set(userId, now);
+        sendUserTelegramNotification(
+          user.telegram_id,
+          `⚡ <b>Mining Machine Full!</b>\n\nYour mining capacity is <b>100% full</b> — ${capacity.toLocaleString()} AXN ready to claim!\n\n🔴 New AXN is being wasted until you claim. Open the app now to collect your reward.`
+        ).catch(() => {});
+      }
+    }
+
     return {
       miningLevel: machine.miningLevel,
       capacityLevel: machine.capacityLevel,
@@ -902,6 +923,23 @@ export class DatabaseStorage implements IStorage {
         if (attacks > 0) {
           axnDamage = attacks; // 1 AXN per 5-min cycle
           machineUpdates.lastVirusAttack = now;
+        }
+      }
+    }
+
+    // Send health warning notification if health drops below 20%
+    const newHealth = machineUpdates.machineHealth !== undefined ? machineUpdates.machineHealth : machine.machineHealth;
+    if (machine.machineHealth >= 20 && newHealth < 20) {
+      const now = Date.now();
+      const lastHealthNotif = _healthNotifCooldown.get(userId) || 0;
+      if (now - lastHealthNotif > HEALTH_NOTIF_COOLDOWN_MS) {
+        _healthNotifCooldown.set(userId, now);
+        const user = await this.getUser(userId);
+        if (user?.telegram_id) {
+          sendUserTelegramNotification(
+            user.telegram_id,
+            `🚨 <b>Mining Machine Health Critical!</b>\n\nYour machine health has dropped to <b>${newHealth}%</b> (below 20%)!\n\n⚠️ Low health slows mining and can stop it completely at 0%. Open the app to repair your machine now.`
+          ).catch(() => {});
         }
       }
     }
