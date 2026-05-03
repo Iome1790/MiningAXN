@@ -29,9 +29,9 @@ export const APP_STRINGS = [
   'Tasks', 'Promoted Tasks', 'No promoted tasks', 'Completed', 'Back',
   'Start', 'Share', 'Locked', 'Watching...', 'Check-in', 'Claim',
   // Withdrawal
-  'SAT Withdrawal', 'Available Balance', 'Destination address',
-  "Don't have an address yet?", 'Amount (SAT)', 'Max', 'Withdraw Fee',
-  'Min. Withdrawal', 'You Receive', 'Withdraw SAT', 'Close',
+  'AXN Withdrawal', 'Available Balance', 'Destination address',
+  "Don't have an address yet?", 'Amount (AXN)', 'Max', 'Withdraw Fee',
+  'Min. Withdrawal', 'You Receive', 'Withdraw AXN', 'Close',
   'Almost There!', 'Watch ads to unlock your withdrawal.',
   'Ads keep this platform free for everyone. Thank you for your support!',
   'Progress',
@@ -84,8 +84,8 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 // Tokens that must NEVER be translated (currency units, hash-rate units, brand acronyms).
-// Matches "SAT", "BTC", and any hash-rate like "MH/s", "GH/s", "TH/s", "kH/s", "H/s".
-const PROTECTED_REGEX = /\bSAT\b|\bBTC\b|\b[KkMmGgTtPp]?H\/s\b/g;
+// Matches "AXN", "BTC", and any hash-rate like "MH/s", "GH/s", "TH/s", "kH/s", "H/s".
+const PROTECTED_REGEX = /\bAXN\b|\bBTC\b|\b[KkMmGgTtPp]?H\/s\b/g;
 
 function maskProtected(text: string): { masked: string; tokens: string[] } {
   const tokens: string[] = [];
@@ -131,7 +131,7 @@ const elementOriginals = new WeakMap<HTMLElement, { placeholder?: string; title?
 
 function shouldTranslateText(txt: string): boolean {
   if (!txt || !txt.trim()) return false;
-  // Strip protected tokens (SAT/BTC/MH-s/GH-s/etc.), numbers, and punctuation —
+  // Strip protected tokens (AXN/BTC/MH-s/GH-s/etc.), numbers, and punctuation —
   // if nothing alphabetic remains, the text is purely a unit/number and shouldn't be translated.
   const stripped = txt
     .replace(PROTECTED_REGEX, '')
