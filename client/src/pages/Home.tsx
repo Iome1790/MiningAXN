@@ -285,7 +285,7 @@ export default function Home() {
       const rewardAmount = parseFloat(data.rewardEarned || '0');
       if (rewardAmount > 0) {
         const earnedSAT = Math.round(rewardAmount);
-        showNotification(`You've claimed +${earnedSAT.toLocaleString()} SAT!`, "success");
+        showNotification(`You've claimed +${earnedSAT.toLocaleString()} AXN!`, "success");
       } else {
         showNotification("You've claimed your streak bonus!", "success");
       }
@@ -961,7 +961,7 @@ export default function Home() {
   const handleShareWithFriends = useCallback(() => {
     if (!referralLink) return;
     const tgWebApp = (window as any).Telegram?.WebApp;
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent("Join me on this Mine-to-Earn app and start stacking SAT together!")}`;
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent("Join me on Axionet Miner and start earning AXN together!")}`;
     if (tgWebApp?.openTelegramLink) {
       tgWebApp.openTelegramLink(shareUrl);
     } else {
@@ -1126,7 +1126,7 @@ export default function Home() {
                     <p className="text-white text-sm font-medium truncate">Share with Friends</p>
                   </div>
                   <div className="text-xs text-gray-400 ml-6">
-                    <p>Reward: <span className="text-white font-medium">{appSettings?.referralRewardAXN || '5'} SAT</span></p>
+                    <p>Reward: <span className="text-white font-medium">{appSettings?.referralRewardAXN || '5'} AXN</span></p>
                   </div>
                 </div>
                 <div className="ml-3 flex-shrink-0">
@@ -1161,7 +1161,7 @@ export default function Home() {
                     <p className="text-white text-sm font-medium truncate">Daily Check-in</p>
                   </div>
                   <div className="text-xs text-gray-400 ml-6">
-                    <p>Reward: <span className="text-white font-medium">{appSettings?.dailyCheckinReward || '5'} SAT</span></p>
+                    <p>Reward: <span className="text-white font-medium">{appSettings?.dailyCheckinReward || '5'} AXN</span></p>
                   </div>
                 </div>
                 <div className="ml-3 flex-shrink-0">
@@ -1202,7 +1202,7 @@ export default function Home() {
                     <p className="text-white text-sm font-medium truncate">Check for Updates</p>
                   </div>
                   <div className="text-xs text-gray-400 ml-6">
-                    <p>Reward: <span className="text-white font-medium">{appSettings?.checkForUpdatesReward || '5'} SAT</span></p>
+                    <p>Reward: <span className="text-white font-medium">{appSettings?.checkForUpdatesReward || '5'} AXN</span></p>
                   </div>
                 </div>
                 <div className="ml-3 flex-shrink-0">
