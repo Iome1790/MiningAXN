@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { showNotification } from "@/components/AppNotification";
@@ -26,7 +26,6 @@ const TAB_DAYS: Record<ChartTab, number> = {
 interface PricePoint { t: number; p: number; }
 
 const AXN_TO_TON = 0.00001; // 100000 AXN = 1 TON
-const MIN_TRADE = 1000;
 
 function formatTON(n: number): string {
   if (n < 0.001) return n.toFixed(6);
@@ -86,6 +85,7 @@ function TonPriceChart() {
       if (!res.ok) throw new Error("fetch failed");
       const json = await res.json();
       const prices: [number, number][] = json.prices;
+      if (!Array.isArray(prices)) throw new Error("invalid response");
       const points: PricePoint[] = prices.map(([t, p]) => ({ t, p }));
       const first = points[0]?.p ?? 0;
       const last = points[points.length - 1]?.p ?? 0;
@@ -194,6 +194,8 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
     queryKey: ['/api/app-settings'],
     staleTime: 30000,
   });
+
+  const MIN_TRADE = appSettings?.minTradeAmount ?? 1000;
 
   const { data: user } = useQuery<any>({
     queryKey: ['/api/auth/user'],
@@ -313,29 +315,27 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
 
               {/* AXN Amount Input */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-white/40 text-[10px] font-black uppercase tracking-widest">AXN Amount</label>
-                  <button
-                    onClick={() => setAxnAmount(satBalance.toString())}
-                    className="px-2 py-0.5 rounded-lg text-[10px] font-black uppercase transition-all active:scale-95"
-                    style={{ background: 'rgba(245,197,66,0.15)', color: '#F5C542' }}
-                  >
-                    Max
-                  </button>
-                </div>
+                <label className="text-white/40 text-[10px] font-black uppercase tracking-widest">AXN Amount</label>
                 <div className="relative">
                   <input
                     type="number"
                     placeholder="0"
                     value={axnAmount}
                     onChange={(e) => setAxnAmount(e.target.value)}
-                    className="w-full h-11 rounded-xl px-4 pr-16 text-white font-bold text-sm outline-none transition-all"
+                    className="w-full h-11 rounded-xl px-4 pr-24 text-white font-bold text-sm outline-none transition-all"
                     style={{
                       background: 'rgba(255,255,255,0.05)',
                       border: '1px solid rgba(255,255,255,0.1)',
                     }}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 text-xs font-black">AXN</span>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <button
+                      onClick={() => setAxnAmount(satBalance.toString())}
+                      className="px-2 py-0.5 text-[10px] font-black uppercase transition-all active:scale-95 text-white/40"
+                    >
+                      Max
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -366,9 +366,6 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
                     border: '1px solid rgba(255,255,255,0.1)',
                   }}
                 />
-                <p className="text-white/20 text-[10px] leading-relaxed">
-                  Your Cwallet ID from the Cwallet TON app. TON will be sent directly to this wallet.
-                </p>
               </div>
 
               {/* Trade Button */}

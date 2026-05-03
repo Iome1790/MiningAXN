@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { RiBarChartFill } from "react-icons/ri";
 import { FaReceipt, FaBalanceScale, FaCrown } from "react-icons/fa";
-import { MdAddTask, MdLanguage, MdOutlineSupportAgent } from "react-icons/md";
+import { MdLanguage, MdOutlineSupportAgent } from "react-icons/md";
 import { BsQuestionCircleFill } from "react-icons/bs";
 import { format } from "date-fns";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -134,8 +134,6 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                   </div>
                   <MenuItem icon={<FaCrown className="w-5 h-5 text-yellow-400" />} label="Admin Panel"
                     onClick={() => { onClose(); setLocation("/admin"); }} />
-                  <MenuItem icon={<MdAddTask className="w-5 h-5 text-yellow-300" />} label="Create Task"
-                    onClick={() => { onClose(); setLocation("/task/create"); }} />
                 </>
               )}
             </div>
