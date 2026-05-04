@@ -417,7 +417,7 @@ async function sendTelegramWelcomeMessage(telegramId, firstName) {
     return;
   }
   
-  const welcomeMessage = `🎉 Welcome to CashWatch, ${firstName}!\n\nYour account has been created successfully. You can now:\n\n💰 Track your earnings\n🎯 Watch ads to earn rewards\n🔗 Share your referral code\n📊 Monitor your progress\n\nStart earning now! 🚀`;
+  const welcomeMessage = `🎉 Welcome to Axionet, ${firstName}!\n\nYour account has been created successfully. You can now:\n\n💰 Track your earnings\n🎯 Watch ads to earn rewards\n🔗 Share your referral code\n📊 Monitor your progress\n\nStart earning now! 🚀`;
   
   try {
     const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -477,7 +477,7 @@ export async function handleTelegramMessage(update) {
     } else {
       // Default response
       await sendBotMessage(chatId, 
-        "🤖 Hi! I'm your CashWatch assistant.\n\n" +
+        "🤖 Hi! I'm your Axionet assistant.\n\n" +
         "Available commands:\n" +
         "/start - Get started\n" +
         "/balance - Check your balance\n" +
@@ -507,7 +507,7 @@ async function handleStartCommand(chatId, telegramUser) {
   });
   
   const message = isNewUser 
-    ? `🎉 Welcome to CashWatch, ${telegramUser.first_name}!\n\nYour account has been created successfully!`
+    ? `🎉 Welcome to Axionet, ${telegramUser.first_name}!\n\nYour account has been created successfully!`
     : `👋 Welcome back, ${telegramUser.first_name}!`;
   
   const webAppUrl = process.env.WEB_APP_URL || 'https://your-app.render.com';
@@ -521,7 +521,7 @@ async function handleStartCommand(chatId, telegramUser) {
     {
       reply_markup: {
         inline_keyboard: [[
-          { text: "🚀 Open CashWatch", web_app: { url: webAppUrl } }
+          { text: "🚀 Open Axionet", web_app: { url: webAppUrl } }
         ]]
       }
     }
