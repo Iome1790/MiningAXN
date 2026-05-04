@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { RiShieldCheckFill, RiShieldFill, RiPlayFill } from "react-icons/ri";
+import { RiShieldCheckFill, RiShieldFlashFill, RiTv2Fill } from "react-icons/ri";
 import { FaHourglassHalf, FaBug } from "react-icons/fa";
 import { AXNIcon } from "@/components/AXNIcon";
 import { showNotification } from "@/components/AppNotification";
@@ -142,7 +142,7 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
           {/* Header */}
           <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
             {antivirusActive
-              ? <RiShieldCheckFill style={{ width: 22, height: 22, color: "#4ade80", flexShrink: 0 }} />
+              ? <RiShieldFlashFill style={{ width: 22, height: 22, color: "#4ade80", flexShrink: 0 }} />
               : <FaBug style={{ width: 20, height: 20, color: "#f87171", flexShrink: 0 }} />
             }
             <div className="flex-1 min-w-0">
@@ -194,7 +194,7 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
 
             {antivirusActive ? (
               <div className="w-full h-12 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center gap-2">
-                <RiShieldCheckFill style={{ width: 18, height: 18, color: "#4ade80" }} />
+                <RiShieldFlashFill style={{ width: 18, height: 18, color: "#4ade80" }} />
                 <span className="text-green-400 font-black text-sm">CPU Time Protected</span>
               </div>
             ) : (
@@ -210,7 +210,7 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
                   ) : cooldown > 0 ? (
                     <><FaHourglassHalf className="w-3.5 h-3.5 text-white/30" /> {formatCooldown(cooldown)}</>
                   ) : (
-                    <><RiPlayFill className="w-4 h-4 text-blue-400" /> Ad Free</>
+                    <><RiTv2Fill className="w-4 h-4 text-blue-400" /> Ad Free</>
                   )}
                 </button>
 
@@ -231,7 +231,7 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
                   {paidMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <><AXNIcon size={15} /> {antivirusCost}</>
+                    <><AXNIcon size={22} /> {antivirusCost}</>
                   )}
                 </button>
               </div>

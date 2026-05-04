@@ -90,14 +90,7 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
           exit={{ scale: 0.88, opacity: 0, y: 20 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
         >
-          <div className="px-5 pt-8 pb-4 flex flex-col items-center">
-            <img
-              src="/axn-logo.svg"
-              alt="AXN"
-              className="w-16 h-16 mb-4"
-              style={{ objectFit: "contain" }}
-            />
-          </div>
+          <div className="px-5 pt-8 pb-2" />
 
           <div className="px-5 pb-5 space-y-3">
             {error && (

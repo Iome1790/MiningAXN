@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { BsLightningChargeFill } from "react-icons/bs";
-import { RiPlayFill } from "react-icons/ri";
+import { RiTv2Fill } from "react-icons/ri";
 import { FaHourglassHalf } from "react-icons/fa";
 import { AXNIcon } from "@/components/AXNIcon";
 import { showNotification } from "@/components/AppNotification";
@@ -167,7 +167,7 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
                 ) : cooldown > 0 ? (
                   <><FaHourglassHalf className="w-3.5 h-3.5 text-white/30" /> {formatCooldown(cooldown)}</>
                 ) : (
-                  <><RiPlayFill className="w-4 h-4 text-blue-400" /> Ad Free</>
+                  <><RiTv2Fill className="w-4 h-4 text-blue-400" /> Ad Free</>
                 )}
               </button>
 
@@ -188,7 +188,7 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
                 {paidMutation.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <><AXNIcon size={15} /> {energyCost}</>
+                  <><AXNIcon size={22} /> {energyCost}</>
                 )}
               </button>
             </div>

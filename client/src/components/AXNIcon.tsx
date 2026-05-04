@@ -12,6 +12,7 @@ export function AXNIcon({ size = 20, className = "" }: AXNIconProps) {
         height: size,
         minWidth: size,
         minHeight: size,
+        boxShadow: '0 0 0 1.5px rgba(59,130,246,0.7)',
       }}
     >
       <img

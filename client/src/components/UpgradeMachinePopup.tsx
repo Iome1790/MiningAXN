@@ -340,9 +340,9 @@ function UpgradeDetail({
           disabled={isPending || !canAfford}
           className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           style={canAfford ? {
-            background: "linear-gradient(135deg, #F5C542, #d4920a)",
-            color: "#000",
-            boxShadow: "0 0 20px rgba(245,197,66,0.25)",
+            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+            color: "#fff",
+            boxShadow: "0 0 20px rgba(59,130,246,0.25)",
           } : {
             background: "#1c1c1e",
             border: "1px solid rgba(255,255,255,0.08)",
@@ -351,10 +351,8 @@ function UpgradeDetail({
         >
           {isPending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
-          ) : canAfford ? (
-            <><AXNIcon size={15} /> Upgrade — {cost} AXN</>
           ) : (
-            <><AXNIcon size={15} /> Need {cost} AXN</>
+            <><AXNIcon size={22} /> {cost} AXN</>
           )}
         </button>
       )}
