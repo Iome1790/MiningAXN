@@ -79,12 +79,13 @@ function makelog(miningRate: number, mined: number): string {
   return `${ts} stratum: accepted  diff=512K  ${hs}MH`;
 }
 
-function MiningTerminal({ isMining, miningRate, mined, machineStopped, noEnergy }: {
+function MiningTerminal({ isMining, miningRate, mined, machineStopped, noEnergy, capacityFull }: {
   isMining: boolean;
   miningRate: number;
   mined: number;
   machineStopped: boolean;
   noEnergy: boolean;
+  capacityFull: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [logs, setLogs] = useState<string[]>([]);
@@ -167,9 +168,18 @@ function MiningTerminal({ isMining, miningRate, mined, machineStopped, noEnergy 
               Energy required — refill to continue mining
             </span>
           </div>
+        ) : capacityFull ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-2">
+            <HardDrive className="w-6 h-6 text-blue-400" />
+            <span style={{ color: "#60a5fa", fontSize: 11, fontWeight: 700, textAlign: "center" }}>
+              Capacity Full — Claim to empty buffer
+            </span>
+          </div>
         ) : !isMining ? (
-          <div className="flex-1 flex items-center justify-center">
-            <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>— idle —</span>
+          <div className="flex-1 flex flex-col items-center justify-center gap-2">
+            <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, fontWeight: 700, textAlign: "center" }}>
+              Start Mining to continue earning
+            </span>
           </div>
         ) : (
           <>
@@ -395,6 +405,7 @@ export default function MiningMachinePanel() {
             mined={localMined}
             machineStopped={machineStopped}
             noEnergy={noEnergy && !machineStopped}
+            capacityFull={!machineStopped && !noEnergy && localMined >= state.capacity}
           />
         </div>
 

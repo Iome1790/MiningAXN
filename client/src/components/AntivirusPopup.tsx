@@ -78,10 +78,10 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
     onSuccess: (d) => {
       if (d.active) {
         localStorage.setItem(AV_ACTIVE_KEY, String(Date.now()));
-        showNotification(`Antivirus activated for ${durationLabel}!`, "success");
+        showNotification("Antivirus Activated", "success");
       } else {
         localStorage.removeItem(AV_ACTIVE_KEY);
-        showNotification("Antivirus deactivated.", "info");
+        showNotification("Antivirus Deactivated", "info");
       }
       invalidate();
       onClose();
@@ -95,7 +95,7 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
       localStorage.setItem(AV_ACTIVE_KEY, String(Date.now()));
       localStorage.setItem(FREE_COOLDOWN_KEY, String(Date.now()));
       setCooldown(COOLDOWN_MS / 1000);
-      showNotification(`Antivirus activated for ${durationLabel}! (Free)`, "success");
+      showNotification("Antivirus Activated", "success");
       invalidate();
       onClose();
     },
