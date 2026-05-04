@@ -332,3 +332,13 @@ html[data-theme="light"] .task-box {
 .animate-slideDown {
   animation: slideDown 0.3s ease-out forwards;
 }
+
+@keyframes popupGlowOpen {
+  0%   { box-shadow: 0 0 0px 0px rgba(59,130,246,0), 0 0 40px 8px rgba(59,130,246,0.55), inset 0 0 24px 0px rgba(59,130,246,0.18); }
+  35%  { box-shadow: 0 0 0px 0px rgba(59,130,246,0), 0 0 60px 16px rgba(59,130,246,0.45), inset 0 0 32px 0px rgba(59,130,246,0.12); }
+  100% { box-shadow: 0 0 0px 0px rgba(59,130,246,0), 0 0 0px 0px rgba(59,130,246,0),   inset 0 0 0px 0px rgba(59,130,246,0); }
+}
+
+.popup-glow-open {
+  animation: popupGlowOpen 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
