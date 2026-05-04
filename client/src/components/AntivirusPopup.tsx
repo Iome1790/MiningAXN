@@ -141,7 +141,7 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
             <Shield className="w-5 h-5 text-green-400 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-white font-black text-sm uppercase tracking-wider">Antivirus</p>
-              <p className="text-white/35 text-[11px] mt-0.5">Protects your AXN balance from virus attacks</p>
+              <p className="text-white/35 text-[11px] mt-0.5">Protects your CPU time from virus drain</p>
             </div>
           </div>
 
@@ -184,14 +184,14 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
 
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3">
               <p className="text-white/30 text-[11px] leading-relaxed">
-                Antivirus <span className="text-white/50">only protects your AXN balance</span> — machine health decreases naturally over time regardless.
+                Without antivirus, <span className="text-white/50">viruses drain your CPU time every 2 minutes</span> — higher levels lose more time per tick. Machine health still decreases naturally.
               </p>
             </div>
 
             {antivirusActive ? (
               <div className="w-full h-12 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center gap-2">
                 <Shield className="w-4 h-4 text-green-400" />
-                <span className="text-green-400 font-black text-sm">Balance Protected</span>
+                <span className="text-green-400 font-black text-sm">CPU Time Protected</span>
               </div>
             ) : (
               <>

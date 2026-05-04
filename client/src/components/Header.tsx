@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { forwardRef } from "react";
-import { UserPlus2, ArrowDownToLine } from "lucide-react";
-import { BsLightningChargeFill } from "react-icons/bs";
+import { RiUserAddFill, RiArrowDownCircleFill } from "react-icons/ri";
 
 interface HeaderProps {
   onMenuOpen?: () => void;
@@ -67,7 +66,6 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
             onClick={onWithdrawOpen}
             className="flex-1 flex items-center justify-center gap-2 h-10 bg-[#1c1c1e] rounded-full px-4 active:scale-95 transition-transform"
           >
-            <BsLightningChargeFill className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#F5C542" }} />
             <span className="text-white font-black text-sm tabular-nums">
               {satBalance.toLocaleString()}
             </span>
@@ -80,22 +78,14 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
               onClick={onInviteOpen}
               className="w-12 h-10 flex items-center justify-center active:bg-white/10 transition-colors"
             >
-              <UserPlus2
-                className="text-white"
-                strokeWidth={1.6}
-                style={{ width: 18, height: 18 }}
-              />
+              <RiUserAddFill className="text-blue-400" style={{ width: 20, height: 20 }} />
             </button>
             <div className="w-px h-5 bg-white/10" />
             <button
               onClick={onWithdrawOpen}
               className="w-12 h-10 flex items-center justify-center active:bg-white/10 transition-colors"
             >
-              <ArrowDownToLine
-                className="text-white/70"
-                strokeWidth={1.6}
-                style={{ width: 17, height: 17 }}
-              />
+              <RiArrowDownCircleFill className="text-yellow-400" style={{ width: 20, height: 20 }} />
             </button>
           </div>
 

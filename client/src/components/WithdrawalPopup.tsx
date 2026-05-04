@@ -322,35 +322,23 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
                     placeholder="0"
                     value={axnAmount}
                     onChange={(e) => setAxnAmount(e.target.value)}
-                    className="w-full h-11 rounded-xl px-4 pr-24 text-white font-bold text-sm outline-none transition-all"
+                    className="w-full h-11 rounded-xl px-4 pr-20 text-white font-bold text-sm outline-none transition-all"
                     style={{
                       background: 'rgba(255,255,255,0.05)',
                       border: '1px solid rgba(255,255,255,0.1)',
                     }}
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
                     <button
                       onClick={() => setAxnAmount(satBalance.toString())}
-                      className="px-2 py-0.5 text-[10px] font-black uppercase transition-all active:scale-95 text-white/40"
+                      className="h-7 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
+                      style={{ background: 'linear-gradient(135deg,#F5C542,#d4920a)', color: '#000' }}
                     >
-                      Max
+                      MAX
                     </button>
                   </div>
                 </div>
               </div>
-
-              {/* TON Receive Preview */}
-              {axnNum > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl px-4 py-3 flex items-center justify-between"
-                  style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}
-                >
-                  <span className="text-white/40 text-xs font-semibold">You Receive</span>
-                  <span className="text-green-400 font-black text-sm tabular-nums">{formatTON(tonReceive)} TON</span>
-                </motion.div>
-              )}
 
               {/* Cwallet ID Input */}
               <div className="space-y-1.5">

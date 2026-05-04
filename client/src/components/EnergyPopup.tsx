@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Loader2, Clock, Play } from "lucide-react";
+import { Zap, Loader2, Clock, Tv } from "lucide-react";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -162,7 +162,7 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
               ) : cooldown > 0 ? (
                 <><Clock className="w-4 h-4 text-white/30" /> <span className="text-white/40">Free in {formatCooldown(cooldown)}</span></>
               ) : (
-                <><Play className="w-4 h-4 text-white/60" /> Free — Watch Ad</>
+                <><Tv className="w-4 h-4 text-sky-400" /> Free — Watch Ad</>
               )}
             </button>
 
