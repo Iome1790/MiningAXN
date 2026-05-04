@@ -74,10 +74,8 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
     if (adWatching) return;
     setAdWatching(true);
     try {
-      if (typeof (window as any).show_10401872 === "function") {
-        try { await (window as any).show_10401872(); } catch {}
-      } else if (typeof (window as any).Adsgram !== "undefined") {
-        try { await (window as any).Adsgram.init({ blockId: "int-20373" }).show(); } catch {}
+      if (typeof (window as any).show_10963365 === "function") {
+        try { await (window as any).show_10963365(); } catch {}
       }
       repairFreeMutation.mutate();
     } catch {
