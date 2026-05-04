@@ -201,6 +201,7 @@ export default function MiningMachinePanel() {
   const { data: state } = useQuery<MachineState>({
     queryKey: ["/api/axn-mining/state"],
     refetchInterval: 15000,
+    staleTime: 14000,
     retry: false,
   });
 
