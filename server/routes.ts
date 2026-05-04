@@ -1160,6 +1160,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/axn-mining/refill-energy-free", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const result = await storage.refillEnergyFree(user.id);
+      if (!result.success) return res.status(400).json(result);
+      res.json(result);
+    } catch (error) {
+      console.error("AXN free energy refill error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.post("/api/axn-mining/repair", authenticateTelegram, async (req: any, res) => {
     try {
       const user = req.user?.user;

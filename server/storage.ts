@@ -822,6 +822,32 @@ export class DatabaseStorage implements IStorage {
     return { success: true, message: `Machine repaired to 100% health! Spent ${cost} AXN.` };
   }
 
+  async repairMachineFree(userId: string): Promise<{ success: boolean; message: string }> {
+    const machine = await this.getOrCreateMachine(userId);
+    if (machine.machineHealth >= 100) {
+      return { success: false, message: 'Machine is already at full health!' };
+    }
+    const now = new Date();
+    await db.update(userMachines).set({
+      machineHealth: 100,
+      updatedAt: now,
+    }).where(eq(userMachines.userId, userId));
+    return { success: true, message: 'Machine repaired to 100% health!' };
+  }
+
+  async refillEnergyFree(userId: string): Promise<{ success: boolean; message: string }> {
+    const machine = await this.getOrCreateMachine(userId);
+    if (machine.hasEnergy) {
+      return { success: false, message: 'Energy tank is already full!' };
+    }
+    const now = new Date();
+    await db.update(userMachines).set({
+      hasEnergy: true,
+      updatedAt: now,
+    }).where(eq(userMachines.userId, userId));
+    return { success: true, message: 'Energy Refilled' };
+  }
+
   async toggleAntivirus(userId: string): Promise<{ success: boolean; active: boolean; message: string }> {
     const machine = await this.getOrCreateMachine(userId);
     const now = new Date();
