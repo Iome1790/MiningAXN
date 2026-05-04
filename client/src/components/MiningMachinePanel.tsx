@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ChevronRight, AlertTriangle, Activity, Cpu, HardDrive } from "lucide-react";
+import { useAdFlow } from "@/hooks/useAdFlow";
 import {
   RiBarChartFill, RiShieldFill, RiShieldCrossFill, RiShieldCheckFill, RiDatabase2Fill,
   RiSettings4Fill, RiPlayFill, RiDownloadFill, RiToolsFill, RiCpuFill
@@ -202,11 +203,13 @@ function MiningTerminal({ isMining, miningRate, mined, machineStopped, noEnergy,
 
 export default function MiningMachinePanel() {
   const queryClient = useQueryClient();
+  const { showMonetagAd } = useAdFlow();
   const [cpuCountdown, setCpuCountdown] = useState(0);
   const [repairOpen, setRepairOpen] = useState(false);
   const [antivirusOpen, setAntivirusOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [energyOpen, setEnergyOpen] = useState(false);
+  const [adRunning, setAdRunning] = useState(false);
 
   const { data: state } = useQuery<MachineState>({
     queryKey: ["/api/axn-mining/state"],
@@ -310,6 +313,26 @@ export default function MiningMachinePanel() {
     },
     onError: (e: any) => showNotification(e.message || "Nothing to collect", "error"),
   });
+
+  const handleStartMining = useCallback(async () => {
+    if (adRunning || startCpuMutation.isPending) return;
+    setAdRunning(true);
+    try {
+      await showMonetagAd();
+    } catch {}
+    setAdRunning(false);
+    startCpuMutation.mutate();
+  }, [adRunning, startCpuMutation, showMonetagAd]);
+
+  const handleCollect = useCallback(async () => {
+    if (adRunning || claimMutation.isPending) return;
+    setAdRunning(true);
+    try {
+      await showMonetagAd();
+    } catch {}
+    setAdRunning(false);
+    claimMutation.mutate();
+  }, [adRunning, claimMutation, showMonetagAd]);
 
   if (!state) {
     return (
@@ -524,9 +547,10 @@ export default function MiningMachinePanel() {
                     setEnergyOpen(true);
                     return;
                   }
-                  startCpuMutation.mutate();
+                  handleStartMining();
                 }}
                 disabled={
+                  adRunning ||
                   startCpuMutation.isPending ||
                   state.cpuRunning ||
                   state.machineHealth <= 0
@@ -538,7 +562,7 @@ export default function MiningMachinePanel() {
                     : { background: '#1c1c1e', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.25)' }
                 }
               >
-                {startCpuMutation.isPending ? (
+                {adRunning || startCpuMutation.isPending ? (
                   <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : state.cpuRunning ? (
                   <><RiCpuFill className="w-3.5 h-3.5" /> Running</>
@@ -551,8 +575,8 @@ export default function MiningMachinePanel() {
 
               {/* Collect AXN button — blue when active */}
               <button
-                onClick={() => claimMutation.mutate()}
-                disabled={claimMutation.isPending || !canClaim}
+                onClick={handleCollect}
+                disabled={adRunning || claimMutation.isPending || !canClaim}
                 className="h-11 rounded-xl flex items-center justify-center gap-1.5 font-black text-xs uppercase tracking-widest transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
                 style={canClaim ? {
                   background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)',
@@ -564,7 +588,7 @@ export default function MiningMachinePanel() {
                   color: 'rgba(255,255,255,0.25)',
                 }}
               >
-                {claimMutation.isPending
+                {adRunning || claimMutation.isPending
                   ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   : <>Collect</>
                 }
