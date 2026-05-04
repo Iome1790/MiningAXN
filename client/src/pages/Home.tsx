@@ -88,6 +88,13 @@ export default function Home() {
   const [headerHeight, setHeaderHeight] = useState(88);
 
   useEffect(() => {
+    queryClient.prefetchQuery({
+      queryKey: ["/api/axn-mining/state"],
+      staleTime: 14000,
+    });
+  }, []);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       if (shouldShowDailyActivity()) {
         markDailyActivitySeen();
