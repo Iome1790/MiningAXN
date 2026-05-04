@@ -2102,119 +2102,75 @@ ${walletAddress}
     // Handle /start command with referral processing and promotion claims
     if (text.startsWith('/start')) {
       console.log('🚀 Processing /start command...');
-      // Extract parameter if present (e.g., /start REF123 or /start claim_promotionId)
       const parameter = text.split(' ')[1];
-      
-      // Handle promotion task claim (DISABLED - no promotion system)
+
+      // Handle promotion task claim (DISABLED)
       if (parameter && parameter.startsWith('task_')) {
         console.log('⚠️ Promotion system disabled');
         return true;
       }
-      
-      // Extract referral code if present (e.g., /start REF123)
+
       const referralCode = parameter;
-      
-      // CRITICAL FIX: Process referral for BOTH new users AND existing users without a referrer
-      // This fixes the bug where users who visited before and then clicked a referral link weren't tracked
+
+      // Send welcome message IMMEDIATELY for fast response, then process referral in background
+      console.log('📤 Sending welcome message immediately to:', chatId);
+      sendWelcomeMessage(chatId).then(sent => {
+        console.log('📧 Welcome message sent:', sent);
+      }).catch(err => {
+        console.error('❌ Welcome message error:', err);
+      });
+
+      // Process referral in background (non-blocking)
       if (referralCode && referralCode !== chatId) {
-        console.log(`🔄 Processing referral: referralCode=${referralCode}, user=${chatId}, isNewUser=${isNewUser}`);
-        try {
-          // Find the referrer by referral_code (NOT telegram_id or user_id)
-          const referrer = await storage.getUserByReferralCode(referralCode);
-          
-          if (referrer) {
-            console.log(`👤 Found referrer: ${referrer.id} (${referrer.firstName || 'No name'}) via referral code: ${referralCode}`);
-            console.log(`🔍 Referrer details: ID=${referrer.id}, TelegramID=${referrer.telegram_id}, RefCode=${referrer.referralCode}`);
-            console.log(`🔍 New user details: ID=${dbUser.id}, TelegramID=${dbUser.telegram_id}, RefCode=${dbUser.referralCode}`);
-            
-            // Verify both users have valid IDs before creating referral
-            if (!referrer.id || !dbUser.id) {
-              console.error(`❌ Invalid user IDs: referrer.id=${referrer.id}, dbUser.id=${dbUser.id}`);
-              throw new Error('Invalid user IDs for referral creation');
-            }
-            
-            // Prevent self-referral by comparing user IDs
-            if (referrer.id === dbUser.id) {
-              console.log(`⚠️  Self-referral prevented: referrer.id=${referrer.id} === dbUser.id=${dbUser.id}`);
-            } else {
+        (async () => {
+          console.log(`🔄 Processing referral in background: referralCode=${referralCode}, user=${chatId}`);
+          try {
+            const referrer = await storage.getUserByReferralCode(referralCode);
+
+            if (referrer) {
+              if (!referrer.id || !dbUser.id) {
+                console.error(`❌ Invalid user IDs for referral`);
+                return;
+              }
+
+              if (referrer.id === dbUser.id) {
+                console.log(`⚠️ Self-referral prevented`);
+                return;
+              }
+
               const { detectSelfReferral, banUserForMultipleAccounts, sendWarningToMainAccount } = await import('./deviceTracking');
               const selfReferralCheck = await detectSelfReferral(dbUser.id, referralCode);
-              
+
               if (selfReferralCheck.isSelfReferral && selfReferralCheck.shouldBan) {
-                console.log(`⚠️ Device-based self-referral detected! User ${dbUser.id} tried to refer themselves using device matching.`);
-                
-                await banUserForMultipleAccounts(
-                  dbUser.id,
-                  "Self-referral attempt detected - multiple accounts on same device"
-                );
-                
-                if (selfReferralCheck.referrerId) {
-                  await sendWarningToMainAccount(selfReferralCheck.referrerId);
-                }
-                
-                // Ban message with inline button for support (no text links)
-                const banMessage = `Your account has been banned for violating our multi-account policy.
-
-Reason: Self-referral attempt detected.
-
-Please contact support if you believe this is a mistake.`;
-                
-                const supportButton = {
-                  inline_keyboard: [[
-                    { text: '👉🏻 Contact Support', url: 'https://t.me/szxzyz' }
-                  ]]
-                };
-                
+                console.log(`⚠️ Device-based self-referral detected for user ${dbUser.id}`);
+                await banUserForMultipleAccounts(dbUser.id, "Self-referral attempt detected - multiple accounts on same device");
+                if (selfReferralCheck.referrerId) await sendWarningToMainAccount(selfReferralCheck.referrerId);
+                const banMessage = `Your account has been banned for violating our multi-account policy.\n\nReason: Self-referral attempt detected.\n\nPlease contact support if you believe this is a mistake.`;
+                const supportButton = { inline_keyboard: [[{ text: '👉🏻 Contact Support', url: 'https://t.me/szxzyz' }]] };
                 await sendUserTelegramNotification(chatId, banMessage, supportButton, 'HTML');
-                
-                return true;
+                return;
               }
-              
-              // CANONICAL CHECK: Use referrals table as source of truth to check if referral exists
+
               const existingReferral = await storage.getReferralByUsers(referrer.id, dbUser.id);
-              
               if (existingReferral) {
-                console.log(`ℹ️ Referral already exists in referrals table: ${referrer.id} -> ${dbUser.id}`);
+                console.log(`ℹ️ Referral already exists: ${referrer.id} -> ${dbUser.id}`);
               } else {
-                console.log(`💾 Creating referral relationship: ${referrer.id} -> ${dbUser.id}`);
+                console.log(`💾 Creating referral: ${referrer.id} -> ${dbUser.id}`);
                 const createdReferral = await storage.createReferral(referrer.id, dbUser.id);
-                console.log(`✅ Referral created successfully in database:`, {
-                  referralId: createdReferral.id,
-                  referrerId: createdReferral.referrerId,
-                  refereeId: createdReferral.refereeId,
-                  status: createdReferral.status,
-                  rewardAmount: createdReferral.rewardAmount
-                });
+                console.log(`✅ Referral created: id=${createdReferral.id}`);
               }
+            } else {
+              console.log(`❌ Invalid referral code: ${referralCode}`);
             }
-          } else {
-            console.log(`❌ Invalid referral code: ${referralCode} - no user found with this referral code`);
+          } catch (error) {
+            console.error('❌ Background referral processing failed:', error instanceof Error ? error.message : String(error));
           }
-        } catch (error) {
-          console.error('❌ Referral processing failed:', error);
-          console.error('Error details:', {
-            referralCode: referralCode,
-            newUserTelegramId: chatId,
-            newUserDbId: dbUser.id,
-            newUserRefCode: dbUser.referralCode,
-            isNewUser,
-            errorMessage: error instanceof Error ? error.message : String(error),
-            errorStack: error instanceof Error ? error.stack : undefined
-          });
-        }
+        })();
       } else {
-        if (!referralCode) {
-          console.log(`ℹ️  No referral code provided in /start command`);
-        }
-        if (referralCode === chatId) {
-          console.log(`⚠️  Self-referral attempted: ${chatId}`);
-        }
+        if (!referralCode) console.log(`ℹ️ No referral code in /start`);
+        if (referralCode === chatId) console.log(`⚠️ Self-referral attempted: ${chatId}`);
       }
 
-      // Send welcome message to user
-      console.log('📤 Sending welcome message to:', chatId);
-      const welcomeSent = await sendWelcomeMessage(chatId);
-      console.log('📧 Welcome message sent successfully:', welcomeSent);
       return true;
     }
 
