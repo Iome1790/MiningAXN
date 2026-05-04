@@ -141,7 +141,7 @@ function MiningTerminal({ isMining, miningRate, mined, machineStopped, noEnergy 
       setLogs([...logsRef.current]);
     };
     addLog();
-    const t = setInterval(addLog, 350 + Math.random() * 200);
+    const t = setInterval(addLog, 120 + Math.random() * 80);
     return () => clearInterval(t);
   }, [isMining, miningRate]);
 
@@ -174,17 +174,11 @@ function MiningTerminal({ isMining, miningRate, mined, machineStopped, noEnergy 
         ) : (
           <>
             <div style={{ fontSize: "9.5px", lineHeight: "1.45" }}>
-              {logs.slice(-7).map((line, i) => {
-                const isReward = line.includes("reward:");
-                const isGpu = line.includes("gpu[");
-                const isHash = line.includes("hashrate:");
-                const color = isReward ? "#39ff14" : isGpu ? "#60a5fa" : isHash ? "#facc15" : "rgba(255,255,255,0.45)";
-                return (
-                  <div key={i} className="truncate" style={{ color }}>
-                    {line}
-                  </div>
-                );
-              })}
+              {logs.slice(-7).map((line, i) => (
+                <div key={i} className="truncate" style={{ color: "rgba(180,180,180,0.7)" }}>
+                  {line}
+                </div>
+              ))}
             </div>
             <div style={{ fontSize: "13px", lineHeight: "1.6", fontWeight: 900, color: "#39ff14", textShadow: "0 0 10px #39ff1488", marginTop: 2 }}>
               $ {mined.toFixed(4)} AXN ▋
@@ -431,16 +425,15 @@ export default function MiningMachinePanel() {
                 <span className="text-white/50 text-[10px] font-bold uppercase tracking-wider">Capacity</span>
               </div>
               <div className="flex items-center gap-1">
-                <AXNIcon size={12} />
                 <span className="text-white/60 text-[10px] font-black tabular-nums">
-                  {localMined.toFixed(2)} / {state.capacity} AXN
+                  {localMined.toFixed(2)} / {state.capacity}
                 </span>
               </div>
             </div>
             <div className="h-2 bg-white/5 rounded-full overflow-hidden">
               <motion.div
                 className="h-full rounded-full"
-                style={{ background: capacityPct > 90 ? '#ef4444' : 'linear-gradient(90deg,#F5C542,#d4920a)' }}
+                style={{ background: capacityPct > 90 ? '#ef4444' : 'linear-gradient(90deg,#22c55e,#16a34a)' }}
                 animate={{ width: `${capacityPct}%` }}
                 transition={{ duration: 0.5 }}
               />
@@ -588,7 +581,7 @@ export default function MiningMachinePanel() {
               >
                 {claimMutation.isPending
                   ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  : <><AXNIcon size={14} /> Collect AXN</>
+                  : <><AXNIcon size={14} /> Collect</>
                 }
               </button>
             </div>
@@ -605,8 +598,7 @@ export default function MiningMachinePanel() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="flex items-center gap-1">
-                    <AXNIcon size={13} />
-                    <span className="text-white/40 text-sm">{state.repairCost} AXN</span>
+                    <span className="text-white/40 text-sm">{state.repairCost}</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-white/20" />
                 </div>

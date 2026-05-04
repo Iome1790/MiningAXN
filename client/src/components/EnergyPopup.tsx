@@ -118,7 +118,7 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
-            <BsLightningChargeFill className="w-5 h-5 text-[#F5C542] flex-shrink-0" />
+            <BsLightningChargeFill className="w-5 h-5 text-blue-400 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-white font-black text-sm uppercase tracking-wider">Energy Refill</p>
               <p className="text-white/35 text-[11px] mt-0.5">Refill energy to continue mining operations</p>
@@ -128,7 +128,7 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
           <div className="px-5 py-4 space-y-2.5">
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <BsLightningChargeFill className="w-3.5 h-3.5 text-[#F5C542]/60" />
+                <BsLightningChargeFill className="w-3.5 h-3.5 text-red-400/60" />
                 <span className="text-white/40 text-xs">Energy Status</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -155,43 +155,43 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
               )}
             </div>
 
-            <button
-              onClick={handleFreeRefill}
-              disabled={cooldown > 0 || adWatching || freeMutation.isPending}
-              className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ background: '#1c1c1e', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
-            >
-              {freeMutation.isPending || adWatching ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
-              ) : cooldown > 0 ? (
-                <><FaHourglassHalf className="w-4 h-4 text-white/30" /> <span className="text-white/40">Free in {formatCooldown(cooldown)}</span></>
-              ) : (
-                <><RiPlayFill className="w-4 h-4 text-blue-400" /> Free — Watch Ad</>
-              )}
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={handleFreeRefill}
+                disabled={cooldown > 0 || adWatching || freeMutation.isPending}
+                className="h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ background: '#1c1c1e', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+              >
+                {freeMutation.isPending || adWatching ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : cooldown > 0 ? (
+                  <><FaHourglassHalf className="w-3.5 h-3.5 text-white/30" /> {formatCooldown(cooldown)}</>
+                ) : (
+                  <><RiPlayFill className="w-4 h-4 text-blue-400" /> Ad Free</>
+                )}
+              </button>
 
-            <button
-              onClick={() => paidMutation.mutate()}
-              disabled={paidMutation.isPending || !canAfford}
-              className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={canAfford ? {
-                background: "linear-gradient(135deg, #F5C542, #d4920a)",
-                color: "#000",
-                boxShadow: "0 0 18px rgba(245,197,66,0.2)",
-              } : {
-                background: "#1c1c1e",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "rgba(255,255,255,0.3)",
-              }}
-            >
-              {paidMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : canAfford ? (
-                <><AXNIcon size={15} /> Pay {energyCost} AXN</>
-              ) : (
-                <><AXNIcon size={15} /> Need {energyCost} AXN</>
-              )}
-            </button>
+              <button
+                onClick={() => paidMutation.mutate()}
+                disabled={paidMutation.isPending || !canAfford}
+                className="h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={canAfford ? {
+                  background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                  color: "#fff",
+                  boxShadow: "0 0 18px rgba(59,130,246,0.25)",
+                } : {
+                  background: "#1c1c1e",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "rgba(255,255,255,0.3)",
+                }}
+              >
+                {paidMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <><AXNIcon size={15} /> {energyCost}</>
+                )}
+              </button>
+            </div>
 
             <button
               onClick={onClose}

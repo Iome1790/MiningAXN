@@ -309,9 +309,10 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
                 <span className="text-white/40 text-xs font-semibold">Available Balance</span>
                 <div className="flex items-center gap-1.5">
                   <AXNIcon size={16} />
-                  <span className="text-[#F5C542] text-sm font-black tabular-nums">
-                    {satBalance.toLocaleString()} AXN
+                  <span className="text-white font-black text-sm tabular-nums">
+                    {satBalance.toLocaleString()}
                   </span>
+                  <span className="text-white/40 text-xs font-bold uppercase tracking-wide">AXN</span>
                 </div>
               </div>
 

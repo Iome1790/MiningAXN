@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { RiShieldCheckFill, RiShieldFill, RiPlayFill } from "react-icons/ri";
-import { FaHourglassHalf } from "react-icons/fa";
+import { FaHourglassHalf, FaBug } from "react-icons/fa";
 import { AXNIcon } from "@/components/AXNIcon";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
@@ -143,7 +143,7 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
           <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
             {antivirusActive
               ? <RiShieldCheckFill style={{ width: 22, height: 22, color: "#4ade80", flexShrink: 0 }} />
-              : <RiShieldFill style={{ width: 22, height: 22, color: "#f87171", flexShrink: 0 }} />
+              : <FaBug style={{ width: 20, height: 20, color: "#f87171", flexShrink: 0 }} />
             }
             <div className="flex-1 min-w-0">
               <p className="text-white font-black text-sm uppercase tracking-wider">Antivirus</p>
@@ -176,21 +176,19 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-white font-black text-sm">{durationLabel}</span>
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wide text-[#F5C542] bg-[#F5C542]/10">
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wide text-blue-400 bg-blue-400/10">
                   AV Lv.{miningLevel}
                 </span>
               </div>
             </div>
 
-            <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3">
+            {/* Consolidated info */}
+            <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 space-y-1.5">
               <p className="text-white/30 text-[11px] leading-relaxed">
-                Antivirus level = <span className="text-white/50">lowest level among Mining, Capacity & CPU.</span> Upgrade all three equally to increase duration by +10 min per level.
+                Antivirus level must match <span className="text-white/50">Mining, Capacity, and CPU</span>. Each level adds <span className="text-white/50">+10 min</span> of protection.
               </p>
-            </div>
-
-            <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3">
               <p className="text-white/30 text-[11px] leading-relaxed">
-                Without antivirus, <span className="text-white/50">viruses drain your CPU time every 2 minutes</span> — higher levels lose more time per tick. Machine health still decreases naturally.
+                Without antivirus, viruses drain <span className="text-white/50">CPU time every 2 minutes</span>. Higher levels lose more per tick.
               </p>
             </div>
 
@@ -200,30 +198,30 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
                 <span className="text-green-400 font-black text-sm">CPU Time Protected</span>
               </div>
             ) : (
-              <>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={handleFreeActivate}
                   disabled={cooldown > 0 || adWatching || freeMutation.isPending}
-                  className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   style={{ background: '#1c1c1e', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
                 >
                   {freeMutation.isPending || adWatching ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : cooldown > 0 ? (
-                    <><FaHourglassHalf className="w-4 h-4 text-white/30" /> <span className="text-white/40">Free in {formatCooldown(cooldown)}</span></>
+                    <><FaHourglassHalf className="w-3.5 h-3.5 text-white/30" /> {formatCooldown(cooldown)}</>
                   ) : (
-                    <><RiPlayFill className="w-4 h-4 text-blue-400" /> Free — Watch Ad</>
+                    <><RiPlayFill className="w-4 h-4 text-blue-400" /> Ad Free</>
                   )}
                 </button>
 
                 <button
                   onClick={() => paidMutation.mutate()}
                   disabled={paidMutation.isPending || !canAfford}
-                  className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   style={canAfford ? {
-                    background: "linear-gradient(135deg, #F5C542, #d4920a)",
-                    color: "#000",
-                    boxShadow: "0 0 18px rgba(245,197,66,0.2)",
+                    background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                    color: "#fff",
+                    boxShadow: "0 0 18px rgba(59,130,246,0.25)",
                   } : {
                     background: "#1c1c1e",
                     border: "1px solid rgba(255,255,255,0.08)",
@@ -232,13 +230,11 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
                 >
                   {paidMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : canAfford ? (
-                    <><AXNIcon size={15} /> Pay {antivirusCost} AXN</>
                   ) : (
-                    <><AXNIcon size={15} /> Need {antivirusCost} AXN</>
+                    <><AXNIcon size={15} /> {antivirusCost}</>
                   )}
                 </button>
-              </>
+              </div>
             )}
 
             <button

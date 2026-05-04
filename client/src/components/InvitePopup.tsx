@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CheckCircle, XCircle, Loader2, HelpCircle, Droplets, X,
+  CheckCircle, XCircle, Loader2, HelpCircle, X,
 } from "lucide-react";
 import { RiShareForwardFill, RiUserFollowFill, RiLinkM, RiGroupFill, RiCoinFill } from "react-icons/ri";
 import { AXNIcon } from "@/components/AXNIcon";
@@ -135,7 +135,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
             {/* Well balance */}
             <div className="bg-[#141414] border border-white/5 rounded-2xl p-4 flex items-center gap-4">
               <div className="w-10 h-10 rounded-2xl bg-[#1c1c1e] flex items-center justify-center flex-shrink-0">
-                <Droplets className="w-5 h-5 text-[#F5C542]" />
+                <AXNIcon size={22} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-0.5">Your Well</p>
@@ -311,7 +311,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
                   { icon: <RiLinkM className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#F5C542]" />, title: "Invite friends", desc: "Share your unique invite link. Friends join via your link." },
                   { icon: <RiShareForwardFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-white/50" />, title: "They mine & withdraw", desc: "Every time a friend withdraws AXN, 10% flows into your Well." },
                   { icon: <RiUserFollowFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-400" />, title: "Machine level-up bonus", desc: "Earn 50 AXN each time a friend upgrades their mining machine." },
-                  { icon: <Droplets className="w-4 h-4 flex-shrink-0 mt-0.5 text-purple-400" />, title: "Claim your Well", desc: "When your Well has AXN, claim it anytime to add to your balance." },
+                  { icon: <AXNIcon size={16} />, title: "Claim your Well", desc: "When your Well has AXN, claim it anytime to add to your balance." },
                 ].map((item, i) => (
                   <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
                     {item.icon}

@@ -161,30 +161,30 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
                 <span className="text-green-400 font-black text-sm">Machine is at 100% health</span>
               </div>
             ) : (
-              <>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={handleFreeRepair}
                   disabled={cooldown > 0 || adWatching || repairFreeMutation.isPending}
-                  className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   style={{ background: '#1c1c1e', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
                 >
                   {repairFreeMutation.isPending || adWatching ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : cooldown > 0 ? (
-                    <><FaHourglassHalf className="w-4 h-4 text-white/30" /> <span className="text-white/40">Free in {formatCooldown(cooldown)}</span></>
+                    <><FaHourglassHalf className="w-3.5 h-3.5 text-white/30" /> {formatCooldown(cooldown)}</>
                   ) : (
-                    <><RiPlayFill className="w-4 h-4 text-blue-400" /> Free — Watch Ad</>
+                    <><RiPlayFill className="w-4 h-4 text-blue-400" /> Ad Free</>
                   )}
                 </button>
 
                 <button
                   onClick={() => repairPaidMutation.mutate()}
                   disabled={repairPaidMutation.isPending || !canAfford}
-                  className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   style={canAfford ? {
-                    background: "linear-gradient(135deg, #F5C542, #d4920a)",
-                    color: "#000",
-                    boxShadow: "0 0 18px rgba(245,197,66,0.2)",
+                    background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                    color: "#fff",
+                    boxShadow: "0 0 18px rgba(59,130,246,0.25)",
                   } : {
                     background: "#1c1c1e",
                     border: "1px solid rgba(255,255,255,0.08)",
@@ -193,13 +193,11 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
                 >
                   {repairPaidMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : canAfford ? (
-                    <><AXNIcon size={15} /> Pay {repairCost} AXN</>
                   ) : (
-                    <><AXNIcon size={15} /> Need {repairCost} AXN</>
+                    <><AXNIcon size={15} /> {repairCost}</>
                   )}
                 </button>
-              </>
+              </div>
             )}
 
             <button

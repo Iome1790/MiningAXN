@@ -214,18 +214,14 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                           <p className="text-white/25 text-xs font-bold uppercase tracking-widest">No transactions yet</p>
                         </div>
                       ) : withdrawals.map((w: any) => (
-                        <div key={w.id} className="bg-[#1a1c22] border border-white/5 rounded-2xl p-3.5 flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">{getStatusIcon(w.status)}</div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white text-xs font-black uppercase">{w.method || "Withdrawal"}</p>
-                            <p className="text-white/30 text-[10px] mt-0.5">{w.createdAt ? format(new Date(w.createdAt), "dd MMM yyyy") : "—"}</p>
+                        <div key={w.id} className="bg-[#1a1c22] border border-white/5 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <AXNIcon size={16} />
+                            <p className="text-white text-sm font-black tabular-nums">{parseFloat(w.amount || "0").toLocaleString()}</p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <div className="flex items-center gap-1 justify-end">
-                            <AXNIcon size={13} />
-                            <p className="text-white text-sm font-black tabular-nums">{parseFloat(w.amount || "0").toLocaleString()} AXN</p>
-                          </div>
-                            <p className={`text-[10px] font-bold capitalize mt-0.5 ${getStatusColor(w.status)}`}>{w.status}</p>
+                            <p className={`text-xs font-black capitalize ${getStatusColor(w.status)}`}>{w.status}</p>
+                            <p className="text-white/30 text-[10px] mt-0.5">{w.createdAt ? format(new Date(w.createdAt), "dd MMM · HH:mm") : "—"}</p>
                           </div>
                         </div>
                       ))}
