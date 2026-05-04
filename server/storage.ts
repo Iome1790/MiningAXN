@@ -46,13 +46,18 @@ import { MINING_LEVELS, getMiningLevel } from "../shared/miningLevels";
 import { db } from "./db";
 import { eq, desc, and, gte, lt, sql } from "drizzle-orm";
 import crypto from "crypto";
-import { sendUserTelegramNotification } from "./telegram";
+// Telegram notifications for mining machine are disabled
 
-// Cooldown tracking for mining notifications (in-memory, resets on server restart)
-const _healthNotifCooldown = new Map<string, number>(); // userId -> last sent ms
-const _capacityNotifCooldown = new Map<string, number>(); // userId -> last sent ms
-const HEALTH_NOTIF_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours
-const CAPACITY_NOTIF_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+// CPU time reduction penalty per 2-min interval when antivirus is OFF
+function getVirusPenaltyMinutes(cpuLevel: number): number {
+  if (cpuLevel <= 5) return 5;
+  if (cpuLevel <= 10) return 8;
+  if (cpuLevel <= 15) return 12;
+  if (cpuLevel <= 20) return 16;
+  return 20; // Lv 21-25
+}
+
+const CPU_REDUCTION_INTERVAL = 120; // 2 minutes in seconds
 
 // Payment system configuration
 export interface PaymentSystem {
@@ -625,32 +630,18 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    const ATTACK_INTERVAL = 300; // 5 minutes
-
-    // AXN theft countdown — only relevant when AV is OFF
-    let virusDamage = 0;
-    let nextVirusIn = ATTACK_INTERVAL;
-    if (!machine.antivirusActive && machine.lastVirusAttack) {
-      const secSinceAttack = Math.floor((now.getTime() - machine.lastVirusAttack.getTime()) / 1000);
-      virusDamage = Math.floor(secSinceAttack / ATTACK_INTERVAL);
-      nextVirusIn = ATTACK_INTERVAL - (secSinceAttack % ATTACK_INTERVAL);
+    // CPU reduction info — when AV is OFF and CPU running
+    let cpuReductionPerTick = 0; // penalty minutes per 2-min interval
+    let nextReductionIn = CPU_REDUCTION_INTERVAL;
+    if (!machine.antivirusActive) {
+      cpuReductionPerTick = getVirusPenaltyMinutes(machine.cpuLevel);
+      if (machine.lastVirusAttack) {
+        const secSince = Math.floor((now.getTime() - machine.lastVirusAttack.getTime()) / 1000);
+        nextReductionIn = CPU_REDUCTION_INTERVAL - (secSince % CPU_REDUCTION_INTERVAL);
+      }
     }
 
     const balance = parseFloat(user?.balance || '0');
-
-    // Terminal log + notification when capacity is full
-    if (minedAxn >= capacity && machine.cpuStartTime) {
-      console.log(`[MINING] ⚠️ Capacity FULL for user ${userId} — ${minedAxn.toFixed(4)} / ${capacity} AXN. User should claim now!`);
-      const now = Date.now();
-      const lastCapNotif = _capacityNotifCooldown.get(userId) || 0;
-      if (now - lastCapNotif > CAPACITY_NOTIF_COOLDOWN_MS && user?.telegram_id) {
-        _capacityNotifCooldown.set(userId, now);
-        sendUserTelegramNotification(
-          user.telegram_id,
-          `⚡ <b>Mining Machine Full!</b>\n\nYour mining capacity is <b>100% full</b> — ${capacity.toLocaleString()} AXN ready to claim!\n\n🔴 New AXN is being wasted until you claim. Open the app now to collect your reward.`
-        ).catch(() => {});
-      }
-    }
 
     return {
       miningLevel: machine.miningLevel,
@@ -673,8 +664,8 @@ export class DatabaseStorage implements IStorage {
       upgCpu: cpuLvl.upgCpu,
       isMaxLevel: machine.miningLevel >= 25,
       balance,
-      pendingVirusDamage: virusDamage,
-      nextVirusIn,
+      pendingVirusDamage: cpuReductionPerTick,
+      nextVirusIn: nextReductionIn,
       lastVirusAttack: machine.lastVirusAttack,
     };
   }
@@ -893,18 +884,16 @@ export class DatabaseStorage implements IStorage {
   async applyVirusDamage(userId: string): Promise<void> {
     const machine = await this.getOrCreateMachine(userId);
     const now = new Date();
-    const ATTACK_INTERVAL = 300; // 5 minutes
+    const HEALTH_DECAY_INTERVAL = 300; // 5 minutes for health decay
 
     const machineUpdates: Record<string, any> = { updatedAt: now };
-    let axnDamage = 0;
 
     // ── HEALTH DECAY — always, every 5 min regardless of antivirus ──
     if (!machine.lastHealthDecay) {
-      // First time — just start the timer
       machineUpdates.lastHealthDecay = now;
     } else {
       const secSinceDecay = Math.floor((now.getTime() - machine.lastHealthDecay.getTime()) / 1000);
-      const decayTicks = Math.floor(secSinceDecay / ATTACK_INTERVAL);
+      const decayTicks = Math.floor(secSinceDecay / HEALTH_DECAY_INTERVAL);
       if (decayTicks > 0) {
         const healthLoss = Math.min(machine.machineHealth, decayTicks * 5);
         machineUpdates.machineHealth = Math.max(0, machine.machineHealth - healthLoss);
@@ -912,59 +901,29 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // ── AXN THEFT — only when antivirus is OFF, every 5 min ──
+    // ── CPU TIME REDUCTION — only when antivirus is OFF and CPU is running ──
     if (!machine.antivirusActive) {
+      const cpuRunning = !!(machine.cpuEndTime && machine.cpuEndTime > now);
       if (!machine.lastVirusAttack) {
-        // Start AXN theft timer
         machineUpdates.lastVirusAttack = now;
-      } else {
-        const secSinceAttack = Math.floor((now.getTime() - machine.lastVirusAttack.getTime()) / 1000);
-        const attacks = Math.floor(secSinceAttack / ATTACK_INTERVAL);
-        if (attacks > 0) {
-          axnDamage = attacks; // 1 AXN per 5-min cycle
+      } else if (cpuRunning) {
+        const secSinceLastReduction = Math.floor((now.getTime() - machine.lastVirusAttack.getTime()) / 1000);
+        const reductionTicks = Math.floor(secSinceLastReduction / CPU_REDUCTION_INTERVAL);
+        if (reductionTicks > 0) {
+          const penaltyMinutes = getVirusPenaltyMinutes(machine.cpuLevel);
+          const totalPenaltyMs = reductionTicks * penaltyMinutes * 60 * 1000;
+          const newCpuEndTime = new Date(machine.cpuEndTime!.getTime() - totalPenaltyMs);
+          machineUpdates.cpuEndTime = newCpuEndTime < now ? now : newCpuEndTime;
           machineUpdates.lastVirusAttack = now;
         }
       }
     }
 
-    // Send health warning notification if health drops below 20%
-    const newHealth = machineUpdates.machineHealth !== undefined ? machineUpdates.machineHealth : machine.machineHealth;
-    if (machine.machineHealth >= 20 && newHealth < 20) {
-      const now = Date.now();
-      const lastHealthNotif = _healthNotifCooldown.get(userId) || 0;
-      if (now - lastHealthNotif > HEALTH_NOTIF_COOLDOWN_MS) {
-        _healthNotifCooldown.set(userId, now);
-        const user = await this.getUser(userId);
-        if (user?.telegram_id) {
-          sendUserTelegramNotification(
-            user.telegram_id,
-            `🚨 <b>Mining Machine Health Critical!</b>\n\nYour machine health has dropped to <b>${newHealth}%</b> (below 20%)!\n\n⚠️ Low health slows mining and can stop it completely at 0%. Open the app to repair your machine now.`
-          ).catch(() => {});
-        }
-      }
-    }
-
     // Skip DB write if nothing changed
-    const hasHealthChange = 'machineHealth' in machineUpdates || 'lastHealthDecay' in machineUpdates;
-    const hasVirusChange = 'lastVirusAttack' in machineUpdates;
-    if (!hasHealthChange && !hasVirusChange && axnDamage === 0) return;
+    const hasChanges = Object.keys(machineUpdates).length > 1; // more than just updatedAt
+    if (!hasChanges) return;
 
-    if (axnDamage > 0) {
-      const user = await this.getUser(userId);
-      const balance = parseFloat(user?.balance || '0');
-      const actualDamage = Math.min(axnDamage, balance);
-      await db.transaction(async (tx) => {
-        if (actualDamage > 0) {
-          await tx.update(users).set({
-            balance: sql`GREATEST(0, COALESCE(${users.balance}, 0) - ${actualDamage.toString()})`,
-            updatedAt: now,
-          }).where(eq(users.id, userId));
-        }
-        await tx.update(userMachines).set(machineUpdates).where(eq(userMachines.userId, userId));
-      });
-    } else {
-      await db.update(userMachines).set(machineUpdates).where(eq(userMachines.userId, userId));
-    }
+    await db.update(userMachines).set(machineUpdates).where(eq(userMachines.userId, userId));
   }
 
   // Transaction operations
