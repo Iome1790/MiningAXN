@@ -940,6 +940,63 @@ export class DatabaseStorage implements IStorage {
     });
 
     const subsystemName = type === 'mining' ? 'Mining' : type === 'capacity' ? 'Capacity' : 'CPU';
+
+    // Check level-parity referral reward: if all 3 subsystems are now equal, give referrer 50 AXN
+    try {
+      const updatedMachine = await this.getOrCreateMachine(userId);
+      const mLvl = updatedMachine.miningLevel;
+      const cLvl = updatedMachine.capacityLevel;
+      const cpuLvl = updatedMachine.cpuLevel;
+
+      if (mLvl === cLvl && cLvl === cpuLvl && mLvl > 1) {
+        const equalLevel = mLvl;
+
+        // Check referral exists and is completed
+        const [referralInfo] = await db
+          .select({ referrerId: referrals.referrerId })
+          .from(referrals)
+          .where(and(
+            eq(referrals.refereeId, userId),
+            eq(referrals.status, 'completed')
+          ))
+          .limit(1);
+
+        if (referralInfo) {
+          // Check this exact level was not already rewarded for this referee
+          const [alreadyRewarded] = await db
+            .select({ id: earnings.id })
+            .from(earnings)
+            .where(and(
+              eq(earnings.userId, referralInfo.referrerId),
+              eq(earnings.source, 'referral_upgrade_bonus'),
+              sql`${earnings.description} LIKE ${'%level ' + equalLevel + '%'} AND ${earnings.description} LIKE ${'%' + userId + '%'}`
+            ))
+            .limit(1);
+
+          if (!alreadyRewarded) {
+            const UPGRADE_REWARD_AXN = 50;
+            await db.execute(sql`
+              UPDATE users
+              SET referral_well_balance = COALESCE(referral_well_balance, 0) + ${UPGRADE_REWARD_AXN},
+                  referral_well_total_earned = COALESCE(referral_well_total_earned, 0) + ${UPGRADE_REWARD_AXN},
+                  updated_at = NOW()
+              WHERE id = ${referralInfo.referrerId}
+            `);
+            // Record earning for dedup tracking
+            await db.insert(earnings).values({
+              userId: referralInfo.referrerId,
+              amount: String(UPGRADE_REWARD_AXN),
+              source: 'referral_upgrade_bonus',
+              description: `Friend reached level ${equalLevel} equally (Mining=${mLvl}, Capacity=${cLvl}, CPU=${cpuLvl}) — referee: ${userId}`,
+            });
+            console.log(`⭐ Upgrade well reward: +${UPGRADE_REWARD_AXN} AXN to ${referralInfo.referrerId} (friend ${userId} hit equal level ${equalLevel})`);
+          }
+        }
+      }
+    } catch (upgradeRewardError) {
+      console.error('Error processing upgrade referral reward:', upgradeRewardError);
+    }
+
     return { success: true, newLevel, message: `${subsystemName} upgraded to level ${newLevel}!` };
   }
 
@@ -1073,19 +1130,6 @@ export class DatabaseStorage implements IStorage {
         console.error('Error updating users table in addEarning:', userUpdateError);
         // Don't throw - the earning was already recorded
       }
-    }
-    
-    // Check and activate referral bonuses FIRST after ad watch (critical for referral system)
-    // This must happen BEFORE processing commissions so the referral status is updated to 'completed'
-    if (earning.source === 'ad_watch') {
-      await this.checkAndActivateReferralBonus(earning.userId);
-    }
-    
-    // Process referral commission (10% of user's earnings)
-    // Only process commissions for non-referral earnings to avoid recursion
-    // This runs AFTER activation so the referral is already 'completed' when checking
-    if (earning.source !== 'referral_commission' && earning.source !== 'referral') {
-      await this.processReferralCommission(earning.userId, newEarning.id, earning.amount);
     }
     
     return newEarning;
@@ -1598,32 +1642,55 @@ export class DatabaseStorage implements IStorage {
 
       if (pendingReferrals.length === 0) return;
 
-      const referralBoostPerInvite = parseFloat(await this.getAppSetting('referral_boost_per_invite', '0.02'));
-
       for (const referral of pendingReferrals) {
         await db
           .update(referrals)
           .set({ status: 'completed' })
           .where(eq(referrals.id, referral.id));
 
-        const [referrer] = await db.select().from(users).where(eq(users.id, referral.referrerId));
-        if (referrer) {
-          const previousBoost = parseFloat(referrer.referralMiningBoost || '0');
-          const newBoost = (previousBoost + referralBoostPerInvite).toFixed(4);
+        await db.update(users)
+          .set({
+            friendsInvited: sql`COALESCE(${users.friendsInvited}, 0) + 1`,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, referral.referrerId));
 
-          await db.update(users)
-            .set({
-              referralMiningBoost: newBoost,
-              friendsInvited: sql`COALESCE(${users.friendsInvited}, 0) + 1`,
-              updatedAt: new Date()
-            })
-            .where(eq(users.id, referral.referrerId));
-
-          console.log(`✅ Referral activated on channel join: ${userId} -> ${referral.referrerId}, boost +${referralBoostPerInvite}/h`);
-        }
+        console.log(`✅ Referral activated on channel join: ${userId} -> ${referral.referrerId}`);
       }
     } catch (error) {
       console.error('Error activating referral on channel join:', error);
+    }
+  }
+
+  // Called when a withdrawal is approved — credits 10% to referrer's well balance
+  async processWithdrawalCommission(refereeId: string, withdrawalAmount: number): Promise<void> {
+    try {
+      if (withdrawalAmount <= 0) return;
+
+      const [referralInfo] = await db
+        .select({ referrerId: referrals.referrerId })
+        .from(referrals)
+        .where(and(
+          eq(referrals.refereeId, refereeId),
+          eq(referrals.status, 'completed')
+        ))
+        .limit(1);
+
+      if (!referralInfo) return;
+
+      const commission = (withdrawalAmount * 0.10).toFixed(2);
+
+      await db.execute(sql`
+        UPDATE users
+        SET referral_well_balance = COALESCE(referral_well_balance, 0) + ${parseFloat(commission)},
+            referral_well_total_earned = COALESCE(referral_well_total_earned, 0) + ${parseFloat(commission)},
+            updated_at = NOW()
+        WHERE id = ${referralInfo.referrerId}
+      `);
+
+      console.log(`💰 Referral well: +${commission} AXN to ${referralInfo.referrerId} from ${refereeId}'s withdrawal of ${withdrawalAmount}`);
+    } catch (error) {
+      console.error('Error processing withdrawal commission:', error);
     }
   }
 
@@ -2488,6 +2555,11 @@ export class DatabaseStorage implements IStorage {
       
       console.log(`✅ Withdrawal #${withdrawalId} approved with balance deduction — ${currency} balance updated ✅`);
       
+      // Process 10% referral commission to referrer's well (non-blocking)
+      this.processWithdrawalCommission(withdrawal.userId, withdrawalAmount).catch(e =>
+        console.error('⚠️ Withdrawal commission processing failed (non-critical):', e)
+      );
+
       // Send group notification for approval
       try {
         // sendWithdrawalApprovedNotification now handles both user notification (Type 1) 
