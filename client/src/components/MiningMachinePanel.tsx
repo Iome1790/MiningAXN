@@ -6,7 +6,7 @@ import {
   RiBarChartFill, RiShieldFill, RiShieldCrossFill, RiShieldCheckFill, RiDatabase2Fill,
   RiSettings4Fill, RiPlayFill, RiDownloadFill, RiToolsFill, RiCpuFill
 } from "react-icons/ri";
-import { FaMicrochip, FaHeartbeat } from "react-icons/fa";
+import { FaMicrochip, FaHeartbeat, FaBug } from "react-icons/fa";
 import { BsLightningChargeFill } from "react-icons/bs";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
@@ -344,7 +344,7 @@ export default function MiningMachinePanel() {
         <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-[#1c1c1e]">
           {state.antivirusActive ? (
             <div className="flex items-center gap-2">
-              <RiShieldFill className="w-3.5 h-3.5 text-green-400" />
+              <FaBug className="w-3.5 h-3.5 text-green-400" style={{ width: 14, height: 14 }} />
               <span className="text-green-400 text-[11px] font-black uppercase tracking-wider">
                 Antivirus active — CPU time protected
               </span>
@@ -357,7 +357,7 @@ export default function MiningMachinePanel() {
               onClick={() => setAntivirusOpen(true)}
               className="flex items-center gap-2 active:scale-95 transition-transform"
             >
-              <RiShieldCrossFill className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+              <FaBug className="text-red-400 animate-pulse" style={{ width: 14, height: 14 }} />
               <span className="text-red-400 text-[11px] font-black uppercase tracking-wider">
                 No antivirus — CPU time draining
               </span>
@@ -470,28 +470,17 @@ export default function MiningMachinePanel() {
             <div className="flex items-center gap-2.5">
               <BsLightningChargeFill
                 className="w-3.5 h-3.5 flex-shrink-0"
-                style={{ color: energyPct > 60 ? '#3b82f6' : energyPct > 20 ? '#60a5fa' : energyPct > 0 ? '#ef4444' : 'rgba(255,255,255,0.15)' }}
+                style={{ color: '#F5C542' }}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-white font-black text-xs">Energy</span>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="text-xs font-black tabular-nums"
-                      style={{ color: energyPct > 60 ? '#3b82f6' : energyPct > 20 ? '#60a5fa' : energyPct > 0 ? '#ef4444' : '#f87171' }}
-                    >
-                      {energyPct}%
-                    </span>
-                    {!state.cpuRunning && !state.hasEnergy && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setEnergyOpen(true); }}
-                        className="h-5 px-2 rounded-md text-[9px] font-black uppercase tracking-wider text-white active:scale-95 transition-all"
-                        style={{ background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', boxShadow: '0 0 8px rgba(59,130,246,0.3)' }}
-                      >
-                        Refill
-                      </button>
-                    )}
-                  </div>
+                  <span
+                    className="text-xs font-black tabular-nums"
+                    style={{ color: energyPct > 20 ? '#F5C542' : energyPct > 0 ? '#ef4444' : '#f87171' }}
+                  >
+                    {energyPct}%
+                  </span>
                 </div>
                 <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                   <motion.div
@@ -499,10 +488,8 @@ export default function MiningMachinePanel() {
                     animate={{ width: `${energyPct}%` }}
                     transition={{ duration: 0.8, ease: "linear" }}
                     style={{
-                      background: energyPct > 60
-                        ? 'linear-gradient(90deg,#3b82f6,#1d4ed8)'
-                        : energyPct > 20
-                        ? 'linear-gradient(90deg,#60a5fa,#3b82f6)'
+                      background: energyPct > 20
+                        ? 'linear-gradient(90deg,#F5C542,#d97706)'
                         : energyPct > 0
                         ? 'linear-gradient(90deg,#ef4444,#dc2626)'
                         : 'rgba(239,68,68,0.3)',
@@ -593,10 +580,7 @@ export default function MiningMachinePanel() {
                 className="w-full flex items-center justify-between px-4 py-3 active:bg-white/5 transition-all"
               >
                 <div className="flex items-center gap-3">
-                  {state.antivirusActive
-                    ? <RiShieldCheckFill style={{ width: 20, height: 20, color: "#4ade80", flexShrink: 0 }} />
-                    : <RiShieldFill style={{ width: 20, height: 20, color: "#f87171", flexShrink: 0 }} />
-                  }
+                  <FaBug style={{ width: 20, height: 20, color: state.antivirusActive ? "#4ade80" : "#f87171", flexShrink: 0 }} />
                   <span className="text-white text-sm font-semibold">Antivirus</span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -612,7 +596,7 @@ export default function MiningMachinePanel() {
                 className="w-full flex items-center justify-between px-4 py-3 active:bg-white/5 transition-all"
               >
                 <div className="flex items-center gap-3">
-                  <RiSettings4Fill className="w-5 h-5 text-yellow-400" />
+                  <RiSettings4Fill className="w-5 h-5 text-white/30" />
                   <span className="text-white text-sm font-semibold">Upgrade Machine</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-white/20" />
