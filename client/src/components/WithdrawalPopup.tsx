@@ -277,13 +277,13 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
           exit={{ opacity: 0 }}
         >
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => onOpenChange(false)}
           />
 
           <motion.div
-            className="relative w-full max-w-sm rounded-3xl overflow-hidden"
-            style={{ background: '#0a0a0a', border: '1px solid #1c1c1e' }}
+            className="relative w-full max-w-sm rounded-3xl overflow-hidden popup-glow-open"
+            style={{ background: 'rgba(8,14,32,0.72)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.10)' }}
             initial={{ scale: 0.88, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.88, opacity: 0, y: 20 }}

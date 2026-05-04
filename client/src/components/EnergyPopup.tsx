@@ -104,11 +104,11 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
         <motion.div
-          className="relative w-full max-w-sm rounded-3xl overflow-hidden"
-          style={{ background: '#0a0a0a', border: '1px solid #1c1c1e' }}
+          className="relative w-full max-w-sm rounded-3xl overflow-hidden popup-glow-open"
+          style={{ background: 'rgba(8,14,32,0.72)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.10)' }}
           initial={{ scale: 0.88, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.88, opacity: 0, y: 20 }}
@@ -124,7 +124,7 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
           </div>
 
           <div className="px-5 py-4 space-y-2.5">
-            <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
+            <div className="bg-white/[0.06] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BsLightningChargeFill className="w-3.5 h-3.5 text-red-400/60" />
                 <span className="text-white/40 text-xs">Energy Status</span>
@@ -135,13 +135,13 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
               </div>
             </div>
 
-            <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3">
+            <div className="bg-white/[0.06] border border-white/5 rounded-2xl px-4 py-3">
               <p className="text-white/30 text-[11px] leading-relaxed">
                 Your CPU needs energy to mine AXN. <span className="text-white/50">Watch an ad for free</span> or pay AXN to refill instantly.
               </p>
             </div>
 
-            <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
+            <div className="bg-white/[0.06] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FaHourglassHalf className="w-3.5 h-3.5 text-blue-400/60" />
                 <span className="text-white/40 text-xs">Free Cooldown</span>

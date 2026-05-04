@@ -76,11 +76,11 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
       className="fixed inset-0 z-[200] flex items-center justify-center px-4"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       <motion.div
-        className="relative w-full max-w-sm rounded-3xl overflow-hidden"
-        style={{ background: "#0a0a0a", border: "1px solid #1c1c1e" }}
+        className="relative w-full max-w-sm rounded-3xl overflow-hidden popup-glow-open"
+        style={{ background: 'rgba(8,14,32,0.72)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.10)' }}
         initial={{ scale: 0.88, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.88, opacity: 0, y: 20 }}
@@ -97,9 +97,9 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
           {/* ── MAIN MENU (sets card height) ── */}
           <div style={{ visibility: overlay ? "hidden" : "visible" }}>
             {/* Profile */}
-            <div className="px-5 py-4 border-b border-[#1c1c1e]">
+            <div className="px-5 py-4 border-b border-white/[0.07]">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center flex-shrink-0 bg-[#22252d]">
+                <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center flex-shrink-0 bg-white/[0.07]">
                   {profileImageUrl
                     ? <img src={profileImageUrl} alt={firstName} className="w-full h-full object-cover"
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
@@ -150,7 +150,7 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                 exit={{ opacity: 0, x: 24 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 className="absolute inset-0 flex flex-col"
-                style={{ background: "#0a0a0a" }}
+                style={{ background: 'rgba(8,14,32,0.85)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
               >
                 {/* Scrollable content */}
                 <div className="flex-1 overflow-y-auto min-h-0">
@@ -214,7 +214,7 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                           <p className="text-white/25 text-xs font-bold uppercase tracking-widest">No transactions yet</p>
                         </div>
                       ) : withdrawals.map((w: any) => (
-                        <div key={w.id} className="bg-[#1a1c22] border border-white/5 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+                        <div key={w.id} className="bg-white/[0.06] border border-white/5 rounded-2xl p-3.5 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
                             <AXNIcon size={16} />
                             <p className="text-white text-sm font-black tabular-nums">{parseFloat(w.amount || "0").toLocaleString()}</p>
@@ -286,7 +286,7 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                         { q: "Why is my account banned?", a: "Accounts are banned for violations including multiple account creation, self-referrals, using bots or automation, and exploiting platform bugs. Contact support if you believe your ban was issued in error." },
                         { q: "Can I lose my mined AXN?", a: "Your claimed AXN balance is safe. However, unmined amounts in the buffer can be lost to virus attacks if your antivirus is inactive. Keep antivirus active to protect your mining progress." },
                       ].map((faq, i) => (
-                        <div key={i} className="bg-[#1a1c22] border border-white/5 rounded-2xl p-3.5">
+                        <div key={i} className="bg-white/[0.06] border border-white/5 rounded-2xl p-3.5">
                           <p className="text-white font-bold text-xs mb-1.5">{faq.q}</p>
                           <p className="text-white/45 text-xs leading-relaxed">{faq.a}</p>
                         </div>
@@ -296,7 +296,7 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                 </div>
 
                 {/* Back button — pinned at bottom */}
-                <div className="flex-shrink-0 px-4 py-3 border-t border-[#1c1c1e]">
+                <div className="flex-shrink-0 px-4 py-3 border-t border-white/[0.07]">
                   <button
                     onClick={() => setOverlay(null)}
                     className="w-full h-10 rounded-2xl flex items-center justify-center gap-2 text-white/50 text-sm font-black uppercase tracking-wider active:scale-[0.97] transition-all"
@@ -341,7 +341,7 @@ function StatSection({ label, children }: { label: string; children: React.React
 
 function StatCard({ icon, label, value, live, wide, axnIcon }: { icon: React.ReactNode; label: string; value: string; live?: boolean; wide?: boolean; axnIcon?: boolean }) {
   return (
-    <div className={`bg-[#1a1c22] border border-white/5 rounded-2xl p-3 ${wide ? "col-span-2" : ""}`}>
+    <div className={`bg-white/[0.06] border border-white/5 rounded-2xl p-3 ${wide ? "col-span-2" : ""}`}>
       <div className="flex items-center gap-1.5 mb-1.5">
         {icon}
         {live && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />}
@@ -357,7 +357,7 @@ function StatCard({ icon, label, value, live, wide, axnIcon }: { icon: React.Rea
 
 function LegalBlock({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#1a1c22] border border-white/5 rounded-2xl p-4">
+    <div className="bg-white/[0.06] border border-white/5 rounded-2xl p-4">
       <p className="text-white font-black text-xs mb-2 flex items-center gap-1.5">{icon}{title}</p>
       <div className="text-white/45 text-xs leading-relaxed space-y-1">{children}</div>
     </div>

@@ -97,11 +97,11 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
         <motion.div
-          className="relative w-full max-w-sm rounded-3xl overflow-hidden"
-          style={{ background: '#0a0a0a', border: '1px solid #1c1c1e' }}
+          className="relative w-full max-w-sm rounded-3xl overflow-hidden popup-glow-open"
+          style={{ background: 'rgba(8,14,32,0.72)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.10)' }}
           initial={{ scale: 0.88, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.88, opacity: 0, y: 20 }}
@@ -118,7 +118,7 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
 
           <div className="px-5 py-4 space-y-2.5">
             {/* Health indicator */}
-            <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3">
+            <div className="bg-white/[0.06] border border-white/5 rounded-2xl px-4 py-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <FaHeartbeat className="w-3.5 h-3.5" style={{ color: healthColor }} />
@@ -135,7 +135,7 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
             </div>
 
             {/* Cooldown row */}
-            <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
+            <div className="bg-white/[0.06] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FaHourglassHalf className="w-3.5 h-3.5 text-blue-400/60" />
                 <span className="text-white/40 text-xs">Free Cooldown</span>
@@ -148,7 +148,7 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
             </div>
 
             {/* Info note */}
-            <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3">
+            <div className="bg-white/[0.06] border border-white/5 rounded-2xl px-4 py-3">
               <p className="text-white/30 text-[11px] leading-relaxed">
                 Machine health <span className="text-white/50">decreases over time</span> automatically. Repair to restore full mining efficiency.
               </p>

@@ -114,11 +114,11 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
         <motion.div
-          className="relative w-full max-w-sm rounded-3xl overflow-hidden flex flex-col"
-          style={{ background: '#0a0a0a', border: '1px solid #1c1c1e', maxHeight: '70vh' }}
+          className="relative w-full max-w-sm rounded-3xl overflow-hidden flex flex-col popup-glow-open"
+          style={{ background: 'rgba(8,14,32,0.72)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.10)', maxHeight: '70vh' }}
           initial={{ scale: 0.88, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.88, opacity: 0, y: 20 }}
@@ -133,7 +133,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
 
             {/* Well balance */}
-            <div className="bg-[#141414] border border-white/5 rounded-2xl p-4 flex items-center gap-4">
+            <div className="bg-white/[0.06] border border-white/5 rounded-2xl p-4 flex items-center gap-4">
               <AXNIcon size={32} className="flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-0.5">Your Well</p>
@@ -166,11 +166,11 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
 
             {/* Stats */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-[#141414] border border-white/5 rounded-2xl p-3 text-center">
+              <div className="bg-white/[0.06] border border-white/5 rounded-2xl p-3 text-center">
                 <p className="text-white font-black text-2xl tabular-nums">{totalFriends}</p>
                 <p className="text-white/30 text-[10px] uppercase tracking-wide mt-1">Friends Invited</p>
               </div>
-              <div className="bg-[#141414] border border-white/5 rounded-2xl p-3 text-center">
+              <div className="bg-white/[0.06] border border-white/5 rounded-2xl p-3 text-center">
                 <p className="text-white font-black text-2xl tabular-nums">10%</p>
                 <p className="text-white/30 text-[10px] uppercase tracking-wide mt-1">Commission Rate</p>
               </div>
@@ -179,14 +179,14 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
             {/* Invite Link */}
             <div>
               <p className="text-white/25 text-[10px] font-black uppercase tracking-widest mb-2 px-0.5">Your Invite Link</p>
-              <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 text-[11px] text-white/40 font-mono mb-2.5 break-all">
+              <div className="bg-white/[0.06] border border-white/5 rounded-2xl px-4 py-3 text-[11px] text-white/40 font-mono mb-2.5 break-all">
                 {referralLink || "Loading..."}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={copyLink}
                   disabled={!referralLink}
-                  className="h-10 flex items-center justify-center gap-2 bg-[#1c1c1e] border border-white/8 text-white rounded-2xl text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-40"
+                  className="h-10 flex items-center justify-center gap-2 bg-white/[0.06] border border-white/8 text-white rounded-2xl text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-40"
                 >
                   <FaCopy className="w-3.5 h-3.5 text-white/40" />
                   Copy Link
@@ -238,7 +238,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
                   {referrals.map((r, i) => (
                     <div
                       key={i}
-                      className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3"
+                      className="bg-white/[0.06] border border-white/5 rounded-2xl px-4 py-3"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
@@ -291,10 +291,10 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowHowItWorks(false)} />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowHowItWorks(false)} />
             <motion.div
               className="relative w-full max-w-sm rounded-3xl overflow-hidden"
-              style={{ background: "#0a0a0a", border: "1px solid #1c1c1e" }}
+              style={{ background: 'rgba(8,14,32,0.72)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.10)' }}
               initial={{ scale: 0.88, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.88, opacity: 0, y: 20 }}
@@ -310,7 +310,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
                   { icon: <RiUserFollowFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-400" />, title: "Machine level-up bonus", desc: "Earn 50 AXN each time a friend upgrades their mining machine." },
                   { icon: <AXNIcon size={16} />, title: "Claim your Well", desc: "When your Well has AXN, claim it anytime to add to your balance." },
                 ].map((item, i) => (
-                  <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
+                  <div key={i} className="bg-white/[0.06] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
                     {item.icon}
                     <div>
                       <p className="text-white text-xs font-bold">{item.title}</p>
