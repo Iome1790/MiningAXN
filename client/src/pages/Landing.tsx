@@ -10,7 +10,7 @@ export default function Landing() {
           <div className="bg-white/20 p-3 rounded-full inline-block mb-4">
             <i className="fas fa-coins text-3xl"></i>
           </div>
-          <h1 className="text-3xl font-bold mb-3">CashWatch</h1>
+          <h1 className="text-3xl font-bold mb-3">Axionet</h1>
           <p className="text-lg mb-2 text-primary-foreground/90">Earn Money Watching Ads</p>
           <p className="text-primary-foreground/80 mb-6 text-sm">
             Join thousands of users earning real money daily by watching advertisements
