@@ -11,7 +11,7 @@ import { BsLightningChargeFill } from "react-icons/bs";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 import RepairPopup from "@/components/RepairPopup";
-import AntivirusPopup, { getAvDurationMs } from "@/components/AntivirusPopup";
+import AntivirusPopup from "@/components/AntivirusPopup";
 import UpgradeMachinePopup from "@/components/UpgradeMachinePopup";
 import EnergyPopup from "@/components/EnergyPopup";
 import { AXNIcon } from "@/components/AXNIcon";
@@ -28,6 +28,7 @@ interface MachineState {
   cpuRemainingSeconds: number;
   hasEnergy: boolean;
   antivirusActive: boolean;
+  avSecondsLeft: number;
   machineHealth: number;
   energyCost: number;
   repairCost: number;
@@ -41,7 +42,6 @@ interface MachineState {
   nextVirusIn: number;
 }
 
-const AV_ACTIVE_KEY = "av_activated_at";
 
 function formatTime(seconds: number): string {
   if (seconds <= 0) return "00:00";
@@ -236,64 +236,48 @@ export default function MiningMachinePanel() {
     return () => clearInterval(t);
   }, [state?.cpuRunning, state?.miningRate, state?.capacity, state?.machineHealth]);
 
+  // Server-driven AV countdown: initialized from server's avSecondsLeft on each state fetch
   const [avSecondsLeft, setAvSecondsLeft] = useState(0);
   const avIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const avBaseRef = useRef<{ fetchedAt: number; serverSeconds: number } | null>(null);
 
-  // ✅ BUG FIX: durationSeconds is passed dynamically based on miningLevel
-  const startAvCountdown = useCallback((activatedAt: number, durationSeconds: number) => {
-    if (avIntervalRef.current) clearInterval(avIntervalRef.current);
-    const tick = () => {
-      const elapsed = Math.floor((Date.now() - activatedAt) / 1000);
-      const remaining = durationSeconds - elapsed;
-      if (remaining <= 0) {
-        setAvSecondsLeft(0);
-        if (avIntervalRef.current) clearInterval(avIntervalRef.current);
-        antivirusDeactivateMutation.mutate();
-      } else {
-        setAvSecondsLeft(remaining);
-      }
-    };
-    tick();
-    avIntervalRef.current = setInterval(tick, 1000);
-  }, []);
-
-  const antivirusDeactivateMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/axn-mining/toggle-antivirus").then(r => r.json()),
-    onSuccess: () => {
-      localStorage.removeItem(AV_ACTIVE_KEY);
-      if (avIntervalRef.current) clearInterval(avIntervalRef.current);
-      setAvSecondsLeft(0);
-      queryClient.refetchQueries({ queryKey: ["/api/axn-mining/state"] });
-    },
-    onError: () => {},
-  });
-
+  // Sync from server whenever state changes — antivirus runs independently of mining
   useEffect(() => {
     if (!state) return;
-    // ✅ BUG FIX: compute duration dynamically from miningLevel — single source of truth
-    const avDurationSeconds = getAvDurationMs(state.miningLevel) / 1000;
-    if (state.antivirusActive) {
-      const stored = localStorage.getItem(AV_ACTIVE_KEY);
-      if (stored) {
-        const activatedAt = parseInt(stored, 10);
-        const elapsed = Math.floor((Date.now() - activatedAt) / 1000);
-        if (elapsed < avDurationSeconds) {
-          startAvCountdown(activatedAt, avDurationSeconds);
-        } else {
-          localStorage.removeItem(AV_ACTIVE_KEY);
-          antivirusDeactivateMutation.mutate();
-        }
-      } else {
-        const now = Date.now();
-        localStorage.setItem(AV_ACTIVE_KEY, String(now));
-        startAvCountdown(now, avDurationSeconds);
-      }
-    } else {
+    if (state.antivirusActive && state.avSecondsLeft > 0) {
+      // Record when we received this value so our local ticker stays accurate
+      avBaseRef.current = { fetchedAt: Date.now(), serverSeconds: state.avSecondsLeft };
+      setAvSecondsLeft(state.avSecondsLeft);
+
+      // Start or restart local ticker (pure display only — server owns truth)
       if (avIntervalRef.current) clearInterval(avIntervalRef.current);
+      avIntervalRef.current = setInterval(() => {
+        if (!avBaseRef.current) return;
+        const elapsed = Math.floor((Date.now() - avBaseRef.current.fetchedAt) / 1000);
+        const remaining = Math.max(0, avBaseRef.current.serverSeconds - elapsed);
+        setAvSecondsLeft(remaining);
+        // At zero just stop ticking — next server refetch will set antivirusActive=false
+        if (remaining <= 0 && avIntervalRef.current) {
+          clearInterval(avIntervalRef.current);
+          avIntervalRef.current = null;
+        }
+      }, 1000);
+    } else {
+      // AV not active or expired on server
+      if (avIntervalRef.current) {
+        clearInterval(avIntervalRef.current);
+        avIntervalRef.current = null;
+      }
+      avBaseRef.current = null;
       setAvSecondsLeft(0);
-      localStorage.removeItem(AV_ACTIVE_KEY);
     }
-  }, [state?.antivirusActive, state?.miningLevel]);
+    return () => {
+      if (avIntervalRef.current) {
+        clearInterval(avIntervalRef.current);
+        avIntervalRef.current = null;
+      }
+    };
+  }, [state?.antivirusActive, state?.avSecondsLeft]);
 
   const invalidate = useCallback(() => {
     queryClient.refetchQueries({ queryKey: ["/api/axn-mining/state"] });
