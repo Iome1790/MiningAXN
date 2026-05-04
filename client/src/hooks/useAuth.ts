@@ -10,7 +10,7 @@ const USER_EARNINGS_KEY = 'cashwatch_user_earnings';
 const USER_SESSION_KEY = 'cashwatch_session_active';
 
 // IndexedDB configuration - Primary storage for maximum persistence
-const IDB_NAME = 'CashWatchDB';
+const IDB_NAME = 'AxionetDB';
 const IDB_VERSION = 1;
 const IDB_STORE = 'userData';
 
