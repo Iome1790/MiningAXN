@@ -2252,53 +2252,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session?.user?.user?.id || req.user?.user?.id;
       if (!userId) return res.json({ referrals: [] });
 
-      const botToken = process.env.TELEGRAM_BOT_TOKEN;
-      const channelConfig = getChannelConfig();
+      // Single optimized query: join referrals with users to get all data at once
+      const referralRows = await db.execute(sql`
+        SELECT
+          r.referee_id,
+          r.status,
+          r.reward_amount,
+          u.telegram_id,
+          u.first_name,
+          u.username,
+          u.is_channel_group_verified
+        FROM referrals r
+        LEFT JOIN users u ON u.id = r.referee_id
+        WHERE r.referrer_id = ${userId}
+        ORDER BY r.created_at DESC
+        LIMIT 100
+      `);
 
-      // Get all referrals for this user
-      const referralRows = await db
-        .select({
-          refereeId: referrals.refereeId,
-          status: referrals.status,
-          createdAt: referrals.createdAt,
-          rewardAmount: referrals.rewardAmount,
-        })
-        .from(referrals)
-        .where(eq(referrals.referrerId, userId));
-
-      const result = [];
-      for (const ref of referralRows) {
-        const referee = await storage.getUser(ref.refereeId);
-        if (!referee) continue;
-
-        let channelMember = false;
-        let groupMember = false;
-
-        // Check membership if bot token is available and referee has telegram_id
-        if (botToken && referee.telegram_id) {
-          try {
-            const telegramNumericId = parseInt(referee.telegram_id, 10);
-            channelMember = await verifyChannelMembership(telegramNumericId, channelConfig.channelId, botToken);
-            groupMember = await verifyChannelMembership(telegramNumericId, channelConfig.groupId, botToken);
-          } catch {}
-        }
-
-        const isActive = ref.status === 'completed' && channelMember && groupMember;
-        const totalSatsEarned = Math.round(parseFloat(ref.rewardAmount || '0'));
-
-        result.push({
-          refereeId: referee.telegram_id || ref.refereeId,
-          name: referee.firstName || referee.username || `User ${referee.telegram_id || ref.refereeId}`,
-          username: referee.username,
+      const rows = (referralRows as any).rows || [];
+      const result = rows.map((row: any) => {
+        // Use cached is_channel_group_verified instead of live Telegram API calls
+        const channelMember = !!row.is_channel_group_verified;
+        const isActive = row.status === 'completed' && channelMember;
+        const totalSatsEarned = Math.round(parseFloat(row.reward_amount || '0'));
+        return {
+          refereeId: row.telegram_id || row.referee_id,
+          name: row.first_name || row.username || `User ${row.telegram_id || row.referee_id}`,
+          username: row.username,
           totalSatsEarned,
-          referralStatus: ref.status,
+          referralStatus: row.status,
           channelMember,
-          groupMember,
           isActive,
           miningBoost: isActive ? 0.02 : 0,
-          miningLevel: (referee as any).miningLevel || 1,
-        });
-      }
+        };
+      });
 
       res.json({ referrals: result });
     } catch (error) {

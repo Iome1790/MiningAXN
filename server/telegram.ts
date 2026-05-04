@@ -682,31 +682,19 @@ export async function sendSharePhotoToChat(
 
 export async function formatWelcomeMessage(): Promise<{ message: string; inlineKeyboard: any }> {
   const botUsername = await getBotUsername();
-  const channelUrl = 'https://t.me/LightningSatoshi';
-  const groupUrl = 'https://t.me/LightningSatCommunity';
-  
+
   const message = `Welcome to Axionet Miner 👋\n\n` +
-                 `Upgrade your Machine and earn $AXN, swap $AXN to $TON and have FUUUUUUN!🚀\n\n` +
-                 `Use the /start command anytime to restore or restart the bot.`;
+                 `Upgrade your Machine and earn $AXN, swap $AXN to $TON and have FUUUUUUN! 🚀\n\n` +
+                 `<a href="https://t.me/LightningSatoshi">📢 Announcement</a>\n` +
+                 `<a href="https://t.me/Axionetchat">💬 Chat</a>\n` +
+                 `<a href="https://t.me/szxzyz">📞 Support</a>`;
 
   const inlineKeyboard = {
     inline_keyboard: [
       [
         {
-          text: "⛏️ Start mining",
+          text: "📟 Start Mining",
           url: `https://t.me/${botUsername}/MyWAdz`
-        }
-      ],
-      [
-        {
-          text: "💸 Miner payout log",
-          url: "https://t.me/LightningSatoshiCommunity/1"
-        }
-      ],
-      [
-        {
-          text: "📄 Terms and conditions",
-          url: "https://t.me/LightningSatoshiCommunity/4699"
         }
       ]
     ]
@@ -729,9 +717,10 @@ export async function sendWelcomeMessage(userId: string): Promise<boolean> {
   }
 
   const { message, inlineKeyboard } = await formatWelcomeMessage();
-  const domain = process.env.REPLIT_DOMAIN || (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.replit.app` : null);
-  const imageUrl = domain ? `https://${domain}/images/welcome-image.jpg` : null;
-  
+  const domain = process.env.REPLIT_DOMAIN || process.env.RENDER_EXTERNAL_URL?.replace(/^https?:\/\//, '') ||
+    (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.replit.app` : null);
+  const imageUrl = domain ? `https://${domain}/welcome-image.png` : null;
+
   try {
     if (imageUrl) {
       const payload = {
@@ -749,8 +738,11 @@ export async function sendWelcomeMessage(userId: string): Promise<boolean> {
       });
 
       if (response.ok) return true;
+      // Log failure for debugging
+      const errBody = await response.json().catch(() => ({}));
+      console.warn('⚠️ sendPhoto failed:', errBody, '— falling back to text');
     }
-    
+
     // Fallback to text if photo fails or imageUrl is null
     return await sendUserTelegramNotification(userId, message, inlineKeyboard);
   } catch (error) {

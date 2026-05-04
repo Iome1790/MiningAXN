@@ -745,6 +745,16 @@ export async function ensureDatabaseSchema(): Promise<void> {
     `);
     console.log('✅ [MIGRATION] last_health_decay column ensured on user_machines');
 
+    // Add antivirus_activated_at for server-side AV expiry tracking
+    await db.execute(sql`
+      ALTER TABLE user_machines ADD COLUMN IF NOT EXISTS antivirus_activated_at TIMESTAMP
+    `);
+    console.log('✅ [MIGRATION] antivirus_activated_at column ensured on user_machines');
+
+    // Add indexes for referral performance
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_referrals_referee_id ON referrals(referee_id)`);
+
     console.log('✅ [MIGRATION] All tables and indexes created successfully');
     
   } catch (error) {

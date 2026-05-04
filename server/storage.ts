@@ -630,10 +630,41 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    // ── SERVER-SIDE ANTIVIRUS EXPIRY ──
+    // Compute AV duration from mining level (matches frontend formula)
+    const avDurationMs = (machine.miningLevel * 10 + 10) * 60 * 1000;
+    let antivirusActive = machine.antivirusActive;
+    let avSecondsLeft = 0;
+
+    if (antivirusActive && machine.antivirusActivatedAt) {
+      const elapsedMs = now.getTime() - machine.antivirusActivatedAt.getTime();
+      const remainingMs = avDurationMs - elapsedMs;
+      if (remainingMs <= 0) {
+        // AV expired — auto-deactivate in DB (fire and forget, don't block state response)
+        antivirusActive = false;
+        db.update(userMachines).set({
+          antivirusActive: false,
+          antivirusActivatedAt: null,
+          lastVirusAttack: now,
+          updatedAt: now,
+        }).where(eq(userMachines.userId, userId)).catch(() => {});
+      } else {
+        avSecondsLeft = Math.ceil(remainingMs / 1000);
+      }
+    } else if (antivirusActive && !machine.antivirusActivatedAt) {
+      // Legacy active AV without timestamp: stamp it now so it gets a full duration from today
+      const stamp = now;
+      avSecondsLeft = Math.ceil(avDurationMs / 1000);
+      db.update(userMachines).set({
+        antivirusActivatedAt: stamp,
+        updatedAt: now,
+      }).where(eq(userMachines.userId, userId)).catch(() => {});
+    }
+
     // CPU reduction info — when AV is OFF and CPU running
     let cpuReductionPerTick = 0; // penalty minutes per 2-min interval
     let nextReductionIn = CPU_REDUCTION_INTERVAL;
-    if (!machine.antivirusActive) {
+    if (!antivirusActive) {
       cpuReductionPerTick = getVirusPenaltyMinutes(machine.cpuLevel);
       if (machine.lastVirusAttack) {
         const secSince = Math.floor((now.getTime() - machine.lastVirusAttack.getTime()) / 1000);
@@ -654,7 +685,8 @@ export class DatabaseStorage implements IStorage {
       cpuRunning,
       cpuRemainingSeconds,
       hasEnergy: machine.hasEnergy,
-      antivirusActive: machine.antivirusActive,
+      antivirusActive,
+      avSecondsLeft,
       machineHealth: machine.machineHealth,
       energyCost: mLvl.energyCost,
       repairCost: mLvl.repairCost,
@@ -810,14 +842,17 @@ export class DatabaseStorage implements IStorage {
         }).where(eq(users.id, userId));
         await tx.update(userMachines).set({
           antivirusActive: true,
+          antivirusActivatedAt: now,
           lastVirusAttack: null,
           updatedAt: now,
         }).where(eq(userMachines.userId, userId));
       });
       return { success: true, active: true, message: `Antivirus activated! Spent ${cost} AXN.` };
     } else {
+      // Manual deactivation by user
       await db.update(userMachines).set({
         antivirusActive: false,
+        antivirusActivatedAt: null,
         lastVirusAttack: now,
         updatedAt: now,
       }).where(eq(userMachines.userId, userId));
@@ -833,6 +868,7 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     await db.update(userMachines).set({
       antivirusActive: true,
+      antivirusActivatedAt: now,
       lastVirusAttack: null,
       updatedAt: now,
     }).where(eq(userMachines.userId, userId));
