@@ -1155,7 +1155,7 @@ export class DatabaseStorage implements IStorage {
       await tx.insert(transactions).values({
         userId,
         amount: axnAmount.toString(),
-        type: 'subtraction',
+        type: 'deduction',
         source: 'conversion',
         description: `Converted ${axnAmount} AXN to ${tonAmount} TON`,
       });
@@ -1271,17 +1271,16 @@ export class DatabaseStorage implements IStorage {
     if (!user) return;
 
     const now = new Date();
-    const currentResetDate = this.getCurrentResetDate(); // Use new reset method
+    const currentResetDate = this.getResetDate(now); // Use 12:00 PM UTC bucket logic
 
     // Check if last ad was watched today (same reset period)
     let adsCount = 1; // Default for first ad of the day
     
     if (user.lastAdDate) {
-      const lastAdResetDate = this.getCurrentResetDate(); // Use consistent method
-      const lastAdDateString = user.lastAdDate.toISOString().split('T')[0];
+      const lastAdResetDate = this.getResetDate(user.lastAdDate);
       
       // If same reset period, increment current count
-      if (lastAdDateString === currentResetDate) {
+      if (lastAdResetDate === currentResetDate) {
         adsCount = (user.adsWatchedToday || 0) + 1;
       }
     }

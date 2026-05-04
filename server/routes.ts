@@ -376,37 +376,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/app-settings", async (req, res) => {
-    try {
-      const settings = await storage.getAllAdminSettings();
-      const settingsMap: Record<string, string> = {};
-      settings.forEach(s => {
-        settingsMap[s.settingKey] = s.settingValue;
-      });
-
-      res.json({
-        minimum_withdrawal_sat: settingsMap['minimum_withdrawal_sat'] || '20',
-        withdrawal_fee_sat: settingsMap['withdrawal_fee_sat'] || '10',
-        minimum_withdrawal_ton: settingsMap['minimum_withdrawal_ton'] || '100',
-        withdrawal_fee_ton: settingsMap['withdrawal_fee_ton'] || '0',
-        ad_section1_limit: settingsMap['ad_section1_limit'] || '250',
-        ad_section2_limit: settingsMap['ad_section2_limit'] || '250',
-        ad_section1_reward: settingsMap['ad_section1_reward'] || '0.0015',
-        ad_section2_reward: settingsMap['ad_section2_reward'] || '0.0001',
-        withdraw_ads_required: settingsMap['withdraw_ads_required'] === 'true',
-        referralBoostPerInvite: settingsMap['referral_boost_per_invite'] || '0.01',
-      });
-    } catch (error) {
-      res.json({ 
-        minimum_withdrawal_sat: '20',
-        withdrawal_fee_sat: '10',
-        minimum_withdrawal_ton: '100', 
-        withdrawal_fee_ton: '0',
-        ad_section1_limit: '250',
-        ad_section2_limit: '250'
-      });
-    }
-  });
 
   app.post("/api/ads/extra-watch", authenticateTelegram, async (req: any, res) => {
     try {
@@ -1183,18 +1152,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/mining/state", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const state = await storage.getMiningState(user.id);
-      res.json(state);
-    } catch (error) {
-      console.error("Mining state error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
   app.post("/api/mining/claim", authenticateTelegram, async (req: any, res) => {
     try {
       const user = req.user?.user;
@@ -1377,28 +1334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Removed deprecated schema fix routes - use Drizzle migrations instead
   
-  // Telegram Bot Webhook endpoint - MUST be first to avoid Vite catch-all interference
-  app.post('/api/telegram/webhook', async (req: any, res) => {
-    try {
-      const update = req.body;
-      console.log('📨 Received Telegram update:', JSON.stringify(update, null, 2));
-      
-      // Verify the request is from Telegram (optional but recommended)
-      // You can add signature verification here if needed
-      
-      const handled = await handleTelegramMessage(update);
-      console.log('✅ Message handled:', handled);
-      
-      if (handled) {
-        res.status(200).json({ ok: true });
-      } else {
-        res.status(200).json({ ok: true, message: 'No action taken' });
-      }
-    } catch (error) {
-      console.error('❌ Telegram webhook error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
+  // Telegram webhook is registered in index.ts before routes to ensure fast response to Telegram
 
   // Function to verify Telegram WebApp initData with HMAC-SHA256
   function verifyTelegramWebAppData(initData: string, botToken: string): { isValid: boolean; user?: any } {
@@ -1719,8 +1655,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Helper function to get setting value with default
       const getSetting = (key: string, defaultValue: string): string => {
-        const setting = settings.find(s => s.setting_key === key);
-        return setting ? setting.setting_value : defaultValue;
+        const setting = settings.find(s => s.settingKey === key);
+        return setting ? setting.settingValue : defaultValue;
       };
 
       const minWithdrawalAmount = parseFloat(getSetting('minimum_withdrawal_ton', '0.1')); // Minimum withdrawal
@@ -1979,11 +1915,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (user.referredBy) {
           try {
             // CRITICAL: Validate referrer exists before adding commission
-            const referrer = await storage.getUser(user.referredBy);
+            const referrer = await storage.getUserByReferralCode(user.referredBy);
             if (referrer) {
               const referralCommissionAXN = Math.round(adRewardAXN * 0.1);
               await storage.addEarning({
-                userId: user.referredBy,
+                userId: referrer.id,
                 amount: String(referralCommissionAXN),
                 source: 'referral_commission',
                 description: `10% commission from ${user.username || user.telegram_id}'s ad watch`,
@@ -7786,7 +7722,7 @@ ${walletAddress}
       const currentDate = new Date().toISOString().split('T')[0];
       
       // Get daily task completion records for today
-      const dailyTasks = await db.select()
+      const userDailyTasks = await db.select()
         .from(dailyTasks)
         .where(and(
           eq(dailyTasks.userId, userId),
@@ -7800,7 +7736,7 @@ ${walletAddress}
       }
       
       // Format task statuses
-      const taskStatuses = dailyTasks.map(task => ({
+      const taskStatuses = userDailyTasks.map(task => ({
         taskType: task.taskType,
         progress: task.progress,
         required: task.required,
@@ -8118,7 +8054,7 @@ ${walletAddress}
           reward: rewardAmount,
           rewardType: 'BUG'
         });
-      } else if (promo.rewardType === 'TON' && (promo.rewardCurrency === 'ton_app' || promo.rewardCurrency === 'App')) {
+      } else if (promoCode.rewardType === 'TON' && (promoCode.rewardCurrency === 'ton_app' || promoCode.rewardCurrency === 'App')) {
         // TON App Balance
         const [currentUser] = await db
           .select({ tonAppBalance: users.tonAppBalance })
@@ -8148,7 +8084,7 @@ ${walletAddress}
           reward: rewardAmount,
           rewardType: 'TON_APP'
         });
-      } else if (promo.rewardType === 'TON' && (promo.rewardCurrency === 'ton_withdraw' || promo.rewardCurrency === 'Withdraw')) {
+      } else if (promoCode.rewardType === 'TON' && (promoCode.rewardCurrency === 'ton_withdraw' || promoCode.rewardCurrency === 'Withdraw')) {
         // TON Withdraw Balance
         const [currentUser] = await db
           .select({ tonBalance: users.tonBalance })
