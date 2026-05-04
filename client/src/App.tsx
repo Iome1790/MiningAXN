@@ -31,19 +31,87 @@ const PageLoader = memo(function PageLoader() {
 function LoadingFallback() {
   return (
     <div
-      className="fixed inset-0 bg-black overflow-hidden flex flex-col items-center justify-center"
-      style={{ animation: 'fadeIn 0.4s ease-out' }}
+      className="fixed inset-0 overflow-hidden flex flex-col items-center justify-center"
+      style={{
+        backgroundImage: 'url(/app-bg.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
     >
-      <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
-      <img
-        src="/axionet-logo.png"
-        alt="AXIONET"
-        style={{ width: 220, height: 220, objectFit: 'contain' }}
-      />
-      <div className="flex items-center gap-2 mt-4">
-        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '0s' }} />
-        <div className="w-1.5 h-1.5 rounded-full bg-blue-400/60 animate-bounce" style={{ animationDelay: '0.18s' }} />
-        <div className="w-1.5 h-1.5 rounded-full bg-blue-400/30 animate-bounce" style={{ animationDelay: '0.36s' }} />
+      <style>{`
+        @keyframes ldFadeIn { from { opacity:0; transform:scale(0.93); } to { opacity:1; transform:scale(1); } }
+        @keyframes ldGlow {
+          0%,100% { filter: drop-shadow(0 0 18px rgba(59,130,246,0.55)) drop-shadow(0 0 40px rgba(59,130,246,0.2)); }
+          50%      { filter: drop-shadow(0 0 36px rgba(59,130,246,0.9)) drop-shadow(0 0 80px rgba(59,130,246,0.4)); }
+        }
+        @keyframes ldBar {
+          0%   { width:0%; opacity:1; }
+          80%  { width:100%; opacity:1; }
+          100% { width:100%; opacity:0.4; }
+        }
+        @keyframes ldDot {
+          0%,80%,100% { opacity:0.15; transform:scale(0.7); }
+          40%         { opacity:1;    transform:scale(1); }
+        }
+      `}</style>
+
+      {/* Overlay — keeps background readable but visible */}
+      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.48)' }} />
+
+      {/* Center content */}
+      <div
+        className="relative z-10 flex flex-col items-center gap-8"
+        style={{ animation: 'ldFadeIn 0.6s cubic-bezier(0.22,1,0.36,1) both' }}
+      >
+        {/* Logo — cut-out, big, glowing */}
+        <img
+          src="/axionet-logo-nobg.png"
+          alt="Axionet"
+          style={{
+            width: 180,
+            height: 180,
+            objectFit: 'contain',
+            animation: 'ldGlow 2.4s ease-in-out infinite',
+          }}
+        />
+
+        {/* Name + tagline */}
+        <div className="flex flex-col items-center gap-1.5">
+          <p
+            className="text-white font-black uppercase"
+            style={{ fontSize: 26, letterSpacing: '0.22em', textShadow: '0 0 24px rgba(59,130,246,0.5)' }}
+          >
+            Axionet
+          </p>
+          <p className="text-blue-300/50 font-bold uppercase" style={{ fontSize: 11, letterSpacing: '0.45em' }}>
+            Miner
+          </p>
+        </div>
+
+        {/* Loading bar */}
+        <div className="flex flex-col items-center gap-3" style={{ width: 180 }}>
+          <div className="w-full h-0.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+            <div
+              className="h-full rounded-full"
+              style={{
+                background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+                animation: 'ldBar 2s ease-in-out infinite',
+                boxShadow: '0 0 8px rgba(59,130,246,0.7)',
+              }}
+            />
+          </div>
+
+          {/* Dots */}
+          <div className="flex items-center gap-2">
+            {[0, 0.25, 0.5].map((delay, i) => (
+              <div
+                key={i}
+                className="w-1.5 h-1.5 rounded-full bg-blue-400"
+                style={{ animation: `ldDot 1.2s ease-in-out ${delay}s infinite` }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
