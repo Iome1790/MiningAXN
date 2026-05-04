@@ -3847,7 +3847,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         partnerTaskReward: 'partner_task_reward',
         minimumConvertAXN: 'minimum_convert_pad',
         minimumClicks: 'minimum_clicks',
-        minTradeAmount: 'min_trade_amount',
         seasonBroadcastActive: 'season_broadcast_active',
         referralRewardEnabled: 'referral_reward_enabled',
         referralRewardTON: 'referral_reward_usd',
@@ -3874,7 +3873,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section2_reward: 'ad_section2_reward',
         ad_section2_limit: 'ad_section2_limit',
         withdraw_ads_required: 'withdraw_ads_required',
-        minTradeAmount: 'min_trade_amount',
       };
 
       for (const [feKey, dbKey] of Object.entries(settingMap)) {
