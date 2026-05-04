@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { forwardRef } from "react";
-import { RiUserAddFill, RiArrowDownCircleFill } from "react-icons/ri";
+import { FaUserFriends } from "react-icons/fa";
+import { RiExchangeFill } from "react-icons/ri";
+import { AXNIcon } from "@/components/AXNIcon";
 
 interface HeaderProps {
   onMenuOpen?: () => void;
@@ -66,6 +68,7 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
             onClick={onWithdrawOpen}
             className="flex-1 flex items-center justify-center gap-2 h-10 bg-[#1c1c1e] rounded-full px-4 active:scale-95 transition-transform"
           >
+            <AXNIcon size={22} />
             <span className="text-white font-black text-sm tabular-nums">
               {satBalance.toLocaleString()}
             </span>
@@ -78,14 +81,14 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
               onClick={onInviteOpen}
               className="w-12 h-10 flex items-center justify-center active:bg-white/10 transition-colors"
             >
-              <RiUserAddFill className="text-blue-400" style={{ width: 20, height: 20 }} />
+              <FaUserFriends style={{ width: 22, height: 22, color: "#60a5fa" }} />
             </button>
             <div className="w-px h-5 bg-white/10" />
             <button
               onClick={onWithdrawOpen}
               className="w-12 h-10 flex items-center justify-center active:bg-white/10 transition-colors"
             >
-              <RiArrowDownCircleFill className="text-yellow-400" style={{ width: 20, height: 20 }} />
+              <RiExchangeFill style={{ width: 22, height: 22, color: "#facc15" }} />
             </button>
           </div>
 

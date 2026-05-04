@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Loader2, Clock, Play } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { RiShieldCheckFill, RiShieldFill, RiPlayFill } from "react-icons/ri";
+import { FaHourglassHalf } from "react-icons/fa";
+import { AXNIcon } from "@/components/AXNIcon";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -138,7 +141,10 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
-            <Shield className="w-5 h-5 text-green-400 flex-shrink-0" />
+            {antivirusActive
+              ? <RiShieldCheckFill style={{ width: 22, height: 22, color: "#4ade80", flexShrink: 0 }} />
+              : <RiShieldFill style={{ width: 22, height: 22, color: "#f87171", flexShrink: 0 }} />
+            }
             <div className="flex-1 min-w-0">
               <p className="text-white font-black text-sm uppercase tracking-wider">Antivirus</p>
               <p className="text-white/35 text-[11px] mt-0.5">Protects your CPU time from virus drain</p>
@@ -165,7 +171,7 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
             {/* Duration row */}
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-white/25" />
+                <FaHourglassHalf className="w-3.5 h-3.5 text-blue-400/60" />
                 <span className="text-white/40 text-xs">Protection Duration</span>
               </div>
               <div className="flex items-center gap-2">
@@ -190,7 +196,7 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
 
             {antivirusActive ? (
               <div className="w-full h-12 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center gap-2">
-                <Shield className="w-4 h-4 text-green-400" />
+                <RiShieldCheckFill style={{ width: 18, height: 18, color: "#4ade80" }} />
                 <span className="text-green-400 font-black text-sm">CPU Time Protected</span>
               </div>
             ) : (
@@ -204,9 +210,9 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
                   {freeMutation.isPending || adWatching ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
                   ) : cooldown > 0 ? (
-                    <><Clock className="w-4 h-4 text-white/30" /> <span className="text-white/40">Free in {formatCooldown(cooldown)}</span></>
+                    <><FaHourglassHalf className="w-4 h-4 text-white/30" /> <span className="text-white/40">Free in {formatCooldown(cooldown)}</span></>
                   ) : (
-                    <><Play className="w-4 h-4 text-white/60" /> Free — Watch Ad</>
+                    <><RiPlayFill className="w-4 h-4 text-blue-400" /> Free — Watch Ad</>
                   )}
                 </button>
 
@@ -227,9 +233,9 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
                   {paidMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : canAfford ? (
-                    `Pay ${antivirusCost} AXN`
+                    <><AXNIcon size={15} /> Pay {antivirusCost} AXN</>
                   ) : (
-                    `Need ${antivirusCost} AXN`
+                    <><AXNIcon size={15} /> Need {antivirusCost} AXN</>
                   )}
                 </button>
               </>

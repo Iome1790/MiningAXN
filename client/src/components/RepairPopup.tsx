@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wrench, Loader2, Clock, Play, Activity } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { RiPlayFill, RiToolsFill } from "react-icons/ri";
+import { FaHourglassHalf } from "react-icons/fa";
+import { AXNIcon } from "@/components/AXNIcon";
+import { FaHeartbeat } from "react-icons/fa";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -107,7 +111,7 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
-            <Wrench className="w-5 h-5 text-orange-400 flex-shrink-0" />
+            <RiToolsFill className="w-5 h-5 text-orange-400 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-white font-black text-sm uppercase tracking-wider">Repair Machine</p>
               <p className="text-white/35 text-[11px] mt-0.5">Restore machine health to 100%</p>
@@ -119,7 +123,7 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-3.5 h-3.5 text-white/25" />
+                  <FaHeartbeat className="w-3.5 h-3.5" style={{ color: healthColor }} />
                   <span className="text-white/40 text-xs">Current Health</span>
                 </div>
                 <span className="font-black text-sm tabular-nums" style={{ color: healthColor }}>{machineHealth}%</span>
@@ -135,7 +139,7 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
             {/* Cooldown row */}
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-white/25" />
+                <FaHourglassHalf className="w-3.5 h-3.5 text-blue-400/60" />
                 <span className="text-white/40 text-xs">Free Cooldown</span>
               </div>
               {cooldown > 0 ? (
@@ -167,9 +171,9 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
                   {repairFreeMutation.isPending || adWatching ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
                   ) : cooldown > 0 ? (
-                    <><Clock className="w-4 h-4 text-white/30" /> <span className="text-white/40">Free in {formatCooldown(cooldown)}</span></>
+                    <><FaHourglassHalf className="w-4 h-4 text-white/30" /> <span className="text-white/40">Free in {formatCooldown(cooldown)}</span></>
                   ) : (
-                    <><Play className="w-4 h-4 text-white/60" /> Free — Watch Ad</>
+                    <><RiPlayFill className="w-4 h-4 text-blue-400" /> Free — Watch Ad</>
                   )}
                 </button>
 
@@ -190,9 +194,9 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
                   {repairPaidMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : canAfford ? (
-                    `Pay ${repairCost} AXN`
+                    <><AXNIcon size={15} /> Pay {repairCost} AXN</>
                   ) : (
-                    `Need ${repairCost} AXN`
+                    <><AXNIcon size={15} /> Need {repairCost} AXN</>
                   )}
                 </button>
               </>

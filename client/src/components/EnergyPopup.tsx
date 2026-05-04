@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Loader2, Clock, Tv } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { BsLightningChargeFill } from "react-icons/bs";
+import { RiPlayFill } from "react-icons/ri";
+import { FaHourglassHalf } from "react-icons/fa";
+import { AXNIcon } from "@/components/AXNIcon";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -114,7 +118,7 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
-            <Zap className="w-5 h-5 text-[#F5C542] flex-shrink-0" />
+            <BsLightningChargeFill className="w-5 h-5 text-[#F5C542] flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-white font-black text-sm uppercase tracking-wider">Energy Refill</p>
               <p className="text-white/35 text-[11px] mt-0.5">Refill energy to continue mining operations</p>
@@ -124,7 +128,7 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
           <div className="px-5 py-4 space-y-2.5">
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Zap className="w-3.5 h-3.5 text-white/25" />
+                <BsLightningChargeFill className="w-3.5 h-3.5 text-[#F5C542]/60" />
                 <span className="text-white/40 text-xs">Energy Status</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -141,7 +145,7 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
 
             <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-white/25" />
+                <FaHourglassHalf className="w-3.5 h-3.5 text-blue-400/60" />
                 <span className="text-white/40 text-xs">Free Cooldown</span>
               </div>
               {cooldown > 0 ? (
@@ -160,9 +164,9 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
               {freeMutation.isPending || adWatching ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
               ) : cooldown > 0 ? (
-                <><Clock className="w-4 h-4 text-white/30" /> <span className="text-white/40">Free in {formatCooldown(cooldown)}</span></>
+                <><FaHourglassHalf className="w-4 h-4 text-white/30" /> <span className="text-white/40">Free in {formatCooldown(cooldown)}</span></>
               ) : (
-                <><Tv className="w-4 h-4 text-sky-400" /> Free — Watch Ad</>
+                <><RiPlayFill className="w-4 h-4 text-blue-400" /> Free — Watch Ad</>
               )}
             </button>
 
@@ -183,9 +187,9 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
               {paidMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : canAfford ? (
-                `Pay ${energyCost} AXN`
+                <><AXNIcon size={15} /> Pay {energyCost} AXN</>
               ) : (
-                `Need ${energyCost} AXN`
+                <><AXNIcon size={15} /> Need {energyCost} AXN</>
               )}
             </button>
 

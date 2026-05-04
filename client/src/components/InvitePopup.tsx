@@ -4,6 +4,7 @@ import {
   CheckCircle, XCircle, Loader2, HelpCircle, Droplets, X,
 } from "lucide-react";
 import { RiShareForwardFill, RiUserFollowFill, RiLinkM, RiGroupFill, RiCoinFill } from "react-icons/ri";
+import { AXNIcon } from "@/components/AXNIcon";
 import { FaCopy } from "react-icons/fa";
 import { showNotification } from "@/components/AppNotification";
 import { motion, AnimatePresence } from "framer-motion";
@@ -138,7 +139,8 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-0.5">Your Well</p>
-                <div className="flex items-baseline gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <AXNIcon size={20} />
                   <span className="text-white font-black text-2xl tabular-nums leading-none">
                     {wellBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>

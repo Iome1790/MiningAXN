@@ -7,6 +7,7 @@ import {
   Loader2, Clock, CheckCircle, XCircle,
 } from "lucide-react";
 import { RiBarChartFill } from "react-icons/ri";
+import { AXNIcon } from "@/components/AXNIcon";
 import { FaReceipt, FaBalanceScale, FaCrown } from "react-icons/fa";
 import { MdLanguage, MdOutlineSupportAgent } from "react-icons/md";
 import { BsQuestionCircleFill } from "react-icons/bs";
@@ -182,13 +183,13 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                               <StatCard icon={<Users className="w-3.5 h-3.5 text-blue-400" />} label="Total Users" value={fmtNum(projectStats.totalUsers)} />
                               <StatCard icon={<Wifi className="w-3.5 h-3.5 text-green-400" />} label="Online Now" value={fmtNum(projectStats.onlineNow)} live />
                               <StatCard icon={<CalendarDays className="w-3.5 h-3.5 text-purple-400" />} label="Project Age" value={fmtAge(projectStats.projectAgeDays)} />
-                              <StatCard icon={<TrendingUp className="w-3.5 h-3.5 text-yellow-400" />} label="Total Earned" value={`${fmtNum(projectStats.totalEarnings)} AXN`} />
-                              <StatCard icon={<Receipt className="w-3.5 h-3.5 text-cyan-400" />} label="Withdrawn" value={`${fmtNum(projectStats.totalWithdrawalsAmount)} AXN`} wide />
+                              <StatCard icon={<TrendingUp className="w-3.5 h-3.5 text-yellow-400" />} label="Total Earned" value={`${fmtNum(projectStats.totalEarnings)} AXN`} axnIcon />
+                              <StatCard icon={<Receipt className="w-3.5 h-3.5 text-cyan-400" />} label="Withdrawn" value={`${fmtNum(projectStats.totalWithdrawalsAmount)} AXN`} wide axnIcon />
                             </div>
                           </StatSection>
                           <StatSection label="Activity">
                             <div className="grid grid-cols-2 gap-2">
-                              <StatCard icon={<Zap className="w-3.5 h-3.5 text-orange-400" />} label="Today Earned" value={`${fmtNum(projectStats.todayEarnings)} AXN`} wide />
+                              <StatCard icon={<Zap className="w-3.5 h-3.5 text-orange-400" />} label="Today Earned" value={`${fmtNum(projectStats.todayEarnings)} AXN`} wide axnIcon />
                               <StatCard icon={<Activity className="w-3.5 h-3.5 text-blue-300" />} label="Daily Active" value={fmtNum(projectStats.dau)} />
                               <StatCard icon={<Activity className="w-3.5 h-3.5 text-indigo-400" />} label="Weekly Active" value={fmtNum(projectStats.wau)} />
                               <StatCard icon={<Users className="w-3.5 h-3.5 text-teal-400" />} label="Referrals" value={fmtNum(projectStats.totalReferrals)} />
@@ -220,7 +221,10 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                             <p className="text-white/30 text-[10px] mt-0.5">{w.createdAt ? format(new Date(w.createdAt), "dd MMM yyyy") : "—"}</p>
                           </div>
                           <div className="text-right flex-shrink-0">
+                            <div className="flex items-center gap-1 justify-end">
+                            <AXNIcon size={13} />
                             <p className="text-white text-sm font-black tabular-nums">{parseFloat(w.amount || "0").toLocaleString()} AXN</p>
+                          </div>
                             <p className={`text-[10px] font-bold capitalize mt-0.5 ${getStatusColor(w.status)}`}>{w.status}</p>
                           </div>
                         </div>
@@ -325,14 +329,17 @@ function StatSection({ label, children }: { label: string; children: React.React
   );
 }
 
-function StatCard({ icon, label, value, live, wide }: { icon: React.ReactNode; label: string; value: string; live?: boolean; wide?: boolean }) {
+function StatCard({ icon, label, value, live, wide, axnIcon }: { icon: React.ReactNode; label: string; value: string; live?: boolean; wide?: boolean; axnIcon?: boolean }) {
   return (
     <div className={`bg-[#1a1c22] border border-white/5 rounded-2xl p-3 ${wide ? "col-span-2" : ""}`}>
       <div className="flex items-center gap-1.5 mb-1.5">
         {icon}
         {live && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />}
       </div>
-      <p className="text-white font-black text-sm tabular-nums">{value}</p>
+      <div className="flex items-center gap-1">
+        {axnIcon && <AXNIcon size={12} />}
+        <p className="text-white font-black text-sm tabular-nums">{value}</p>
+      </div>
       <p className="text-white/30 text-[9px] uppercase tracking-wide mt-1">{label}</p>
     </div>
   );

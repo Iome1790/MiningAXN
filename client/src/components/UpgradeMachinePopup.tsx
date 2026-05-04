@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Activity, HardDrive, Cpu, Settings, ChevronRight } from "lucide-react";
+import { AXNIcon } from "@/components/AXNIcon";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -97,9 +98,14 @@ export default function UpgradeMachinePopup({ onClose }: UpgradeMachinePopupProp
               <p className="text-white font-black text-sm uppercase tracking-wider">
                 {subView ? subViewTitle : "Upgrade Machine"}
               </p>
-              <p className="text-white/35 text-[11px] mt-0.5">
-                {subView ? `Balance: ${state.balance.toFixed(2)} AXN` : "Improve speed, capacity & session length"}
-              </p>
+              {subView ? (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <AXNIcon size={12} />
+                  <span className="text-white/35 text-[11px]">Balance: {state.balance.toFixed(2)} AXN</span>
+                </div>
+              ) : (
+                <p className="text-white/35 text-[11px] mt-0.5">Improve speed, capacity & session length</p>
+              )}
             </div>
           </div>
 
@@ -315,9 +321,12 @@ function UpgradeDetail({
         <div className="h-px bg-white/5" />
         <div className="flex items-center justify-between">
           <span className="text-white/30 text-xs font-bold uppercase tracking-wider">Cost</span>
-          <span className={`text-sm font-black tabular-nums ${canAfford ? "text-[#F5C542]" : "text-red-400/70"}`}>
-            {cost} AXN
-          </span>
+          <div className="flex items-center gap-1">
+            <AXNIcon size={14} />
+            <span className={`text-sm font-black tabular-nums ${canAfford ? "text-[#F5C542]" : "text-red-400/70"}`}>
+              {cost} AXN
+            </span>
+          </div>
         </div>
       </div>
 
@@ -343,9 +352,9 @@ function UpgradeDetail({
           {isPending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : canAfford ? (
-            `Upgrade — ${cost} AXN`
+            <><AXNIcon size={15} /> Upgrade — {cost} AXN</>
           ) : (
-            `Need ${cost} AXN`
+            <><AXNIcon size={15} /> Need {cost} AXN</>
           )}
         </button>
       )}

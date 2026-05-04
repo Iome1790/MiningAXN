@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ArrowLeft, Gift, Check, Loader2 } from "lucide-react";
+import { AXNIcon } from "@/components/AXNIcon";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { showNotification } from "@/components/AppNotification";
@@ -169,7 +170,10 @@ export default function DailyActivityPopup({ onClose }: DailyActivityPopupProps)
                     }`}>
                       {reward.axn}
                     </p>
-                    <p className={`text-[8px] ${isCurrent && !isClaimedToday ? "text-[#F5C542]/60" : "text-white/20"}`}>AXN</p>
+                    <div className="flex items-center justify-center gap-0.5">
+                      <AXNIcon size={8} />
+                      <p className={`text-[8px] ${isCurrent && !isClaimedToday ? "text-[#F5C542]/60" : "text-white/20"}`}>AXN</p>
+                    </div>
                     {!isClaimedToday && (
                       <p className={`text-[8px] font-black uppercase mt-0.5 ${
                         isCurrent ? "text-[#F5C542]/70" : isPast ? "text-white/30" : "text-white/15"
@@ -206,7 +210,7 @@ export default function DailyActivityPopup({ onClose }: DailyActivityPopupProps)
                 ) : (
                   <>
                     <Gift className="w-4 h-4" />
-                    Claim Day {currentDay} — {DAILY_REWARDS[Math.min(currentDay - 1, 29)].axn} AXN
+                    Claim Day {currentDay} — <AXNIcon size={14} /> {DAILY_REWARDS[Math.min(currentDay - 1, 29)].axn} AXN
                   </>
                 )}
               </button>

@@ -2,7 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { showNotification } from "@/components/AppNotification";
-import { Loader2, ArrowRightLeft, TrendingUp, TrendingDown } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown } from "lucide-react";
+import { RiExchangeFill } from "react-icons/ri";
+import { AXNIcon } from "@/components/AXNIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AreaChart, Area, ResponsiveContainer, Tooltip, YAxis, XAxis,
@@ -289,7 +291,7 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
           >
             {/* Header */}
             <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
-              <ArrowRightLeft className="w-5 h-5 text-[#F5C542] flex-shrink-0" />
+              <RiExchangeFill style={{ width: 22, height: 22, color: "#facc15", flexShrink: 0 }} />
               <div className="flex-1 min-w-0">
                 <p className="text-white font-black text-sm uppercase tracking-wider">Trade AXN for TON</p>
                 <p className="text-white/35 text-[11px] mt-0.5">100,000 AXN = 1 TON</p>
@@ -306,7 +308,7 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
               <div className="rounded-2xl px-4 py-3 flex justify-between items-center" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <span className="text-white/40 text-xs font-semibold">Available Balance</span>
                 <div className="flex items-center gap-1.5">
-                  <img src="/axn-logo.svg" alt="AXN" className="w-4 h-4" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  <AXNIcon size={16} />
                   <span className="text-[#F5C542] text-sm font-black tabular-nums">
                     {satBalance.toLocaleString()} AXN
                   </span>
