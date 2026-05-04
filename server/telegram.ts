@@ -699,24 +699,8 @@ export async function formatWelcomeMessage(): Promise<{ message: string; inlineK
       ],
       [
         {
-          text: "⁉️ FAQ",
-          url: "https://t.me/LightningSatoshiCommunity/4693"
-        }
-      ],
-      [
-        {
           text: "💸 Miner payout log",
           url: "https://t.me/LightningSatoshiCommunity/1"
-        }
-      ],
-      [
-        {
-          text: "🇬🇧 ENG Chat",
-          url: "https://t.me/LightningSatoshiCommunity/4680"
-        },
-        {
-          text: "🇷🇺 RUS Chat",
-          url: "https://t.me/LightningSatoshiCommunity/4695"
         }
       ],
       [
