@@ -8,7 +8,6 @@ import { useAdFlow } from "@/hooks/useAdFlow";
 import { useLocation } from "wouter";
 import { SettingsPopup } from "@/components/SettingsPopup";
 import InvitePopup from "@/components/InvitePopup";
-import DailyActivityPopup, { shouldShowDailyActivity, markDailyActivitySeen } from "@/components/DailyActivityPopup";
 import { useLanguage } from "@/hooks/useLanguage";
 import Header from "@/components/Header";
 import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList as TaskIcon, UserPlus, Share2, Copy, LogOut, Download, ShieldCheck, Banknote } from "lucide-react";
@@ -83,7 +82,6 @@ export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [dailyActivityOpen, setDailyActivityOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(88);
 
@@ -94,15 +92,6 @@ export default function Home() {
     });
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (shouldShowDailyActivity()) {
-        markDailyActivitySeen();
-        setDailyActivityOpen(true);
-      }
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     const el = headerRef.current;
@@ -1269,10 +1258,6 @@ export default function Home() {
           onOpenWithdraw={() => { setMenuOpen(false); setWithdrawPopupOpen(true); }}
         />
       )}
-      {dailyActivityOpen && (
-        <DailyActivityPopup onClose={() => setDailyActivityOpen(false)} />
-      )}
-
       <WithdrawalPopup 
         open={withdrawPopupOpen}
         onOpenChange={setWithdrawPopupOpen}
