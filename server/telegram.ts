@@ -685,9 +685,7 @@ export async function formatWelcomeMessage(): Promise<{ message: string; inlineK
 
   const message = `Welcome to Axionet Miner 👋\n\n` +
                  `Upgrade your Machine and earn $AXN, swap $AXN to $TON and have FUUUUUUN! 🚀\n\n` +
-                 `<a href="https://t.me/LightningSatoshi">📢 Announcement</a>\n` +
-                 `<a href="https://t.me/Axionetchat">💬 Chat</a>\n` +
-                 `<a href="https://t.me/szxzyz">📞 Support</a>`;
+                 `<a href="https://t.me/LightningSatoshi">📢 Announcement</a> | <a href="https://t.me/Axionetchat">💬 Chat</a> | <a href="https://t.me/szxzyz">📞 Support</a>`;
 
   const inlineKeyboard = {
     inline_keyboard: [
