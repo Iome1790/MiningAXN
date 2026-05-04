@@ -7,7 +7,7 @@ import { countryBlockingMiddleware } from "./countryBlocking";
 
 // CRITICAL: Run database migrations before ANYTHING else
 // This ensures the telegram_id column exists before any database operations
-console.log('🚀 Starting CashWatch server...');
+console.log('🚀 Starting Axionet server...');
 await ensureDatabaseSchema();
 console.log('✅ Database schema verified, starting server setup...');
 

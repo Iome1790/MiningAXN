@@ -1080,13 +1080,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 2. CHANNEL AND GROUP JOIN CHECK
+      // 2. CHANNEL JOIN CHECK ONLY (group not required)
       const channelMember = await verifyChannelMembership(userId, channelConfig.channelId, botToken);
-      const groupMember = await verifyChannelMembership(userId, channelConfig.groupId, botToken);
+      const groupMember = true; // group join no longer required
       
-      const isVerified = channelMember && groupMember;
+      const isVerified = channelMember;
       
-      console.log(`🔍 check-membership for ${telegramId}: channel=${channelMember}, group=${groupMember}, verified=${isVerified}`);
+      console.log(`🔍 check-membership for ${telegramId}: channel=${channelMember}, verified=${isVerified}`);
       
       // Update user status in database to match current membership state
       if (user) {
