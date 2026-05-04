@@ -8,16 +8,25 @@ interface LayoutProps {
 export default function Layout({ children, hideNav }: LayoutProps) {
   return (
     <div
-      className="bg-[#000000] text-foreground font-sans selection:bg-[#4cd3ff]/30 relative"
+      className="text-foreground font-sans selection:bg-[#4cd3ff]/30 relative"
       style={{
         height: '100dvh',
         width: '100%',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
+        backgroundImage: 'url(/app-bg.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'local',
       }}
     >
-      <div className="fixed inset-0 bg-gradient-to-b from-blue-500/5 via-transparent to-transparent pointer-events-none z-0" />
+      {/* Dark overlay so UI cards/text stay readable */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{ background: 'rgba(0,0,0,0.38)' }}
+      />
       <AnimatePresence mode="wait">
         <motion.div
           className="relative flex-1 flex flex-col overflow-hidden"
@@ -25,7 +34,7 @@ export default function Layout({ children, hideNav }: LayoutProps) {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.15, ease: "easeOut" }}
-          style={{ flex: 1, minHeight: 0 }}
+          style={{ flex: 1, minHeight: 0, zIndex: 1 }}
         >
           {children}
         </motion.div>

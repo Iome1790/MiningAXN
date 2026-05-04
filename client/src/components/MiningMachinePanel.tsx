@@ -109,7 +109,7 @@ function MiningTerminal({ isMining, miningRate, mined, machineStopped, noEnergy 
     const tick = (ts: number) => {
       if (ts - lastTs >= INTERVAL) {
         lastTs = ts;
-        ctx.fillStyle = "rgba(4,4,4,0.22)";
+        ctx.fillStyle = "rgba(4,4,4,0.10)";
         ctx.fillRect(0, 0, W, H);
         for (let i = 0; i < drops.length; i++) {
           const ch = chars[Math.floor(Math.random() * chars.length)];
@@ -148,7 +148,7 @@ function MiningTerminal({ isMining, miningRate, mined, machineStopped, noEnergy 
   return (
     <div className="relative w-full rounded-xl overflow-hidden" style={{ height: 130 }}>
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ display: "block" }} />
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.62)" }} />
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.28)" }} />
       <div
         className="absolute inset-0 overflow-hidden px-2 py-1.5 flex flex-col justify-end"
         style={{ fontFamily: "monospace" }}
@@ -338,7 +338,7 @@ export default function MiningMachinePanel() {
     <div className="w-full space-y-3">
       <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-1">AXN Mining Machine</p>
 
-      <div className="bg-[#000000] border border-[#1c1c1e] rounded-2xl overflow-hidden">
+      <div className="rounded-2xl overflow-hidden backdrop-blur-md" style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.07)' }}>
 
         {/* Antivirus Status Bar */}
         <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-[#1c1c1e]">
@@ -426,14 +426,14 @@ export default function MiningMachinePanel() {
 
           {/* Stats Row */}
           <div className="grid grid-cols-3 gap-2 mb-4">
-            <div className="bg-[#1a1c22] border border-white/5 rounded-2xl p-3">
+            <div className="rounded-2xl p-3" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <div className="flex items-center gap-1.5 mb-1.5">
                 <Activity className="w-3.5 h-3.5 text-[#F5C542]" />
               </div>
               <p className="text-white font-black text-sm tabular-nums">{state.miningRate}/s</p>
               <p className="text-white/30 text-[9px] uppercase tracking-wide mt-1">Mining</p>
             </div>
-            <div className="bg-[#1a1c22] border border-white/5 rounded-2xl p-3">
+            <div className="rounded-2xl p-3" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <div className="flex items-center gap-1.5 mb-1.5">
                 <Cpu className="w-3.5 h-3.5 text-purple-400" />
               </div>
@@ -444,7 +444,8 @@ export default function MiningMachinePanel() {
             </div>
             <button
               onClick={() => setRepairOpen(true)}
-              className="bg-[#1a1c22] border border-white/5 rounded-2xl p-3 text-left active:bg-white/5 transition-all"
+              className="rounded-2xl p-3 text-left active:bg-white/5 transition-all"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
             >
               <div className="flex items-center gap-1.5 mb-1.5">
                 <FaHeartbeat className="w-3.5 h-3.5" style={{ color: healthColor }} />
@@ -464,7 +465,8 @@ export default function MiningMachinePanel() {
 
           {/* Energy Bar — compact */}
           <div
-            className="bg-[#1a1c22] border border-white/5 rounded-2xl px-3 py-2.5 mb-4 cursor-pointer active:bg-white/5 transition-all"
+            className="rounded-2xl px-3 py-2.5 mb-4 cursor-pointer transition-all"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
             onClick={() => { if (!state.cpuRunning && !state.hasEnergy) setEnergyOpen(true); }}
           >
             <div className="flex items-center gap-2.5">
@@ -552,13 +554,13 @@ export default function MiningMachinePanel() {
               >
                 {claimMutation.isPending
                   ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  : <><AXNIcon size={14} /> Collect</>
+                  : <>Collect</>
                 }
               </button>
             </div>
 
             {/* Secondary: Repair / Antivirus / Upgrade */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: '#0a0a0a', border: '1px solid #1c1c1e' }}>
+            <div className="rounded-2xl overflow-hidden backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <button
                 onClick={() => setRepairOpen(true)}
                 className="w-full flex items-center justify-between px-4 py-3 active:bg-white/5 transition-all"
