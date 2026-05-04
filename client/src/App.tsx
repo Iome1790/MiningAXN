@@ -75,19 +75,6 @@ function LoadingFallback() {
           }}
         />
 
-        {/* Name + tagline */}
-        <div className="flex flex-col items-center gap-1.5">
-          <p
-            className="text-white font-black uppercase"
-            style={{ fontSize: 26, letterSpacing: '0.22em', textShadow: '0 0 24px rgba(59,130,246,0.5)' }}
-          >
-            Axionet
-          </p>
-          <p className="text-blue-300/50 font-bold uppercase" style={{ fontSize: 11, letterSpacing: '0.45em' }}>
-            Miner
-          </p>
-        </div>
-
         {/* Loading bar */}
         <div className="flex flex-col items-center gap-3" style={{ width: 180 }}>
           <div className="w-full h-0.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
