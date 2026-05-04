@@ -30,19 +30,20 @@ const PageLoader = memo(function PageLoader() {
 
 function LoadingFallback() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#000000]">
-      <div className="absolute w-72 h-72 bg-[#F5C542]/4 rounded-full blur-[120px]" />
-      <div className="relative flex flex-col items-center gap-8 z-10">
-        <div className="relative w-24 h-24 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border border-[#F5C542]/15 animate-ping" style={{ animationDuration: '2s' }} />
-          <div className="absolute inset-[-8px] rounded-full border border-[#F5C542]/6" />
-          <img src="/axn-logo.svg" alt="AXN" className="w-full h-full" />
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 bg-[#F5C542] rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-          <div className="w-1.5 h-1.5 bg-[#F5C542]/60 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
-          <div className="w-1.5 h-1.5 bg-[#F5C542]/30 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
-        </div>
+    <div
+      className="fixed inset-0 bg-black overflow-hidden flex flex-col items-center justify-center"
+      style={{ animation: 'fadeIn 0.4s ease-out' }}
+    >
+      <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+      <img
+        src="/axionet-logo.png"
+        alt="AXIONET"
+        style={{ width: 220, height: 220, objectFit: 'contain' }}
+      />
+      <div className="flex items-center gap-2 mt-4">
+        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '0s' }} />
+        <div className="w-1.5 h-1.5 rounded-full bg-blue-400/60 animate-bounce" style={{ animationDelay: '0.18s' }} />
+        <div className="w-1.5 h-1.5 rounded-full bg-blue-400/30 animate-bounce" style={{ animationDelay: '0.36s' }} />
       </div>
     </div>
   );
