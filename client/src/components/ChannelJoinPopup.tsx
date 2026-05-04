@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Send, Check, Loader2, ArrowRight } from "lucide-react";
+import { Send, Loader2, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ChannelJoinPopupProps {
@@ -11,7 +11,6 @@ interface ChannelJoinPopupProps {
 export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoinPopupProps) {
   const queryClient = useQueryClient();
   const [isChecking, setIsChecking] = useState(false);
-  const [channelJoined, setChannelJoined] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
@@ -39,9 +38,11 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
       }
 
       if (data.success) {
-        setChannelJoined(data.channelMember || false);
-        if (!isInitialCheck && !data.channelMember) {
-          setError("Please join the channel first.");
+        if (data.channelMember) {
+          onVerified();
+          queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        } else if (!isInitialCheck) {
+          setError("You haven't joined the channel yet. Please join first.");
         }
       } else if (!isInitialCheck) {
         setError(data.message || "Failed to verify membership.");
@@ -89,72 +90,49 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
           exit={{ scale: 0.88, opacity: 0, y: 20 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
         >
-          {/* Header */}
-          <div className="px-5 pt-6 pb-4 border-b border-[#1c1c1e] text-center">
-            <h1 className="text-white font-black text-base uppercase tracking-wider">Join to Continue</h1>
-            <p className="text-white/35 text-[11px] mt-1">Join our channel to access the app</p>
+          <div className="px-5 pt-8 pb-4 flex flex-col items-center">
+            <img
+              src="/axn-logo.svg"
+              alt="AXN"
+              className="w-16 h-16 mb-4"
+              style={{ objectFit: "contain" }}
+            />
           </div>
 
-          <div className="px-5 py-4 space-y-3">
+          <div className="px-5 pb-5 space-y-3">
             {error && (
               <div className="py-2.5 px-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
                 <p className="text-red-400 text-xs text-center font-semibold">{error}</p>
               </div>
             )}
 
-            {/* Channel button */}
             <button
               onClick={openChannel}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all active:scale-[0.98] ${
-                channelJoined
-                  ? "bg-green-500/5 border-green-500/20"
-                  : "bg-[#141414] border-white/8 hover:border-white/15"
-              }`}
+              className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              style={{
+                background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                color: '#fff',
+                boxShadow: '0 0 18px rgba(59,130,246,0.25)',
+              }}
             >
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                channelJoined
-                  ? "bg-green-500/15 border border-green-500/20"
-                  : "bg-white/5 border border-white/8"
-              }`}>
-                <Send className={`w-5 h-5 ${channelJoined ? "text-green-400" : "text-white/50"}`} strokeWidth={1.5} />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-white font-bold text-sm">Main Channel</p>
-                <p className="text-white/35 text-[11px] mt-0.5">@LightningSatoshi</p>
-              </div>
-              <div className="flex-shrink-0">
-                {channelJoined ? (
-                  <div className="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <Check className="w-3.5 h-3.5 text-green-400" strokeWidth={2.5} />
-                  </div>
-                ) : (
-                  <span className="text-blue-400 text-[11px] font-black tracking-widest uppercase bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl">
-                    JOIN
-                  </span>
-                )}
-              </div>
+              <Send className="w-4 h-4" strokeWidth={2} />
+              Join to Access
             </button>
 
-            {/* Verify button */}
             <button
               onClick={() => checkMembership(false)}
               disabled={isChecking}
               className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
               style={{
-                background: channelJoined
-                  ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
-                  : 'rgba(255,255,255,0.07)',
-                color: channelJoined ? '#fff' : 'rgba(255,255,255,0.5)',
-                border: channelJoined ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                boxShadow: channelJoined ? '0 0 18px rgba(59,130,246,0.25)' : 'none',
+                background: 'rgba(255,255,255,0.07)',
+                color: 'rgba(255,255,255,0.5)',
+                border: '1px solid rgba(255,255,255,0.08)',
               }}
             >
               {isChecking ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
-              ) : channelJoined ? (
-                <>Continue <ArrowRight className="w-4 h-4" /></>
               ) : (
-                "I've Joined — Verify"
+                <>I&apos;VE JOINED — VERIFY <ArrowRight className="w-4 h-4" /></>
               )}
             </button>
           </div>

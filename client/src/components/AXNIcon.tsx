@@ -23,6 +23,8 @@ export function AXNIcon({ size = 20, className = "" }: AXNIconProps) {
           objectFit: "cover",
           objectPosition: "center",
           display: "block",
+          transform: "scale(1.25)",
+          transformOrigin: "center center",
         }}
       />
     </span>

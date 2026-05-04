@@ -335,7 +335,7 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
                     <button
                       onClick={() => setAxnAmount(satBalance.toString())}
                       className="h-7 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
-                      style={{ background: 'linear-gradient(135deg,#F5C542,#d4920a)', color: '#000' }}
+                      style={{ background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', color: '#fff' }}
                     >
                       MAX
                     </button>
@@ -365,9 +365,9 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
                 disabled={tradeMutation.isPending}
                 className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 style={{
-                  background: 'linear-gradient(135deg, #F5C542, #d4920a)',
-                  color: '#000',
-                  boxShadow: '0 0 20px rgba(245,197,66,0.2)',
+                  background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                  color: '#fff',
+                  boxShadow: '0 0 20px rgba(59,130,246,0.25)',
                 }}
               >
                 {tradeMutation.isPending ? (

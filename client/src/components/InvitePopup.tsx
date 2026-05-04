@@ -95,7 +95,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
     setIsSharing(true);
     try {
       const tgWebApp = (window as any).Telegram?.WebApp;
-      const shareTitle = "⛏️ Mine AXN with me on CashWatch! Use my invite link:";
+      const shareTitle = "⛏️ Mine AXN with me on Axionet! Use my invite link:";
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareTitle)}`;
       if (tgWebApp?.openTelegramLink) {
         tgWebApp.openTelegramLink(shareUrl);
@@ -134,13 +134,10 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
 
             {/* Well balance */}
             <div className="bg-[#141414] border border-white/5 rounded-2xl p-4 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-[#1c1c1e] flex items-center justify-center flex-shrink-0">
-                <AXNIcon size={22} />
-              </div>
+              <AXNIcon size={32} className="flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-0.5">Your Well</p>
                 <div className="flex items-center gap-1.5">
-                  <AXNIcon size={20} />
                   <span className="text-white font-black text-2xl tabular-nums leading-none">
                     {wellBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
@@ -198,7 +195,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
                   onClick={shareLink}
                   disabled={!referralLink || isSharing}
                   className="h-10 flex items-center justify-center gap-2 rounded-2xl text-xs font-black transition-all active:scale-[0.98] disabled:opacity-40"
-                  style={{ background: "linear-gradient(135deg,#F5C542,#d4920a)", color: "#000" }}
+                  style={{ background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "#fff" }}
                 >
                   {isSharing ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

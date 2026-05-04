@@ -122,8 +122,8 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
               <MenuItem icon={<BsQuestionCircleFill className="w-5 h-5 text-sky-400" />} label="FAQs" onClick={() => setOverlay("faq")} />
               <MenuItem icon={<MdOutlineSupportAgent className="w-5 h-5 text-pink-400" />} label="Support" onClick={() => {
                 const tg = (window as any).Telegram?.WebApp;
-                if (tg?.openTelegramLink) tg.openTelegramLink("https://t.me/LightningSatoshi");
-                else window.open("https://t.me/LightningSatoshi", "_blank");
+                if (tg?.openTelegramLink) tg.openTelegramLink("https://t.me/szxzyz");
+                else window.open("https://t.me/szxzyz", "_blank");
               }} />
               <MenuItem icon={<FaBalanceScale className="w-5 h-5 text-indigo-400" />} label="Privacy Policy" onClick={() => setOverlay("legal")} />
               <MenuItem icon={<FileText className="w-5 h-5 text-orange-400" />} label="Terms and Conditions" onClick={() => setOverlay("terms")} />
@@ -230,17 +230,23 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
 
                   {overlay === "legal" && (
                     <div className="px-4 py-4 space-y-2.5">
-                      <LegalBlock icon={<Lock className="w-3.5 h-3.5 text-purple-400" />} title="Data We Collect">
-                        <p>Only minimum data: Telegram user ID, username, and first name. Used for account identification and reward delivery. We do not sell your data.</p>
+                      <LegalBlock icon={<Lock className="w-3.5 h-3.5 text-purple-400" />} title="Information We Collect">
+                        <p>We collect only what is necessary to operate the platform: your Telegram user ID, display name, and username. No email addresses, phone numbers, or financial details are stored.</p>
                       </LegalBlock>
-                      <LegalBlock icon={<Shield className="w-3.5 h-3.5 text-blue-400" />} title="How We Use It">
-                        <p>Data is used exclusively to operate the app: tracking balance, processing rewards, withdrawals, and activity notifications.</p>
+                      <LegalBlock icon={<Shield className="w-3.5 h-3.5 text-blue-400" />} title="How Your Data Is Used">
+                        <p>Your data is used solely to manage your account, track AXN balances, process mining rewards, handle withdrawals, and deliver system notifications. We never sell or share your data with third parties.</p>
                       </LegalBlock>
-                      <LegalBlock icon={<Info className="w-3.5 h-3.5 text-red-400" />} title="Your Rights">
-                        <p>Request account deletion anytime via support. All data removed within 30 days.</p>
+                      <LegalBlock icon={<Activity className="w-3.5 h-3.5 text-green-400" />} title="Activity Monitoring">
+                        <p>We monitor usage patterns to prevent fraud, detect multi-account abuse, and maintain platform integrity. This includes IP address, device identifiers, and session data used exclusively for security purposes.</p>
                       </LegalBlock>
-                      <LegalBlock icon={<Info className="w-3.5 h-3.5 text-orange-400" />} title="Disclaimer">
-                        <p>Not affiliated with Telegram Messenger Inc. Earnings are not guaranteed.</p>
+                      <LegalBlock icon={<Info className="w-3.5 h-3.5 text-sky-400" />} title="Data Retention">
+                        <p>Account data is retained while your account is active. Upon deletion request, all personal data is removed within 30 days. Transaction history may be retained for audit compliance.</p>
+                      </LegalBlock>
+                      <LegalBlock icon={<Info className="w-3.5 h-3.5 text-orange-400" />} title="Your Rights">
+                        <p>You may request access to, correction of, or deletion of your data at any time through our support channel. We aim to respond within 7 business days.</p>
+                      </LegalBlock>
+                      <LegalBlock icon={<Info className="w-3.5 h-3.5 text-red-400" />} title="Disclaimer">
+                        <p>Axionet is an independent platform and is not affiliated with, endorsed by, or connected to Telegram Messenger Inc. AXN rewards are in-platform tokens and their value is not guaranteed.</p>
                       </LegalBlock>
                     </div>
                   )}
@@ -248,16 +254,22 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                   {overlay === "terms" && (
                     <div className="px-4 py-4 space-y-2.5">
                       <LegalBlock icon={<FileText className="w-3.5 h-3.5 text-orange-400" />} title="Acceptance of Terms">
-                        <p>By using this app, you agree to these Terms. All rewards are in AXN. Rates and minimums may change without notice.</p>
+                        <p>By accessing or using Axionet, you confirm that you have read, understood, and agree to be bound by these Terms. If you do not agree, please discontinue use immediately. We reserve the right to update these Terms at any time.</p>
                       </LegalBlock>
-                      <LegalBlock icon={<Shield className="w-3.5 h-3.5 text-blue-400" />} title="User Conduct">
-                        <p>One account per person. Multiple accounts, self-referrals, and bug exploitation result in permanent ban. Users must be 18+.</p>
+                      <LegalBlock icon={<Shield className="w-3.5 h-3.5 text-blue-400" />} title="Eligibility & Account Rules">
+                        <p>You must be at least 18 years of age to use this platform. Each user is permitted one account only. Operating multiple accounts, using bots or automation, or manipulating referral systems will result in a permanent ban without appeal.</p>
                       </LegalBlock>
-                      <LegalBlock icon={<Lock className="w-3.5 h-3.5 text-green-400" />} title="Rewards & Withdrawals">
-                        <p>Rewards come from mining, tasks, and referrals. Withdrawals require minimum amount and admin approval. Fraudulent activity forfeits all rewards.</p>
+                      <LegalBlock icon={<Zap className="w-3.5 h-3.5 text-yellow-400" />} title="Mining & Rewards">
+                        <p>AXN is earned through machine mining, daily check-ins, task completion, ad interactions, and referrals. Reward rates, mining speeds, and capacity limits are subject to change. Earned AXN has no guaranteed monetary value.</p>
+                      </LegalBlock>
+                      <LegalBlock icon={<Lock className="w-3.5 h-3.5 text-green-400" />} title="Withdrawals">
+                        <p>Withdrawals require a minimum balance threshold and are subject to admin review. Suspicious activity, incomplete verification, or rule violations may result in withdrawal refusal and balance forfeiture.</p>
+                      </LegalBlock>
+                      <LegalBlock icon={<Users className="w-3.5 h-3.5 text-indigo-400" />} title="Referral Program">
+                        <p>Referral rewards are earned when invited users actively participate on the platform. Self-referrals, fake accounts, or coordinated manipulation are strictly prohibited and will result in disqualification of all referral earnings.</p>
                       </LegalBlock>
                       <LegalBlock icon={<Info className="w-3.5 h-3.5 text-red-400" />} title="Limitation of Liability">
-                        <p>Not liable for lost earnings from downtime, rate changes, or bans due to rule violations.</p>
+                        <p>Axionet is not liable for lost AXN due to technical outages, rate adjustments, account bans resulting from policy violations, or any indirect damages. Use of the platform is at your own risk.</p>
                       </LegalBlock>
                     </div>
                   )}
@@ -265,12 +277,14 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                   {overlay === "faq" && (
                     <div className="px-4 py-4 space-y-2">
                       {[
-                        { q: "How do I earn AXN?", a: "Mine with your machine, watch ads, complete tasks, daily check-ins, and invite friends." },
-                        { q: "What is the Mining Machine?", a: "Your personal AXN generator. Start CPU to mine AXN, claim when capacity fills, keep antivirus ON to prevent attacks." },
-                        { q: "How long does antivirus last?", a: "Antivirus stays active for 2 minutes then auto-disables. Reactivate manually." },
-                        { q: "How does the referral Well work?", a: "When your friend withdraws AXN, 10% goes into your Well automatically. Also earn 50 AXN when a friend upgrades their machine." },
-                        { q: "When can I withdraw?", a: "Once you reach the minimum withdrawal amount. Check balance bar for eligibility." },
-                        { q: "Why was my account banned?", a: "Bans happen for multiple accounts, self-referrals, or exploiting bugs. Contact support if it was a mistake." },
+                        { q: "How do I earn AXN?", a: "AXN is earned through machine mining, watching ads, completing channel and partner tasks, daily check-ins, and referring friends. Each activity contributes to your total balance." },
+                        { q: "How does the Mining Machine work?", a: "Your machine has three upgradeable components: Mining Level, Capacity Level, and CPU Level (each up to level 25). Start the CPU to begin mining AXN into your capacity buffer, then claim when ready." },
+                        { q: "What does the antivirus do?", a: "Antivirus protects your CPU from virus attacks that drain your mining time. Once activated, it runs for its full duration regardless of your mining state. Higher antivirus levels provide longer protection." },
+                        { q: "How does the referral Well work?", a: "When a friend you invited withdraws AXN, 10% of their withdrawal amount flows into your Well automatically. You also earn 50 AXN each time a friend upgrades their mining machine. Claim your Well balance anytime." },
+                        { q: "What is the referral mining boost?", a: "Each active referral adds +0.1 AXN/h to your base mining speed. Boosts are applied automatically when friends remain in the required channel and removed if they leave." },
+                        { q: "How do withdrawals work?", a: "Once you reach the minimum withdrawal threshold, submit a request with your Cwallet ID. Your request is reviewed and approved by the admin team. Approved withdrawals are processed in AXN converted to TON." },
+                        { q: "Why is my account banned?", a: "Accounts are banned for violations including multiple account creation, self-referrals, using bots or automation, and exploiting platform bugs. Contact support if you believe your ban was issued in error." },
+                        { q: "Can I lose my mined AXN?", a: "Your claimed AXN balance is safe. However, unmined amounts in the buffer can be lost to virus attacks if your antivirus is inactive. Keep antivirus active to protect your mining progress." },
                       ].map((faq, i) => (
                         <div key={i} className="bg-[#1a1c22] border border-white/5 rounded-2xl p-3.5">
                           <p className="text-white font-bold text-xs mb-1.5">{faq.q}</p>
