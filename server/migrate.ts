@@ -23,7 +23,27 @@ export async function ensureDatabaseSchema(): Promise<void> {
   }
   try {
     console.log('🔄 [MIGRATION] Ensuring all database tables exist...');
-    
+
+    // Drop unused tables (cleanup - safe with IF EXISTS + CASCADE)
+    try {
+      await db.execute(sql`DROP TABLE IF EXISTS task_clicks CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS task_completions CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS promotion_claims CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS promo_code_usage CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS promo_codes CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS referral_commissions CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS user_referral_tasks CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS mining_boosts CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS daily_tasks CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS advertiser_tasks CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS daily_missions CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS deposits CASCADE`);
+      await db.execute(sql`DROP TABLE IF EXISTS promotions CASCADE`);
+      console.log('✅ [MIGRATION] Unused tables dropped');
+    } catch (dropErr) {
+      console.log('ℹ️ [MIGRATION] Drop tables note:', dropErr);
+    }
+
     // Enable pgcrypto extension for gen_random_uuid() support
     try {
       await db.execute(sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`);
@@ -215,32 +235,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
       console.warn('⚠️ [MIGRATION] Failed to ensure ton_app_balance column:', e);
     }
 
-    // Check and add mining_boosts table
-    try {
-      const miningBoostsCheck = await db.execute(sql`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_name = 'mining_boosts'
-        )
-      `);
-      if (!miningBoostsCheck.rows[0].exists) {
-        console.log('🔄 [MIGRATION] Creating mining_boosts table...');
-        await db.execute(sql`
-          CREATE TABLE IF NOT EXISTS mining_boosts (
-            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id varchar NOT NULL REFERENCES users(id),
-            plan_id varchar NOT NULL,
-            mining_rate decimal(20, 8) NOT NULL,
-            start_time timestamp NOT NULL DEFAULT now(),
-            expires_at timestamp NOT NULL,
-            created_at timestamp NOT NULL DEFAULT now()
-          )
-        `);
-        console.log('✅ [MIGRATION] mining_boosts table created');
-      }
-    } catch (e) {
-      console.warn('⚠️ [MIGRATION] Failed to ensure mining_boosts table:', e);
-    }
+    // mining_boosts table removed (dropped in migration)
     
     // Ensure referral_code column exists and has proper constraints
     try {
@@ -379,37 +374,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
       }
     }
     
-    // Promotions table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS promotions (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        owner_id VARCHAR NOT NULL REFERENCES users(id),
-        type VARCHAR NOT NULL,
-        url TEXT NOT NULL,
-        cost DECIMAL(12, 8) NOT NULL DEFAULT '0.01',
-        reward_per_user DECIMAL(12, 8) NOT NULL DEFAULT '0.00025',
-        "limit" INTEGER NOT NULL DEFAULT 1000,
-        claimed_count INTEGER NOT NULL DEFAULT 0,
-        status VARCHAR NOT NULL DEFAULT 'active',
-        title VARCHAR(255),
-        description TEXT,
-        reward INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-    
-    // Task completions table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS task_completions (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        promotion_id VARCHAR NOT NULL REFERENCES promotions(id),
-        user_id VARCHAR NOT NULL REFERENCES users(id),
-        reward_amount DECIMAL(12, 8) NOT NULL,
-        verified BOOLEAN DEFAULT false,
-        completed_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(promotion_id, user_id)
-      )
-    `);
+    // promotions and task_completions tables removed (dropped in migration)
     
     // User balances table
     await db.execute(sql`
@@ -448,74 +413,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
       console.log('ℹ️ [MIGRATION] Referral reward columns already exist');
     }
     
-    // Referral commissions table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS referral_commissions (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        referrer_id VARCHAR NOT NULL REFERENCES users(id),
-        referred_user_id VARCHAR NOT NULL REFERENCES users(id),
-        original_earning_id INTEGER NOT NULL REFERENCES earnings(id),
-        commission_amount DECIMAL(12, 2) NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-    
-    // Promo codes table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS promo_codes (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        code VARCHAR UNIQUE NOT NULL,
-        reward_amount DECIMAL(12, 2) NOT NULL,
-        reward_type VARCHAR DEFAULT 'Hrum' NOT NULL,
-        reward_currency VARCHAR DEFAULT 'TONT',
-        usage_limit INTEGER,
-        usage_count INTEGER DEFAULT 0,
-        per_user_limit INTEGER DEFAULT 1,
-        is_active BOOLEAN DEFAULT true,
-        expires_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-    
-    // Add reward_type column to existing promo_codes table if missing
-    try {
-      await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS reward_type VARCHAR DEFAULT 'Hrum' NOT NULL`);
-      console.log('✅ [MIGRATION] Reward type column added to promo_codes table');
-    } catch (error) {
-      console.log('ℹ️ [MIGRATION] Reward type column already exists in promo_codes table');
-    }
-    
-    // Promo code usage tracking table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS promo_code_usage (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        promo_code_id VARCHAR NOT NULL REFERENCES promo_codes(id),
-        user_id VARCHAR NOT NULL REFERENCES users(id),
-        reward_amount DECIMAL(12, 2) NOT NULL,
-        used_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-    
-    // Daily tasks table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS daily_tasks (
-        id SERIAL PRIMARY KEY,
-        user_id VARCHAR NOT NULL REFERENCES users(id),
-        task_level INTEGER NOT NULL,
-        progress INTEGER DEFAULT 0,
-        required INTEGER NOT NULL,
-        completed BOOLEAN DEFAULT false,
-        claimed BOOLEAN DEFAULT false,
-        reward_amount DECIMAL(12, 8) NOT NULL,
-        completed_at TIMESTAMP,
-        claimed_at TIMESTAMP,
-        reset_date VARCHAR NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(user_id, task_level, reset_date)
-      )
-    `);
+    // referral_commissions, promo_codes, promo_code_usage, daily_tasks removed (dropped in migration)
     
     // Admin settings table - for configurable app parameters
     await db.execute(sql`
@@ -569,54 +467,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
       ON CONFLICT (setting_key) DO NOTHING
     `);
     
-    // Advertiser tasks table - CRITICAL for task creation system
-    console.log('🔄 [MIGRATION] Creating advertiser_tasks table...');
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS advertiser_tasks (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        advertiser_id VARCHAR NOT NULL REFERENCES users(id),
-        task_type VARCHAR NOT NULL,
-        title TEXT NOT NULL,
-        link TEXT NOT NULL,
-        total_clicks_required INTEGER NOT NULL,
-        current_clicks INTEGER DEFAULT 0 NOT NULL,
-        cost_per_click DECIMAL(12, 8) DEFAULT 0.0003 NOT NULL,
-        total_cost DECIMAL(12, 8) NOT NULL,
-        status VARCHAR DEFAULT 'active' NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        completed_at TIMESTAMP
-      )
-    `);
-    console.log('✅ [MIGRATION] advertiser_tasks table created');
-
-    // Deposits table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS deposits (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id VARCHAR NOT NULL REFERENCES users(id),
-        amount DECIMAL(30, 10) NOT NULL,
-        status VARCHAR DEFAULT 'pending' NOT NULL,
-        memo TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `);
-    console.log('✅ [MIGRATION] Deposits table ensured');
-    
-    // Task clicks tracking table - CRITICAL for preventing duplicate clicks
-    console.log('🔄 [MIGRATION] Creating task_clicks table...');
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS task_clicks (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        task_id VARCHAR NOT NULL REFERENCES advertiser_tasks(id) ON DELETE CASCADE,
-        publisher_id VARCHAR NOT NULL REFERENCES users(id),
-        reward_amount DECIMAL(12, 8) DEFAULT 0.0001750 NOT NULL,
-        clicked_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(task_id, publisher_id)
-      )
-    `);
-    console.log('✅ [MIGRATION] task_clicks table created');
+    // advertiser_tasks, deposits, task_clicks removed (dropped in migration)
     
     // Ban logs table for auto-ban system
     console.log('🔄 [MIGRATION] Creating ban_logs table...');
@@ -653,24 +504,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
       console.log('ℹ️ [MIGRATION] ban_logs columns already exist');
     }
     
-    // Daily missions table for Share with Friends and Daily Check-in
-    console.log('🔄 [MIGRATION] Creating daily_missions table...');
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS daily_missions (
-        id SERIAL PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        mission_type TEXT NOT NULL,
-        completed BOOLEAN DEFAULT FALSE,
-        claimed_at TIMESTAMP,
-        reset_date TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT daily_missions_user_type_date_unique UNIQUE (user_id, mission_type, reset_date)
-      )
-    `);
-    console.log('✅ [MIGRATION] daily_missions table created');
-    
-    // Create index for daily missions performance
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_daily_missions_user_date ON daily_missions(user_id, reset_date)`);
+    // daily_missions removed (dropped in migration)
     
     // Create index for ban logs performance
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ban_logs_user_id ON ban_logs(banned_user_id)`);
@@ -678,17 +512,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ban_logs_ip ON ban_logs(ip)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ban_logs_created_at ON ban_logs(created_at)`);
     
-    // Promotion claims table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS promotion_claims (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        promotion_id VARCHAR NOT NULL REFERENCES promotions(id),
-        user_id VARCHAR NOT NULL REFERENCES users(id),
-        reward_amount DECIMAL(12, 8) NOT NULL,
-        claimed_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(promotion_id, user_id)
-      )
-    `);
+    // promotion_claims removed (dropped in migration)
     
     // Blocked countries table for geo-restriction
     console.log('🔄 [MIGRATION] Creating blocked_countries table...');
@@ -701,18 +525,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
     `);
     console.log('✅ [MIGRATION] blocked_countries table created');
     
-    // User referral tasks table for tracking claimed referral rewards
-    console.log('🔄 [MIGRATION] Creating user_referral_tasks table...');
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS user_referral_tasks (
-        id SERIAL PRIMARY KEY,
-        user_id VARCHAR NOT NULL REFERENCES users(id),
-        task_id VARCHAR NOT NULL,
-        claimed_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(user_id, task_id)
-      )
-    `);
-    console.log('✅ [MIGRATION] user_referral_tasks table created');
+    // user_referral_tasks removed (dropped in migration)
     
     // Create index for blocked countries
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_blocked_countries_code ON blocked_countries(country_code)`);
@@ -731,8 +544,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_earnings_user_id ON earnings(user_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_withdrawals_user_id ON withdrawals(user_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_promotions_status ON promotions(status)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_task_completions_user_id ON task_completions(user_id)`);
+    // promotions/task_completions indexes removed (tables dropped)
     
     // User machines table for AXN mining machine system
     await db.execute(sql`

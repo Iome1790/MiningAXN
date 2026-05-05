@@ -7,19 +7,13 @@ import {
   users, 
   earnings, 
   referrals, 
-  referralCommissions,
   withdrawals,
   userBalances,
-  dailyTasks,
-  promoCodes,
   transactions,
   adminSettings,
-  advertiserTasks,
-  taskClicks,
   spinData,
   spinHistory,
-  dailyMissions,
-  miningBoosts
+  banLogs,
 } from "../shared/schema";
 import { db } from "./db";
 import { eq, sql, desc, and, gte } from "drizzle-orm";
@@ -428,7 +422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const { sendWithdrawalRequestNotification } = await import("./telegram");
         const fullUser = await storage.getUser(user.id);
-        const withdrawal = await storage.getWithdrawal(result.withdrawalId);
+        const withdrawal = await storage.getWithdrawal(result.withdrawalId!);
         if (fullUser && withdrawal) {
           await sendWithdrawalRequestNotification(withdrawal, fullUser);
         }
@@ -463,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const { sendWithdrawalRequestNotification } = await import("./telegram");
         const fullUser = await storage.getUser(user.id);
-        const withdrawal = await storage.getWithdrawal(result.withdrawalId);
+        const withdrawal = await storage.getWithdrawal(result.withdrawalId!);
         if (fullUser && withdrawal) {
           await sendWithdrawalRequestNotification(withdrawal, fullUser);
         }
@@ -477,68 +471,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Production health check endpoint - checks database connectivity and user count
-  app.post("/api/mining/upgrade", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-
-      const { tonAmount } = req.body;
-      const amount = parseFloat(tonAmount);
-      if (isNaN(amount) || amount <= 0) {
-        return res.status(400).json({ message: "Invalid amount" });
-      }
-
-      // Check TON (App Balance)
-      const tonAppBalance = parseFloat(user.tonAppBalance || "0");
-      if (tonAppBalance < amount) {
-        return res.status(400).json({ message: "Insufficient TON (App Balance). Top up or use a promo code." });
-      }
-
-      await db.transaction(async (tx) => {
-        const now = new Date();
-        const durationDays = 30;
-        const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
-        
-        // 1 TON = 10,000 AXN conversion logic for profit
-        // Daily profit = investment * 0.1 (10% daily base for example)
-        const dailyAXNProfit = amount * 1000; // 0.1 TON = 100 AXN/day as per example
-        const newMiningRate = dailyAXNProfit / (24 * 3600);
-
-        // Record the new boost
-        await tx.insert(miningBoosts).values({
-          userId: user.id,
-          planId: `custom_${amount}_${now.getTime()}`,
-          miningRate: newMiningRate.toFixed(8),
-          expiresAt: expiresAt,
-        });
-
-        // Deduct balance
-        await tx.update(users)
-          .set({ 
-            tonAppBalance: (tonAppBalance - amount).toString(),
-            updatedAt: now
-          })
-          .where(eq(users.id, user.id));
-
-        await tx.insert(transactions).values({
-          userId: user.id,
-          amount: amount.toString(),
-          type: "deduction",
-          source: "mining_boost_purchase",
-          description: `Invested ${amount} TON for mining boost`,
-          metadata: { tonAmount: amount, durationDays }
-        });
-      });
-
-      res.json({ success: true, message: "Mining boost activated successfully" });
-    } catch (error) {
-      console.error("Error upgrading mining:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-
   app.get("/api/mining/state", authenticateTelegram, async (req: any, res) => {
     try {
       const user = req.user?.user;
@@ -547,23 +479,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const now = new Date();
       const lastClaim = new Date(user.lastMiningClaim || user.createdAt);
       
-      // Get all active boosts
-      const boosts = await storage.getMiningBoosts(user.id);
-      
-      // Calculate total mining rate
-      const baseRate = 0.036 / 3600; // Base: 0.036 / hour
+      // Calculate total mining rate (boosts table removed)
+      const baseRate = 0.036 / 3600;
       const section1Boost = parseFloat(user.adSection1Boost || "0") / 3600;
       const section2Boost = parseFloat(user.adSection2Boost || "0") / 3600;
-      // Referral boost is stored as per-hour value (0.1/h per active referral)
       const referralBoostHourly = parseFloat(user.referralMiningBoost || "0");
       const referralBoostPerSec = referralBoostHourly / 3600;
-      
-      let totalRate = baseRate + section1Boost + section2Boost + referralBoostPerSec;
-      boosts.forEach(boost => {
-        totalRate += parseFloat(boost.miningRate);
-      });
+      const totalRate = baseRate + section1Boost + section2Boost + referralBoostPerSec;
 
-      // Calculate earned amount since last claim
       const secondsPassed = Math.floor((now.getTime() - lastClaim.getTime()) / 1000);
       const minedAmount = (secondsPassed * totalRate).toFixed(5);
 
@@ -577,14 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         section2Boost: (section2Boost * 3600).toFixed(4),
         referralBoost: referralBoostHourly.toFixed(4),
         lastClaim: lastClaim,
-        boosts: boosts.map((b: any) => ({
-          id: b.id,
-          planId: b.planId,
-          miningRate: (parseFloat(b.miningRate) * 3600).toFixed(4),
-          startTime: b.startTime,
-          expiresAt: b.expiresAt,
-          remainingTime: Math.max(0, Math.floor((new Date(b.expiresAt).getTime() - now.getTime()) / 1000))
-        }))
+        boosts: []
       });
     } catch (error) {
       console.error("Error getting mining state:", error);
@@ -592,161 +508,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/deposits", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      
-      let userDeposits = [];
-      try {
-        userDeposits = await storage.getUserDeposits(user.id);
-      } catch (error: any) {
-        console.error("Database error fetching deposits:", error);
-        if (error.code === '42P01') {
-          return res.json([]); // Return empty array if table doesn't exist yet
-        }
-        throw error;
-      }
-      res.json(userDeposits);
-    } catch (error) {
-      console.error("Error fetching deposits:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
+  app.get("/api/deposits", authenticateTelegram, async (_req: any, res) => {
+    res.json([]);
   });
 
-  app.post("/api/deposits", authenticateTelegram, async (req: any, res: any) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-
-      console.log(`💰 Deposit attempt for user ${user.id}`);
-
-      // Check for pending deposit
-      let pending;
-      try {
-        pending = await storage.getPendingDeposit(user.id);
-      } catch (storageError: any) {
-        console.error("Storage error checking pending deposit:", storageError);
-        // Handle missing table gracefully
-        if (storageError.code === '42P01') {
-          return res.status(503).json({ 
-            message: "Deposit system is currently being initialized. Please try again in a few minutes.",
-            retryAfter: 300
-          });
-        }
-        
-        if (storageError instanceof TypeError && (storageError.message.includes('getPendingDeposit') || storageError.message.includes('is not a function'))) {
-          return res.status(500).json({ message: "System is updating, please try again in a moment." });
-        }
-        throw storageError;
-      }
-
-      if (pending) {
-        return res.status(400).json({ message: "You already have a pending deposit. Please wait for admin approval." });
-      }
-
-      const { amount } = req.body;
-      if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-        return res.status(400).json({ message: "Invalid amount" });
-      }
-
-      let deposit;
-      try {
-        deposit = await storage.createDeposit({
-          userId: user.id,
-          amount: amount.toString(),
-          memo: user.telegram_id || user.id,
-          status: 'pending'
-        });
-      } catch (error: any) {
-        console.error("Error creating deposit in DB:", error);
-        if (error.code === '42P01') {
-          return res.status(503).json({ 
-            message: "Deposit system is initializing. Please wait.",
-            retryAfter: 300
-          });
-        }
-        throw error;
-      }
-
-      console.log(`✅ Deposit created: ${deposit.id} for user ${user.id}`);
-
-      // Notify admin
-      try {
-        const { sendDepositNotificationToAdmin } = await import('./telegram');
-        await sendDepositNotificationToAdmin(deposit, user);
-      } catch (notifyError) {
-        console.error("Failed to notify admin of deposit:", notifyError);
-      }
-
-      res.json(deposit);
-    } catch (error) {
-      console.error("Deposit creation error:", error);
-      res.status(500).json({ 
-        message: "Failed to create deposit",
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  // Admin Deposit Approval
-  app.post("/api/admin/deposits/:depositId/approve", authenticateAdmin, async (req: any, res) => {
-    try {
-      const { depositId } = req.params;
-      
-      console.log(`👨‍💼 Admin ${req.user.telegramUser.id} approving deposit ${depositId}`);
-      
-      // Atomic status update and balance credit with transaction locking and idempotency
-      await storage.updateDepositStatus(depositId, 'completed');
-      
-      // Fetch deposit details and updated user balance for real-time update
-      const [deposit] = await db.select().from(deposits).where(eq(deposits.id, depositId)).limit(1);
-      if (deposit) {
-        // Fetch the updated user to get the new tonAppBalance
-        const updatedUser = await storage.getUser(deposit.userId);
-        sendRealtimeUpdate(deposit.userId, {
-          type: 'balance_update',
-          tonAppBalance: updatedUser?.tonAppBalance || '0',
-          message: `✅ Your deposit of ${deposit.amount} TON has been approved and added to your App Balance!`
-        });
-      }
-
-      res.json({ success: true, message: "Deposit approved successfully" });
-    } catch (error) {
-      console.error("❌ Error approving deposit:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: error instanceof Error ? error.message : "Failed to approve deposit" 
-      });
-    }
-  });
-
-  // Admin Deposit Rejection
-  app.post("/api/admin/deposits/:depositId/reject", authenticateAdmin, async (req: any, res) => {
-    try {
-      const { depositId } = req.params;
-      const { reason } = req.body;
-      
-      console.log(`👨‍💼 Admin ${req.user.telegramUser.id} rejecting deposit ${depositId}. Reason: ${reason || 'No reason provided'}`);
-      
-      await storage.updateDepositStatus(depositId, 'failed', reason);
-      
-      const [deposit] = await db.select().from(deposits).where(eq(deposits.id, depositId)).limit(1);
-      if (deposit) {
-        sendRealtimeUpdate(deposit.userId, {
-          type: 'deposit_rejected',
-          message: `❌ Your deposit of ${deposit.amount} TON was rejected.${reason ? ` Reason: ${reason}` : ''}`
-        });
-      }
-
-      res.json({ success: true, message: "Deposit rejected" });
-    } catch (error) {
-      console.error("❌ Error rejecting deposit:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: error instanceof Error ? error.message : "Failed to reject deposit" 
-      });
-    }
+  app.post("/api/deposits", authenticateTelegram, async (_req: any, res: any) => {
+    res.status(410).json({ message: "Deposit system has been removed." });
   });
 
   app.get("/api/transactions", authenticateTelegram, async (req: any, res) => {
@@ -754,16 +521,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user?.user;
       if (!user) return res.status(401).json({ message: "Not authenticated" });
       
-      const [userTransactions, userWithdrawals, userDeposits] = await Promise.all([
+      const [userTransactions, userWithdrawals] = await Promise.all([
         db.select().from(transactions).where(eq(transactions.userId, user.id)).orderBy(desc(transactions.createdAt)),
         storage.getUserWithdrawals(user.id),
-        storage.getUserDeposits(user.id)
       ]);
 
       res.json({
         transactions: userTransactions,
         withdrawals: userWithdrawals,
-        deposits: userDeposits
+        deposits: []
       });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
@@ -1397,8 +1163,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username: telegramUser.username,
         profileImageUrl: (telegramUser as any).photo_url || '',
         personalCode: telegramUser.username || telegramUser.id.toString(),
-        withdrawBalance: '0',
-        totalEarnings: '0',
+        withdraw_balance: '0',
+        total_earnings: '0',
         adsWatched: 0,
         dailyAdsWatched: 0,
         dailyEarnings: '0',
@@ -2062,7 +1828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Leaderboard endpoints
   app.get('/api/leaderboard/top', async (req: any, res) => {
     try {
-      const topUser = await storage.getTopUserByEarnings();
+      const topUser = await (storage as any).getTopUserByEarnings();
       res.json(topUser || { username: 'No data', profileImage: '', totalEarnings: '0' });
     } catch (error) {
       console.error("Error fetching top user:", error);
@@ -2157,7 +1923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('⚠️ Referral claim requested without session - skipping');
         return res.json({ success: true, skipAuth: true });
       }
-      const result = await storage.claimReferralBonus(userId);
+      const result = await (storage as any).claimReferralBonus(userId);
       
       if (result.success) {
         res.json(result);
@@ -2235,77 +2001,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sync referral mining boosts - check all referees' membership, update boost, send notifications
-  app.post('/api/referrals/sync-boosts', async (req: any, res) => {
-    try {
-      const userId = req.session?.user?.user?.id || req.user?.user?.id;
-      if (!userId) return res.json({ success: false });
-
-      const botToken = process.env.TELEGRAM_BOT_TOKEN;
-      const channelConfig = getChannelConfig();
-
-      const referrer = await storage.getUser(userId);
-      if (!referrer) return res.json({ success: false });
-
-      // Get all completed referrals
-      const referralRows = await db
-        .select()
-        .from(referrals)
-        .where(and(eq(referrals.referrerId, userId), eq(referrals.status, 'completed')));
-
-      let activeCount = 0;
-      const previousBoost = parseFloat(referrer.referralMiningBoost || '0');
-
-      for (const ref of referralRows) {
-        const referee = await storage.getUser(ref.refereeId);
-        if (!referee || !referee.telegram_id || !botToken) {
-          continue;
-        }
-
-        const telegramNumericId = parseInt(referee.telegram_id, 10);
-        let channelMember = false;
-        let groupMember = false;
-
-        try {
-          channelMember = await verifyChannelMembership(telegramNumericId, channelConfig.channelId, botToken);
-          groupMember = await verifyChannelMembership(telegramNumericId, channelConfig.groupId, botToken);
-        } catch {}
-
-        if (channelMember && groupMember) {
-          activeCount++;
-        }
-      }
-
-      // 0.02/h per active referral in terms of rate-per-hour
-      const newBoostPerHour = activeCount * 0.02;
-      // Store as per-hour value (the UI shows /h directly)
-      const newBoost = newBoostPerHour.toFixed(8);
-
-      // Only update if changed
-      if (Math.abs(parseFloat(newBoost) - previousBoost) > 0.000001) {
-        await db
-          .update(users)
-          .set({ referralMiningBoost: newBoost, updatedAt: new Date() })
-          .where(eq(users.id, userId));
-
-        // If boost was restored (increased), notify the referrer
-        if (parseFloat(newBoost) > previousBoost && referrer.telegram_id) {
-          try {
-            const { sendUserTelegramNotification } = await import('./telegram');
-            await sendUserTelegramNotification(
-              referrer.telegram_id,
-              `✅ Your mining speed has been restored! +${(parseFloat(newBoost) - previousBoost).toFixed(1)}/h added back because your friend rejoined the channel.`
-            );
-          } catch {}
-        }
-      }
-
-      res.json({ success: true, activeReferrals: activeCount, boostPerHour: newBoostPerHour });
-    } catch (error) {
-      console.error("Error syncing referral boosts:", error);
-      res.status(500).json({ message: "Failed to sync referral boosts" });
-    }
-  });
 
   // Withdrawal eligibility - check if user has watched enough ads for this withdrawal
   app.get('/api/withdrawal-eligibility', async (req: any, res) => {
@@ -2423,7 +2118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         id: searchCode,
         earnedToday: referralEarnings.todayEarnings || "0.00",
-        allTime: referralUser.totalEarned || "0.00",
+        allTime: (referralUser as any).total_earned || "0.00",
         invited: referralCount.length,
         joinedAt: referralRelationship.createdAt
       });
@@ -2488,7 +2183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: user?.id,
           referralCode: user?.referralCode,
           balance: user?.balance,
-          totalEarned: user?.totalEarned
+          totalEarned: (user as any)?.total_earned
         },
         earnings: userEarnings,
         myReferrals: myReferrals,
@@ -2592,23 +2287,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [user] = await db.select().from(users).where(eq(users.id, userId));
       const adsWatchedToday = user?.adsWatchedToday || 0;
       
-      // Get daily tasks
-      const tasks = await storage.getUserDailyTasks(userId);
-      
+      // dailyTasks table removed - return empty
       res.json({
         success: true,
-        tasks: tasks.map(task => ({
-          id: task.id,
-          level: task.taskLevel,
-          title: `Watch ${task.required} ads`,
-          description: `Watch ${task.required} ads to earn ${parseFloat(task.rewardAmount).toFixed(5)} TON`,
-          required: task.required,
-          progress: task.progress,
-          completed: task.completed,
-          claimed: task.claimed,
-          rewardAmount: task.rewardAmount,
-          canClaim: task.completed && !task.claimed,
-        })),
+        tasks: [],
         adsWatchedToday,
         resetInfo: {
           nextReset: "00:00 UTC",
@@ -2638,20 +2320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const result = await storage.claimDailyTaskReward(userId, taskLevel);
-      
-      if (result.success) {
-        res.json({
-          success: true,
-          message: result.message,
-          rewardAmount: result.rewardAmount
-        });
-      } else {
-        res.status(400).json({
-          success: false,
-          message: result.message
-        });
-      }
+      // dailyTasks table removed
+      res.status(410).json({ success: false, message: 'Daily task system removed' });
       
     } catch (error) {
       console.error('Error claiming task:', error);
@@ -2705,73 +2375,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Unified home tasks API - shows ONLY advertiser/user-created tasks (no daily tasks)
-  // Uses getActiveTasksForUser - same data source as Mission page (/api/advertiser-tasks)
+  // Unified home tasks API - advertiser tasks removed
   app.get('/api/tasks/home/unified', async (req: any, res) => {
     try {
       let userId = req.session?.user?.user?.id || req.user?.user?.id;
-      
-      // In development mode, use test user if no session
-      if (!userId && process.env.NODE_ENV === 'development') {
-        userId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
-      }
-      
       if (!userId) {
         return res.json({ success: true, tasks: [], completedTaskIds: [], totalAvailableTasks: 0 });
       }
-
-      // Get user info for referral code
-      const [user] = await db
-        .select({
-          referralCode: users.referralCode
-        })
-        .from(users)
-        .where(eq(users.id, userId));
-
-      // Get reward settings for advertiser task types from admin settings
-      const channelTaskReward = await storage.getAppSetting('channelTaskReward', '30');
-      const botTaskReward = await storage.getAppSetting('botTaskReward', '20');
-      const partnerTaskReward = await storage.getAppSetting('partnerTaskReward', '5');
-      const bugRewardPerTask = await storage.getAppSetting('bug_reward_per_task', '10');
-
-      // Get ALL approved public tasks (admin-created AND user-created after admin approval)
-      // Task eligibility: status = 'running' (approved/active), user hasn't completed, not their own task
-      const advertiserTasks = await storage.getActiveTasksForUser(userId);
-      
-      // Format advertiser tasks with AXN and BUG rewards from admin settings
-      const formattedTasks = advertiserTasks.map(task => {
-        let rewardAXN = 0;
-        if (task.taskType === 'channel') {
-          rewardAXN = parseInt(channelTaskReward);
-        } else if (task.taskType === 'bot') {
-          rewardAXN = parseInt(botTaskReward);
-        } else if (task.taskType === 'partner') {
-          rewardAXN = parseInt(partnerTaskReward);
-        } else {
-          rewardAXN = 20;
-        }
-        
-        return {
-          id: task.id,
-          type: 'advertiser',
-          taskType: task.taskType,
-          title: task.title,
-          link: task.link,
-          rewardAXN,
-          rewardBUG: parseInt(bugRewardPerTask),
-          rewardType: 'AXN',
-          isAdminTask: false,
-          isAdvertiserTask: true,
-          priority: 1
-        };
-      });
-
+      const [user] = await db.select({ referralCode: users.referralCode }).from(users).where(eq(users.id, userId));
       res.json({
         success: true,
-        tasks: formattedTasks,
+        tasks: [],
         completedTaskIds: [],
         referralCode: user?.referralCode,
-        totalAvailableTasks: formattedTasks.length
+        totalAvailableTasks: 0
       });
       
     } catch (error) {
@@ -3197,100 +2814,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       ];
       
-      // Get active promotions from database (if any) - only show approved promotions
-      let activeTasks = [];
-      try {
-        activeTasks = await db
-          .select({
-            id: promotions.id,
-            type: promotions.type,
-            url: promotions.url,
-            rewardPerUser: promotions.rewardPerUser,
-            limit: promotions.limit,
-            claimedCount: promotions.claimedCount,
-            title: promotions.title,
-            description: promotions.description,
-            channelMessageId: promotions.channelMessageId,
-            createdAt: promotions.createdAt
-          })
-          .from(promotions)
-          .where(and(
-            eq(promotions.status, 'active'),
-            eq(promotions.isApproved, true), // Only show admin-approved promotions
-            sql`${promotions.claimedCount} < ${promotions.limit}`
-          ))
-          .orderBy(desc(promotions.createdAt));
-      } catch (dbError) {
-        console.log('⚠️ Database query failed, using hardcoded tasks only:', dbError);
-        activeTasks = [];
-      }
+      // Use hardcoded tasks only (deleted tables removed)
+      const allTasks = hardcodedDailyTasks;
       
-      // Use hardcoded tasks only if database has no active tasks
-      let allTasks = [];
-      
-      if (activeTasks.length === 0) {
-        console.log('🔄 Database empty, using hardcoded daily tasks fallback');
-        allTasks = hardcodedDailyTasks;
-      } else {
-        allTasks = activeTasks;
-      }
-      
-      // Check which tasks user has already completed
+      // No completion tracking from deleted tables
       const completedIds = new Set<string>();
-      
-      // Calculate current task date using 12:00 PM UTC reset logic
-      const getCurrentTaskDate = (): string => {
-        const now = new Date();
-        const resetHour = 12; // 12:00 PM UTC
-        
-        // If current time is before 12:00 PM UTC, use yesterday's date
-        if (now.getUTCHours() < resetHour) {
-          now.setUTCDate(now.getUTCDate() - 1);
-        }
-        
-        return now.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
-      };
-      
-      const currentTaskDate = getCurrentTaskDate();
-      
-      // Query non-daily task completions from taskCompletions table
-      try {
-        const nonDailyCompletions = await db
-          .select({ promotionId: taskCompletions.promotionId })
-          .from(taskCompletions)
-          .where(eq(taskCompletions.userId, userId));
-        
-        // Add non-daily completed tasks (permanently hidden)
-        for (const completion of nonDailyCompletions) {
-          const task = allTasks.find(t => t.id === completion.promotionId);
-          const isDailyTask = task && ['channel_visit', 'share_link', 'invite_friend', 'ads_goal_mini', 'ads_goal_light', 'ads_goal_medium', 'ads_goal_hard', 'daily'].includes(task.type);
-          
-          if (!isDailyTask) {
-            // Only add non-daily tasks to completed set
-            completedIds.add(completion.promotionId);
-          }
-        }
-      } catch (dbError) {
-        console.log('⚠️ Task completions query failed, continuing without completion check:', dbError);
-      }
-      
-      // Query daily task completions from dailyTasks table for today only
-      try {
-        const dailyCompletions = await db
-          .select({ promotionId: dailyTasks.promotionId })
-          .from(dailyTasks)
-          .where(and(
-            eq(dailyTasks.userId, userId),
-            eq(dailyTasks.completionDate, currentTaskDate)
-          ));
-        
-        // Add daily completed tasks (hidden until tomorrow's reset at 12:00 PM UTC)
-        for (const completion of dailyCompletions) {
-          completedIds.add(completion.promotionId);
-        }
-      } catch (dbError) {
-        console.log('⚠️ Daily task completions query failed, continuing without daily completion check:', dbError);
-      }
       
       // Filter out completed tasks and generate proper task links
       const availableTasks = allTasks
@@ -3348,21 +2876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('❌ Error fetching tasks:', error);
       
-      // Fallback: Return hardcoded daily tasks with exact format matching
-      const fallbackDailyTasks = hardcodedDailyTasks.map(task => ({
-        ...task,
-        reward: task.rewardPerUser, // Map rewardPerUser to reward for frontend compatibility
-        channelPostUrl: task.type === 'channel_visit' ? task.url : null,
-        claimUrl: task.type === 'channel_visit' ? task.url : 
-                  task.type.startsWith('ads_goal_') ? null : task.url,
-        username: task.type === 'channel_visit' ? 'PaidAdsNews' : null
-      }));
-      
-      res.json({
-        success: true,
-        tasks: fallbackDailyTasks,
-        total: fallbackDailyTasks.length
-      });
+      res.json({ success: true, tasks: [], total: 0 });
     }
   });
 
@@ -3378,8 +2892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Step 2: Ensure all users have referral codes
       await storage.ensureAllUsersHaveReferralCodes();
       
-      // Step 3: Sync friendsInvited counts from database for withdrawal unlock
-      await storage.syncFriendsInvitedCounts();
+      // Step 3: syncFriendsInvitedCounts removed
       
       // Step 4: Get repair summary
       const totalReferralsResult = await db
@@ -3519,10 +3032,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dailyActiveUsers: stats.activeUsersToday,
         totalAdsWatched: stats.totalAdsWatched,
         todayAdsWatched: stats.adsWatchedToday,
-        totalMiningSats: stats.totalMiningSats,
-        miningToday: stats.miningToday,
-        usersWithReferrals: stats.usersWithReferrals,
-        totalSatsWithdrawn: stats.totalSatsWithdrawn,
+        totalMiningSats: stats.totalMiningSats ?? '0',
+        miningToday: stats.miningToday ?? '0',
+        usersWithReferrals: stats.usersWithReferrals ?? 0,
+        totalSatsWithdrawn: stats.totalSatsWithdrawn ?? '0',
         activePromos: 0
       });
     } catch (error) {
@@ -3599,7 +3112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.params;
       const logs = await storage.getBanLogs();
-      const userLogs = logs.filter(l => l.userId === userId);
+      const userLogs = logs.filter((l: any) => l.bannedUserId === userId || l.userId === userId);
       res.json(userLogs);
     } catch (error) {
       res.status(500).json({ message: 'Internal server error' });
@@ -4031,7 +3544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           uid: user.referralCode,
           userId: user.id,
           balance: user.balance,
-          totalEarnings: user.totalEarned,
+          totalEarnings: (user as any).total_earned,
           withdrawalCount: withdrawalCount[0]?.count || 0,
           referralCount: referralCount[0]?.count || 0,
           status: user.banned ? 'Banned' : 'Active',
@@ -4050,13 +3563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get('/api/admin/user-tasks/:userId', authenticateAdmin, async (req: any, res) => {
-    try {
-      const { userId } = req.params;
-      const tasks = await db.select().from(dailyTasks).where(eq(dailyTasks.userId, userId));
-      res.json(tasks);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
+    res.json([]);
   });
 
   app.get('/api/admin/user-ads/:userId', authenticateAdmin, async (req: any, res) => {
@@ -4105,56 +3612,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(allUsers);
     } catch (error) {
       console.error('❌ Error fetching admin users:', error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get('/api/admin/user-tasks/:userId', authenticateAdmin, async (req: any, res) => {
-    try {
-      const { userId } = req.params;
-      const tasks = await db.select().from(dailyTasks).where(eq(dailyTasks.userId, userId));
-      res.json(tasks);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get('/api/admin/user-ads/:userId', authenticateAdmin, async (req: any, res) => {
-    try {
-      const { userId } = req.params;
-      const ads = await db.select().from(earnings).where(and(eq(earnings.userId, userId), eq(earnings.source, 'ad_watch')));
-      res.json(ads);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get('/api/admin/user-referrals/:userId', authenticateAdmin, async (req: any, res) => {
-    try {
-      const { userId } = req.params;
-      const refs = await db.select().from(referrals).where(eq(referrals.referrerId, userId));
-      res.json(refs);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get('/api/admin/user-withdrawals/:userId', authenticateAdmin, async (req: any, res) => {
-    try {
-      const { userId } = req.params;
-      const draws = await db.select().from(withdrawals).where(eq(withdrawals.userId, userId));
-      res.json(draws);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get('/api/admin/user-ban-history/:userId', authenticateAdmin, async (req: any, res) => {
-    try {
-      const { userId } = req.params;
-      const logs = await db.select().from(banLogs).where(eq(banLogs.bannedUserId, userId));
-      res.json(logs);
-    } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -4307,190 +3764,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ============ Admin Task Management Endpoints ============
+  // ============ Admin Task Management Endpoints (advertiserTasks table dropped) ============
 
-  app.get('/api/admin/pending-tasks', authenticateAdmin, async (req: any, res) => {
-    try {
-      const pendingTasks = await storage.getPendingTasks();
-      
-      const tasksWithUserInfo = await Promise.all(
-        pendingTasks.map(async (task) => {
-          const advertiser = await storage.getUser(task.advertiserId);
-          return {
-            ...task,
-            advertiserUid: advertiser?.uid || 'Unknown',
-            advertiserName: advertiser?.firstName || advertiser?.username || 'Unknown',
-            advertiserTelegramUsername: advertiser?.username || '',
-          };
-        })
-      );
-      
-      res.json({ success: true, tasks: tasksWithUserInfo });
-    } catch (error) {
-      console.error("Error fetching pending tasks:", error);
-      res.status(500).json({ success: false, message: "Failed to fetch pending tasks" });
-    }
+  app.get('/api/admin/pending-tasks', authenticateAdmin, async (_req: any, res) => {
+    res.json({ success: true, tasks: [] });
   });
 
-  app.get('/api/admin/pending-tasks', authenticateAdmin, async (req: any, res) => {
-    try {
-      const pendingTasks = await storage.getTasksByStatus("under_review");
-      
-      const tasksWithUserInfo = await Promise.all(
-        pendingTasks.map(async (task) => {
-          const advertiser = await storage.getUser(task.advertiserId);
-          return {
-            ...task,
-            advertiserUid: advertiser?.uid || 'Unknown',
-            advertiserName: advertiser?.firstName || advertiser?.username || 'Unknown',
-            advertiserTelegramUsername: advertiser?.username || '',
-          };
-        })
-      );
-      
-      res.json({ success: true, tasks: tasksWithUserInfo });
-    } catch (error) {
-      console.error("Error fetching pending tasks:", error);
-      res.status(500).json({ success: false, message: "Failed to fetch pending tasks" });
-    }
+  app.get('/api/admin/all-tasks', authenticateAdmin, async (_req: any, res) => {
+    res.json({ success: true, tasks: [] });
   });
 
-  app.get('/api/admin/all-tasks', authenticateAdmin, async (req: any, res) => {
-    try {
-      const allTasks = await storage.getAllTasks();
-      
-      const tasksWithUserInfo = await Promise.all(
-        allTasks.map(async (task) => {
-          const advertiser = await storage.getUser(task.advertiserId);
-          return {
-            ...task,
-            advertiserUid: advertiser?.uid || 'Unknown',
-            advertiserName: advertiser?.firstName || advertiser?.username || 'Unknown',
-            advertiserTelegramUsername: advertiser?.username || '',
-          };
-        })
-      );
-      
-      res.json({ success: true, tasks: tasksWithUserInfo });
-    } catch (error) {
-      console.error("Error fetching all tasks:", error);
-      res.status(500).json({ success: false, message: "Failed to fetch tasks" });
-    }
+  app.post('/api/admin/tasks/:taskId/approve', authenticateAdmin, async (_req: any, res) => {
+    res.status(410).json({ success: false, message: 'Advertiser task system removed' });
   });
 
-  app.post('/api/admin/tasks/:taskId/approve', authenticateAdmin, async (req: any, res) => {
-    try {
-      const { taskId } = req.params;
-      const task = await storage.getTaskById(taskId);
-      
-      if (!task) {
-        return res.status(404).json({ success: false, message: "Task not found" });
-      }
-      
-      if (task.status !== "under_review") {
-        return res.status(400).json({ success: false, message: "Task is not under review" });
-      }
-      
-      const updatedTask = await storage.approveTask(taskId);
-      console.log(`✅ Task ${taskId} approved by admin`);
-      
-      res.json({ success: true, task: updatedTask, message: "Task approved successfully" });
-    } catch (error) {
-      console.error("Error approving task:", error);
-      res.status(500).json({ success: false, message: "Failed to approve task" });
-    }
+  app.post('/api/admin/tasks/:taskId/reject', authenticateAdmin, async (_req: any, res) => {
+    res.status(410).json({ success: false, message: 'Advertiser task system removed' });
   });
 
-  app.post('/api/admin/tasks/:taskId/reject', authenticateAdmin, async (req: any, res) => {
-    try {
-      const { taskId } = req.params;
-      const task = await storage.getTaskById(taskId);
-      
-      if (!task) {
-        return res.status(404).json({ success: false, message: "Task not found" });
-      }
-      
-      if (task.status !== "under_review") {
-        return res.status(400).json({ success: false, message: "Task is not under review" });
-      }
-      
-      const updatedTask = await storage.rejectTask(taskId);
-      console.log(`❌ Task ${taskId} rejected by admin`);
-      
-      res.json({ success: true, task: updatedTask, message: "Task rejected" });
-    } catch (error) {
-      console.error("Error rejecting task:", error);
-      res.status(500).json({ success: false, message: "Failed to reject task" });
-    }
+  app.post('/api/admin/tasks/:taskId/pause', authenticateAdmin, async (_req: any, res) => {
+    res.status(410).json({ success: false, message: 'Advertiser task system removed' });
   });
 
-  app.post('/api/admin/tasks/:taskId/pause', authenticateAdmin, async (req: any, res) => {
-    try {
-      const { taskId } = req.params;
-      const task = await storage.getTaskById(taskId);
-      
-      if (!task) {
-        return res.status(404).json({ success: false, message: "Task not found" });
-      }
-      
-      if (task.status !== "running") {
-        return res.status(400).json({ success: false, message: "Only running tasks can be paused" });
-      }
-      
-      const updatedTask = await storage.pauseTask(taskId);
-      console.log(`⏸️ Task ${taskId} paused by admin`);
-      
-      res.json({ success: true, task: updatedTask, message: "Task paused" });
-    } catch (error) {
-      console.error("Error pausing task:", error);
-      res.status(500).json({ success: false, message: "Failed to pause task" });
-    }
+  app.post('/api/admin/tasks/:taskId/resume', authenticateAdmin, async (_req: any, res) => {
+    res.status(410).json({ success: false, message: 'Advertiser task system removed' });
   });
 
-  app.post('/api/admin/tasks/:taskId/resume', authenticateAdmin, async (req: any, res) => {
-    try {
-      const { taskId } = req.params;
-      const task = await storage.getTaskById(taskId);
-      
-      if (!task) {
-        return res.status(404).json({ success: false, message: "Task not found" });
-      }
-      
-      if (task.status !== "paused") {
-        return res.status(400).json({ success: false, message: "Only paused tasks can be resumed" });
-      }
-      
-      const updatedTask = await storage.resumeTask(taskId);
-      console.log(`▶️ Task ${taskId} resumed by admin`);
-      
-      res.json({ success: true, task: updatedTask, message: "Task resumed" });
-    } catch (error) {
-      console.error("Error resuming task:", error);
-      res.status(500).json({ success: false, message: "Failed to resume task" });
-    }
-  });
-
-  app.delete('/api/admin/tasks/:taskId', authenticateAdmin, async (req: any, res) => {
-    try {
-      const { taskId } = req.params;
-      const task = await storage.getTaskById(taskId);
-      
-      if (!task) {
-        return res.status(404).json({ success: false, message: "Task not found" });
-      }
-      
-      const success = await storage.deleteTask(taskId);
-      
-      if (success) {
-        console.log(`🗑️ Task ${taskId} deleted by admin`);
-        res.json({ success: true, message: "Task deleted successfully" });
-      } else {
-        res.status(500).json({ success: false, message: "Failed to delete task" });
-      }
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      res.status(500).json({ success: false, message: "Failed to delete task" });
-    }
+  app.delete('/api/admin/tasks/:taskId', authenticateAdmin, async (_req: any, res) => {
+    res.status(410).json({ success: false, message: 'Advertiser task system removed' });
   });
 
   // ============ End Admin Task Management ============
@@ -4644,7 +3945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           verificationMessage = 'Channel verification failed - bot token not configured';
         } else {
           // Extract channel username from promotion URL
-          const promotion = await storage.getPromotion(promotionId);
+          const promotion = await (storage as any).getPromotion(promotionId);
           const channelMatch = promotion?.url?.match(/t\.me\/([^/?]+)/);
           const channelName = channelMatch ? channelMatch[1] : 'PaidAdsNews';
           
@@ -4719,7 +4020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ Task verification successful for user ${userId}:`, verificationMessage);
       
       // Get promotion to fetch actual reward amount
-      const promotion = await storage.getPromotion(promotionId);
+      const promotion = await (storage as any).getPromotion(promotionId);
       if (!promotion) {
         return res.status(404).json({ 
           success: false, 
@@ -4745,7 +4046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Complete the task using appropriate method
       const result = isDailyTask 
         ? await storage.completeDailyTask(promotionId, userId, rewardAmount)
-        : await storage.completeTask(promotionId, userId, rewardAmount);
+        : await (storage as any).completeTask(promotionId, userId, rewardAmount);
       
       if (result.success) {
         // Get updated balance for real-time sync
@@ -5633,8 +4934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: feeInPad.toString(),
           type: 'deduction',
           description: `TONT wallet change fee`,
-          createdAt: new Date()
-        });
+        } as any);
         
         console.log(`✅ TONT wallet changed for user ${userId} - Fee: ${feeInPad} AXN deducted`);
         
@@ -5752,8 +5052,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: feeInPad.toString(),
           type: 'deduction',
           description: `Telegram Stars username change fee`,
-          createdAt: new Date()
-        });
+        } as any);
         
         console.log(`✅ Telegram Stars username changed for user ${userId} - Fee: ${feeInPad} AXN deducted`);
         
@@ -5791,696 +5090,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Advertiser Task System API routes
-  
-  // Get all active advertiser tasks (public task feed) - excludes tasks already completed by user
-  app.get('/api/advertiser-tasks', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const tasks = await storage.getActiveTasksForUser(userId);
-      res.json({ success: true, tasks });
-    } catch (error) {
-      console.error("Error fetching advertiser tasks:", error);
-      res.status(500).json({ success: false, message: "Failed to fetch tasks" });
-    }
-  });
+  // Advertiser Task System routes removed (tables dropped)
 
-  // Get my created tasks
-  app.get('/api/advertiser-tasks/my-tasks', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const myTasks = await storage.getMyTasks(userId);
-      res.json({ success: true, tasks: myTasks });
-    } catch (error) {
-      console.error("Error fetching my tasks:", error);
-      res.status(500).json({ success: false, message: "Failed to fetch your tasks" });
-    }
-  });
 
-  // Create new advertiser task
-  app.post('/api/advertiser-tasks/create', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const { taskType, title, link, totalClicksRequired } = req.body;
-
-      console.log('📝 Task creation request:', { userId, taskType, title, link, totalClicksRequired });
-
-      // Validation
-      if (!taskType || !title || !link || !totalClicksRequired) {
-        return res.status(400).json({
-          success: false,
-          message: "Task type, title, link, and total clicks required are mandatory"
-        });
-      }
-
-      // Validate task type
-      if (taskType !== "channel" && taskType !== "bot" && taskType !== "partner") {
-        return res.status(400).json({
-          success: false,
-          message: "Task type must be 'channel', 'bot', or 'partner'"
-        });
-      }
-
-      // Get user data to check if admin early for partner task validation
-      const [userData] = await db
-        .select({ 
-          tonBalance: users.tonBalance,
-          telegram_id: users.telegram_id 
-        })
-        .from(users)
-        .where(eq(users.id, userId));
-
-      if (!userData) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found"
-        });
-      }
-
-      const userIsAdmin = userData.telegram_id === process.env.TELEGRAM_ADMIN_ID || 
-                          (process.env.NODE_ENV === 'development' && userData.telegram_id === '123456789');
-
-      // Partner tasks can only be created by admin
-      if (taskType === "partner" && !userIsAdmin) {
-        return res.status(403).json({
-          success: false,
-          message: "Only admins can create partner tasks"
-        });
-      }
-
-      // Minimum clicks: 1 for partner tasks, use admin settings for others
-      const minClicksSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'minimum_clicks')).limit(1);
-      const minClicksFromSettings = parseInt(minClicksSetting[0]?.settingValue || '100');
-      const minClicks = taskType === "partner" ? 1 : minClicksFromSettings;
-      if (totalClicksRequired < minClicks) {
-        return res.status(400).json({
-          success: false,
-          message: `Minimum ${minClicks} clicks required`
-        });
-      }
-
-      // Partner tasks are free and always reward 5 AXN
-      if (taskType === "partner") {
-        const task = await storage.createTask({
-          advertiserId: userId,
-          taskType,
-          title,
-          link,
-          totalClicksRequired,
-          costPerClick: "0",
-          totalCost: "0",
-          status: "running",
-        });
-
-        console.log('✅ Partner task created:', task);
-
-        broadcastUpdate({
-          type: 'task:created',
-          task: task
-        });
-
-        return res.json({ 
-          success: true, 
-          message: "Partner task created successfully",
-          task 
-        });
-      }
-
-      // Use the userData already fetched for partner task validation
-      const user = userData;
-      const isAdmin = userIsAdmin;
-
-      // Admin users: create tasks for free (no payment deducted)
-      // Regular users: future implementation via SAT (not active yet)
-      if (isAdmin) {
-        console.log('🔑 Admin task creation - free (no payment deducted)');
-
-        const task = await storage.createTask({
-          advertiserId: userId,
-          taskType,
-          title,
-          link,
-          totalClicksRequired,
-          costPerClick: "0",
-          totalCost: "0",
-          status: "running",
-        });
-
-        console.log('✅ Admin task saved to database:', task);
-
-        broadcastUpdate({
-          type: 'task:created',
-          task: task
-        });
-
-        return res.json({ 
-          success: true, 
-          message: "Task created successfully",
-          task 
-        });
-      } else {
-        // Regular users: task creation is admin-only
-        return res.status(403).json({
-          success: false,
-          message: "Task creation is restricted to admins only."
-        });
-      }
-    } catch (error) {
-      console.error("Error creating task:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to create task" 
-      });
-    }
-  });
+  // Advertiser task create route removed (advertiserTasks table dropped)
 
   // Record task click (when publisher clicks on a task)
-  app.post('/api/advertiser-tasks/:taskId/click', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const { taskId } = req.params;
+  // advertiser-tasks click/claim/increase-limit/has-clicked/pause/resume/delete/verify-channel routes removed
 
-      const result = await storage.recordTaskClick(taskId, userId);
-      
-      if (!result.success) {
-        return res.status(400).json(result);
-      }
-
-      res.json(result);
-    } catch (error) {
-      console.error("Error recording task click:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to record task click" 
-      });
-    }
-  });
-
-  // Claim task reward (after user clicks on a task)
-  app.post('/api/advertiser-tasks/:taskId/claim', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const { taskId } = req.params;
-
-      // Get the task click record
-      const taskClick = await db
-        .select()
-        .from(taskClicks)
-        .where(and(
-          eq(taskClicks.taskId, taskId),
-          eq(taskClicks.publisherId, userId)
-        ))
-        .limit(1);
-
-      if (taskClick.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "You haven't clicked this task yet"
-        });
-      }
-
-      // Check if already claimed
-      if (taskClick[0].claimedAt) {
-        return res.status(400).json({
-          success: false,
-          message: "You have already claimed the reward for this task"
-        });
-      }
-
-      const rewardAXN = parseInt(taskClick[0].rewardAmount || '0');
-      
-      // Mark as claimed
-      await db
-        .update(taskClicks)
-        .set({ claimedAt: new Date() })
-        .where(and(
-          eq(taskClicks.taskId, taskId),
-          eq(taskClicks.publisherId, userId)
-        ));
-
-      // Add reward to user's balance
-      const [user] = await db
-        .select({ balance: users.balance })
-        .from(users)
-        .where(eq(users.id, userId));
-
-      const currentBalance = parseInt(user?.balance || '0');
-      const newBalance = currentBalance + rewardAXN;
-
-      await db
-        .update(users)
-        .set({
-          balance: newBalance.toString(),
-          updatedAt: new Date()
-        })
-        .where(eq(users.id, userId));
-
-      // Record the earning
-      const task = await storage.getTaskById(taskId);
-      await db.insert(earnings).values({
-        userId: userId,
-        amount: rewardAXN.toString(),
-        source: 'task_completion',
-        description: `Completed ${task?.taskType || 'advertiser'} task: ${task?.title || 'Task'}`,
-      });
-
-      console.log(`✅ Task reward claimed: ${taskId} by ${userId} - Reward: ${rewardAXN} AXN`);
-
-      res.json({
-        success: true,
-        message: `Reward claimed! +${rewardAXN} AXN`,
-        reward: rewardAXN,
-        newBalance: newBalance.toString()
-      });
-    } catch (error) {
-      console.error("Error claiming task reward:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to claim task reward" 
-      });
-    }
-  });
-
-  // Increase task click limit
-  app.post('/api/advertiser-tasks/:taskId/increase-limit', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const { taskId } = req.params;
-      const { additionalClicks } = req.body;
-
-      // Validation - minimum additional clicks from admin settings
-      const addMinClicksSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'minimum_clicks')).limit(1);
-      const minAddClicks = parseInt(addMinClicksSetting[0]?.settingValue || '500');
-      if (!additionalClicks || additionalClicks < minAddClicks) {
-        return res.status(400).json({
-          success: false,
-          message: `Minimum ${minAddClicks} additional clicks required`
-        });
-      }
-
-      // Verify task ownership
-      const task = await storage.getTaskById(taskId);
-      if (!task) {
-        return res.status(404).json({
-          success: false,
-          message: "Task not found"
-        });
-      }
-
-      if (task.advertiserId !== userId) {
-        return res.status(403).json({
-          success: false,
-          message: "You don't own this task"
-        });
-      }
-
-      // Fetch dynamic task cost per click from admin settings
-      const taskCostSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'task_creation_cost')).limit(1);
-      const costPerClick = taskCostSetting[0]?.settingValue || "0.0003";
-      const additionalCost = (parseFloat(costPerClick) * additionalClicks).toFixed(8);
-
-      // Get user data to check if admin
-      const [user] = await db
-        .select({ 
-          tonBalance: users.tonBalance, 
-          telegram_id: users.telegram_id 
-        })
-        .from(users)
-        .where(eq(users.id, userId));
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found"
-        });
-      }
-
-      const isAdmin = user.telegram_id === process.env.TELEGRAM_ADMIN_ID;
-      const requiredAmount = parseFloat(additionalCost);
-
-      // Admin users: use  balance
-      // Regular users: use  balance
-      if (isAdmin) {
-        console.log('🔑 Admin adding clicks - using  balance');
-        const [adminUserData] = await db
-          .select({ tonBalance: users.tonBalance })
-          .from(users)
-          .where(eq(users.id, userId));
-        
-        const currentTONBalance = parseFloat(adminUserData?.tonBalance || '0');
-
-        // Check if admin has sufficient  balance
-        if (currentTONBalance < requiredAmount) {
-          return res.status(400).json({
-            success: false,
-            message: "Insufficient  balance. Please top up your  balance."
-          });
-        }
-
-        // Deduct  balance
-        const newTONBalance = (currentTONBalance - requiredAmount).toFixed(10);
-        await db
-          .update(users)
-          .set({ tonBalance: newTONBalance, updatedAt: new Date() })
-          .where(eq(users.id, userId));
-
-        console.log('✅ Payment deducted ():', { oldBalance: currentTONBalance, newBalance: newTONBalance, deducted: additionalCost });
-      } else {
-        console.log('👤 Regular user adding clicks - using  balance');
-        const currentTonBalance = parseFloat(user.tonBalance || '0');
-
-        // Check if user has sufficient  balance
-        if (currentTonBalance < requiredAmount) {
-          return res.status(400).json({
-            success: false,
-            message: "Insufficient . You need  to add more clicks."
-          });
-        }
-
-        // Deduct  balance
-        const newTonBalance = (currentTonBalance - requiredAmount).toFixed(8);
-        await db
-          .update(users)
-          .set({ tonBalance: newTonBalance, updatedAt: new Date() })
-          .where(eq(users.id, userId));
-
-        console.log('✅ Payment deducted ():', { oldBalance: currentTonBalance, newBalance: newTonBalance, deducted: additionalCost });
-      }
-
-      // Increase task limit
-      const updatedTask = await storage.increaseTaskLimit(taskId, additionalClicks, additionalCost);
-
-      // Log transaction
-      await storage.logTransaction({
-        userId,
-        amount: additionalCost,
-        type: "deduction",
-        source: "task_limit_increase",
-        description: `Increased limit for task: ${task.title}`,
-        metadata: { taskId, additionalClicks }
-      });
-
-      res.json({ 
-        success: true, 
-        message: "Task limit increased successfully",
-        task: updatedTask 
-      });
-    } catch (error) {
-      console.error("Error increasing task limit:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to increase task limit" 
-      });
-    }
-  });
-
-  // Check if user has clicked a task
-  app.get('/api/advertiser-tasks/:taskId/has-clicked', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const { taskId } = req.params;
-
-      const hasClicked = await storage.hasUserClickedTask(taskId, userId);
-      
-      res.json({ success: true, hasClicked });
-    } catch (error) {
-      console.error("Error checking task click:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to check task click status" 
-      });
-    }
-  });
-
-  // User pause their own task
-  app.post('/api/advertiser-tasks/:taskId/pause', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const { taskId } = req.params;
-
-      const task = await storage.getTaskById(taskId);
-      
-      if (!task) {
-        return res.status(404).json({ success: false, message: "Task not found" });
-      }
-
-      if (task.advertiserId !== userId) {
-        return res.status(403).json({ success: false, message: "You can only pause your own tasks" });
-      }
-
-      if (task.status !== "running") {
-        return res.status(400).json({ success: false, message: "Only running tasks can be paused" });
-      }
-
-      const updatedTask = await storage.pauseTask(taskId);
-      console.log(`⏸️ Task ${taskId} paused by owner ${userId}`);
-
-      res.json({ success: true, task: updatedTask, message: "Task paused" });
-    } catch (error) {
-      console.error("Error pausing task:", error);
-      res.status(500).json({ success: false, message: "Failed to pause task" });
-    }
-  });
-
-  // User resume their own task
-  app.post('/api/advertiser-tasks/:taskId/resume', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const { taskId } = req.params;
-
-      const task = await storage.getTaskById(taskId);
-      
-      if (!task) {
-        return res.status(404).json({ success: false, message: "Task not found" });
-      }
-
-      if (task.advertiserId !== userId) {
-        return res.status(403).json({ success: false, message: "You can only resume your own tasks" });
-      }
-
-      if (task.status !== "paused") {
-        return res.status(400).json({ success: false, message: "Only paused tasks can be resumed" });
-      }
-
-      const updatedTask = await storage.resumeTask(taskId);
-      console.log(`▶️ Task ${taskId} resumed by owner ${userId}`);
-
-      res.json({ success: true, task: updatedTask, message: "Task resumed" });
-    } catch (error) {
-      console.error("Error resuming task:", error);
-      res.status(500).json({ success: false, message: "Failed to resume task" });
-    }
-  });
-
-  // Delete advertiser task
-  app.delete('/api/advertiser-tasks/:taskId', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const { taskId } = req.params;
-
-      console.log('🗑️ Delete task request:', { userId, taskId });
-
-      // Get task details
-      const [task] = await db
-        .select()
-        .from(advertiserTasks)
-        .where(eq(advertiserTasks.id, taskId));
-
-      if (!task) {
-        return res.status(404).json({
-          success: false,
-          message: "Task not found"
-        });
-      }
-
-      // Verify ownership
-      if (task.advertiserId !== userId) {
-        return res.status(403).json({
-          success: false,
-          message: "You can only delete your own tasks"
-        });
-      }
-
-      // Calculate refund amount for remaining clicks
-      const remainingClicks = task.totalClicksRequired - task.currentClicks;
-      const refundAmount = (parseFloat(task.costPerClick) * remainingClicks).toFixed(8);
-
-      console.log('💰 Refund calculation:', { 
-        totalClicks: task.totalClicksRequired, 
-        currentClicks: task.currentClicks, 
-        remainingClicks,
-        costPerClick: task.costPerClick,
-        refundAmount 
-      });
-
-      // Delete task and refund user in a transaction
-      await db.transaction(async (tx) => {
-        // Delete associated clicks first to avoid foreign key constraint issues
-        await tx
-          .delete(taskClicks)
-          .where(eq(taskClicks.taskId, taskId));
-
-        // Delete the task
-        await tx
-          .delete(advertiserTasks)
-          .where(eq(advertiserTasks.id, taskId));
-
-        // Refund remaining balance if any
-        if (parseFloat(refundAmount) > 0) {
-          const [user] = await tx
-            .select({ 
-              tonBalance: users.tonBalance, 
-              telegram_id: users.telegram_id 
-            })
-            .from(users)
-            .where(eq(users.id, userId));
-
-          if (user) {
-            const isAdmin = user.telegram_id === process.env.TELEGRAM_ADMIN_ID;
-
-            if (isAdmin) {
-              // Admin: Refund to  balance
-              const [adminUser] = await tx
-                .select({ tonBalance: users.tonBalance })
-                .from(users)
-                .where(eq(users.id, userId));
-              
-              const newTONBalance = (parseFloat(adminUser?.tonBalance || '0') + parseFloat(refundAmount)).toFixed(10);
-              await tx
-                .update(users)
-                .set({ tonBalance: newTONBalance, updatedAt: new Date() })
-                .where(eq(users.id, userId));
-
-              console.log('✅ Admin refund processed ():', { oldBalance: adminUser?.tonBalance, refundAmount, newBalance: newTONBalance });
-            } else {
-              // Non-admin: Refund to  balance
-              const newTONBalance = (parseFloat(user.tonBalance || '0') + parseFloat(refundAmount)).toFixed(8);
-              await tx
-                .update(users)
-                .set({ tonBalance: newTONBalance, updatedAt: new Date() })
-                .where(eq(users.id, userId));
-
-              console.log('✅ User refund processed ():', { oldBalance: user.tonBalance, refundAmount, newBalance: newTONBalance });
-            }
-
-            // Log transaction
-            await storage.logTransaction({
-              userId,
-              amount: refundAmount,
-              type: "credit",
-              source: "task_deletion_refund",
-              description: `Refund for deleting task: ${task.title} (${isAdmin ? '' : ''})`,
-              metadata: { taskId, remainingClicks, currency: isAdmin ? '' : '' }
-            });
-          }
-        }
-      });
-
-      console.log('✅ Task deleted successfully:', taskId);
-
-      res.json({ 
-        success: true, 
-        message: "Task deleted successfully",
-        refundAmount 
-      });
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to delete task" 
-      });
-    }
-  });
-
-  // Verify channel for bot admin
-  app.post('/api/advertiser-tasks/verify-channel', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const { channelLink } = req.body;
-
-      console.log('🔍 Channel verification request:', { userId, channelLink });
-
-      // Validate channel link
-      if (!channelLink || !channelLink.includes('t.me/')) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid channel link"
-        });
-      }
-
-      // Extract channel username
-      const match = channelLink.match(/t\.me\/([^/?]+)/);
-      if (!match || !match[1]) {
-        return res.status(400).json({
-          success: false,
-          message: "Could not extract channel username from link"
-        });
-      }
-
-      const channelUsername = match[1];
-
-      // Check if bot token is configured
-      const botToken = process.env.TELEGRAM_BOT_TOKEN;
-      if (!botToken) {
-        console.warn('⚠️ TELEGRAM_BOT_TOKEN not configured - skipping actual verification');
-        return res.json({
-          success: true,
-          message: "Channel verification successful (dev mode)",
-          verified: true
-        });
-      }
-
-      try {
-        // Try to get chat administrators
-        const telegramApiUrl = `https://api.telegram.org/bot${botToken}/getChatAdministrators`;
-        const chatId = channelUsername.startsWith('@') ? channelUsername : `@${channelUsername}`;
-        
-        const response = await fetch(`${telegramApiUrl}?chat_id=${encodeURIComponent(chatId)}`);
-        const data = await response.json();
-
-        if (!data.ok) {
-          console.error('❌ Telegram API error:', data);
-          return res.status(400).json({
-            success: false,
-            message: "Could not access channel. Make sure the bot is added as admin."
-          });
-        }
-
-        // Check if our bot is in the admin list
-        const botUsername = await getBotUsername();
-        const isAdmin = data.result.some((admin: any) => 
-          admin.user?.username?.toLowerCase() === botUsername.toLowerCase()
-        );
-
-        if (!isAdmin) {
-          return res.status(400).json({
-            success: false,
-            message: `@${botUsername} is not an administrator in this channel. Please add the bot as admin first.`
-          });
-        }
-
-        console.log('✅ Channel verified:', channelUsername);
-
-        res.json({ 
-          success: true, 
-          message: "Channel verified successfully",
-          verified: true 
-        });
-      } catch (error) {
-        console.error('❌ Error verifying channel:', error);
-        res.status(500).json({ 
-          success: false, 
-          message: "Failed to verify channel" 
-        });
-      }
-    } catch (error) {
-      console.error("Error in channel verification:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to verify channel" 
-      });
-    }
-  });
+  // claim/increase-limit/has-clicked/pause/resume/delete/verify-channel advertiser routes removed
   
   // User withdrawal endpoints
   
@@ -6796,12 +5414,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           packageTONAmount = selectedPkg.ton;
           
           // Check if user has enough  balance for this package
-          if (currentUsdBalanceForBug < packageTONAmount) {
-            throw new Error(`Insufficient balance. You need ${packageTONAmount.toFixed(2)} TON for this package.`);
+          if (currentUsdBalanceForBug < packageTONAmount!) {
+            throw new Error(`Insufficient balance. You need ${packageTONAmount!.toFixed(2)} TON for this package.`);
           }
         } else {
           // FULL withdrawal: dynamic BUG requirement based on full  balance
-          const bugPerTON = bugPerUsd * parseFloat(appSettings.tonPriceUsd || '5');
+          const bugPerTON = bugPerUsd * 5; // appSettings removed, using default TON price
           minimumBugForWithdrawal = Math.ceil(currentUsdBalanceForBug * bugPerTON);
         }
         
@@ -6967,7 +5585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           starPackage: method === 'STARS' ? starPackage : undefined,
           userTelegramId: user.telegram_id,
           username: user.username,
-          firstName: user.firstName || user.username || 'Unknown',
+          firstName: (user as any).firstName || user.username || 'Unknown',
           walletAddress: walletAddress
         };
       });
@@ -7492,8 +6110,8 @@ ${walletAddress}
       const userId = req.user.user.id;
       const { promotionId } = req.params;
       
-      const hasCompleted = await storage.hasUserCompletedTask(promotionId, userId);
-      res.json({ completed: hasCompleted });
+      const hasCompleted = await (storage as any).hasUserCompletedTask(promotionId, userId);
+      res.json({ completed: hasCompleted ?? false });
     } catch (error) {
       console.error("Error checking task status:", error);
       res.status(500).json({ message: "Failed to check task status" });
@@ -7541,7 +6159,7 @@ ${walletAddress}
       
       console.log(`🎁 Task claim attempt: UserID=${userId}, TaskID=${promotionId}`);
       
-      const result = await storage.claimPromotionReward(userId, promotionId);
+      const result = await (storage as any).claimPromotionReward(userId, promotionId);
       
       if (result.success) {
         console.log(`✅ Task claimed successfully: ${result.message}, Reward: ${result.rewardAmount}`);
@@ -7549,8 +6167,8 @@ ${walletAddress}
         // Send real-time balance update via WebSocket
         try {
           const connection = connectedUsers.get(req.sessionID);
-          if (connection && connection.ws.readyState === 1) {
-            connection.ws.send(JSON.stringify({
+          if (connection && connection.socket.readyState === 1) {
+            connection.socket.send(JSON.stringify({
               type: 'balance_update',
               balance: result.newBalance,
               rewardAmount: result.rewardAmount,
@@ -7575,8 +6193,7 @@ ${walletAddress}
   // Create promotion (via Telegram bot only - internal endpoint)
   app.post('/api/internal/promotions', authenticateTelegram, async (req: any, res) => {
     try {
-      const promotionData = insertPromotionSchema.parse(req.body);
-      const promotion = await storage.createPromotion(promotionData);
+      const promotion = await (storage as any).createPromotion(req.body);
       res.json(promotion);
     } catch (error) {
       console.error("Error creating promotion:", error);
@@ -7641,48 +6258,13 @@ ${walletAddress}
   // NEW TASK SYSTEM ENDPOINTS
   // ================================
 
-  // Get all task statuses for user
+  // Get all task statuses for user (dailyTasks table removed)
   app.get('/api/tasks/status', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user.user.id;
-      const currentDate = new Date().toISOString().split('T')[0];
-      
-      // Get daily task completion records for today
-      const userDailyTasks = await db.select()
-        .from(dailyTasks)
-        .where(and(
-          eq(dailyTasks.userId, userId),
-          eq(dailyTasks.completionDate, currentDate)
-        ));
-      
-      // Get current user data for ads progress
       const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-      
-      // Format task statuses
-      const taskStatuses = userDailyTasks.map(task => ({
-        taskType: task.taskType,
-        progress: task.progress,
-        required: task.required,
-        completed: task.completed,
-        claimed: task.claimed,
-        rewardAmount: parseFloat(task.rewardAmount).toFixed(7),
-        status: task.claimed ? 'completed' : (task.completed ? 'claimable' : 'in_progress')
-      }));
-      
-      // Add ads progress from user data
-      const adsToday = user.adsWatchedToday || 0;
-      taskStatuses.forEach(task => {
-        if (task.taskType.startsWith('ads_')) {
-          task.progress = adsToday;
-          task.completed = adsToday >= task.required;
-          task.status = task.claimed ? 'completed' : (task.completed ? 'claimable' : 'in_progress');
-        }
-      });
-      
-      res.json({ tasks: taskStatuses, adsWatchedToday: adsToday });
+      const adsToday = user?.adsWatchedToday || 0;
+      res.json({ tasks: [], adsWatchedToday: adsToday });
     } catch (error) {
       console.error("Error fetching task status:", error);
       res.status(500).json({ message: "Failed to fetch task status" });
@@ -7714,34 +6296,6 @@ ${walletAddress}
         })
         .where(eq(users.id, userId));
       
-      // Update all ads goal tasks progress
-      const adsGoals = ['ads_mini', 'ads_light', 'ads_medium', 'ads_hard'];
-      for (const goalType of adsGoals) {
-        const taskData = await db.select()
-          .from(dailyTasks)
-          .where(and(
-            eq(dailyTasks.userId, userId),
-            eq(dailyTasks.taskType, goalType),
-            eq(dailyTasks.completionDate, currentDate)
-          ))
-          .limit(1);
-        
-        if (taskData.length > 0) {
-          const task = taskData[0];
-          const completed = currentAds >= task.required;
-          
-          await db.update(dailyTasks)
-            .set({ 
-              progress: currentAds,
-              completed: completed
-            })
-            .where(and(
-              eq(dailyTasks.userId, userId),
-              eq(dailyTasks.taskType, goalType),
-              eq(dailyTasks.completionDate, currentDate)
-            ));
-        }
-      }
       
       res.json({ 
         success: true, 
@@ -7754,101 +6308,7 @@ ${walletAddress}
     }
   });
 
-  // Complete invite friend task
-  app.post('/api/tasks/invite-friend/complete', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const currentDate = new Date().toISOString().split('T')[0];
-      
-      // Update user's friend invited flag
-      await db.update(users)
-        .set({ friendInvited: true })
-        .where(eq(users.id, userId));
-      
-      // Update daily task completion
-      await db.update(dailyTasks)
-        .set({ completed: true, progress: 1 })
-        .where(and(
-          eq(dailyTasks.userId, userId),
-          eq(dailyTasks.taskType, 'invite_friend'),
-          eq(dailyTasks.completionDate, currentDate)
-        ));
-      
-      res.json({ success: true, message: 'Friend invite completed' });
-    } catch (error) {
-      console.error("Error completing friend invite:", error);
-      res.status(500).json({ message: "Failed to complete friend invite" });
-    }
-  });
-
-  // Claim completed task reward
-  app.post('/api/tasks/:taskType/claim', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const { taskType } = req.params;
-      const currentDate = new Date().toISOString().split('T')[0];
-      
-      // Get task completion record
-      const taskData = await db.select()
-        .from(dailyTasks)
-        .where(and(
-          eq(dailyTasks.userId, userId),
-          eq(dailyTasks.taskType, taskType),
-          eq(dailyTasks.completionDate, currentDate)
-        ))
-        .limit(1);
-      
-      if (taskData.length === 0) {
-        return res.status(404).json({ message: 'Task not found' });
-      }
-      
-      const task = taskData[0];
-      
-      if (task.claimed) {
-        return res.status(400).json({ message: 'Task already claimed' });
-      }
-      
-      if (!task.completed) {
-        return res.status(400).json({ message: 'Task not completed yet' });
-      }
-      
-      // Claim the reward in a transaction
-      await db.transaction(async (tx) => {
-        // Mark task as claimed
-        await tx.update(dailyTasks)
-          .set({ claimed: true })
-          .where(and(
-            eq(dailyTasks.userId, userId),
-            eq(dailyTasks.taskType, taskType),
-            eq(dailyTasks.completionDate, currentDate)
-          ));
-        
-        // Add balance
-        await storage.addBalance(userId, task.rewardAmount);
-        
-        // Add earning record
-        await storage.addEarning({
-          userId,
-          amount: task.rewardAmount,
-          source: 'daily_task_completion',
-          description: `Daily task completed: ${taskType}`,
-        });
-      });
-      
-      // Get updated balance
-      const user = await storage.getUser(userId);
-      
-      res.json({ 
-        success: true, 
-        message: 'Task reward claimed successfully',
-        rewardAmount: parseFloat(task.rewardAmount).toFixed(7),
-        newBalance: user?.balance || '0'
-      });
-    } catch (error) {
-      console.error("Error claiming task reward:", error);
-      res.status(500).json({ message: "Failed to claim task reward" });
-    }
-  });
+  // invite-friend/complete and tasks/:taskType/claim routes removed (dailyTasks table dropped)
 
   // Promo code endpoints
   // Redeem promo code
@@ -8830,32 +7290,12 @@ ${walletAddress}
 
       const today = getTodayDate();
 
-      // Get mission completion status
-      const missions = await db.query.dailyMissions.findMany({
-        where: and(
-          eq(dailyMissions.userId, userId),
-          eq(dailyMissions.resetDate, today)
-        ),
-      });
-
-      const shareStoryMission = missions.find(m => m.missionType === 'share_story');
-      const dailyCheckinMission = missions.find(m => m.missionType === 'daily_checkin');
-      const checkForUpdatesMission = missions.find(m => m.missionType === 'check_for_updates');
-
+      // dailyMissions table dropped - return empty status
       res.json({
         success: true,
-        shareStory: {
-          completed: shareStoryMission?.completed || false,
-          claimed: !!shareStoryMission?.claimedAt,
-        },
-        dailyCheckin: {
-          completed: dailyCheckinMission?.completed || false,
-          claimed: !!dailyCheckinMission?.claimedAt,
-        },
-        checkForUpdates: {
-          completed: checkForUpdatesMission?.completed || false,
-          claimed: !!checkForUpdatesMission?.claimedAt,
-        },
+        shareStory: { completed: false, claimed: false },
+        dailyCheckin: { completed: false, claimed: false },
+        checkForUpdates: { completed: false, claimed: false },
       });
     } catch (error) {
       console.error('❌ Error getting mission status:', error);
@@ -8863,289 +7303,33 @@ ${walletAddress}
     }
   });
 
-  // POST /api/missions/share-story/claim - Claim share story reward
-  app.post('/api/missions/share-story/claim', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
-      }
-
-      const today = getTodayDate();
-      const reward = 5; // 5 AXN
-
-      // Check if already claimed
-      const existingMission = await db.query.dailyMissions.findFirst({
-        where: and(
-          eq(dailyMissions.userId, userId),
-          eq(dailyMissions.missionType, 'share_story'),
-          eq(dailyMissions.resetDate, today)
-        ),
-      });
-
-      if (existingMission?.claimedAt) {
-        return res.status(400).json({ error: 'Already claimed today' });
-      }
-
-      // Create or update mission record
-      if (existingMission) {
-        await db.update(dailyMissions).set({
-          completed: true,
-          claimedAt: new Date(),
-        }).where(eq(dailyMissions.id, existingMission.id));
-      } else {
-        await db.insert(dailyMissions).values({
-          userId,
-          missionType: 'share_story',
-          completed: true,
-          claimedAt: new Date(),
-          resetDate: today,
-        });
-      }
-
-      // Add reward to user balance
-      const user = await storage.getUser(userId);
-      if (user) {
-        const currentBalance = parseFloat(user.balance?.toString() || '0');
-        await db.update(users).set({
-          balance: (currentBalance + reward).toString(),
-          updatedAt: new Date(),
-        }).where(eq(users.id, userId));
-      }
-
-      // Record transaction
-      await db.insert(transactions).values({
-        userId,
-        amount: reward.toString(),
-        type: 'addition',
-        source: 'mission_share_story',
-        description: 'Share Story Mission Reward',
-      });
-
-      res.json({
-        success: true,
-        reward,
-        message: `You earned ${reward} AXN!`,
-      });
-    } catch (error) {
-      console.error('❌ Error claiming share story reward:', error);
-      res.status(500).json({ error: 'Failed to claim reward' });
-    }
+  // POST /api/missions/share-story/claim - dailyMissions table dropped
+  app.post('/api/missions/share-story/claim', requireAuth, async (_req: any, res) => {
+    res.status(410).json({ error: 'Mission system removed' });
   });
 
-  // POST /api/missions/daily-checkin/claim - Claim daily check-in reward
-  app.post('/api/missions/daily-checkin/claim', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
-      }
-
-      const today = getTodayDate();
-      const reward = 5; // 5 AXN
-
-      // Check if already claimed
-      const existingMission = await db.query.dailyMissions.findFirst({
-        where: and(
-          eq(dailyMissions.userId, userId),
-          eq(dailyMissions.missionType, 'daily_checkin'),
-          eq(dailyMissions.resetDate, today)
-        ),
-      });
-
-      if (existingMission?.claimedAt) {
-        return res.status(400).json({ error: 'Already checked in today' });
-      }
-
-      // Create or update mission record
-      if (existingMission) {
-        await db.update(dailyMissions).set({
-          completed: true,
-          claimedAt: new Date(),
-        }).where(eq(dailyMissions.id, existingMission.id));
-      } else {
-        await db.insert(dailyMissions).values({
-          userId,
-          missionType: 'daily_checkin',
-          completed: true,
-          claimedAt: new Date(),
-          resetDate: today,
-        });
-      }
-
-      // Add reward to user balance
-      const user = await storage.getUser(userId);
-      if (user) {
-        const currentBalance = parseFloat(user.balance?.toString() || '0');
-        await db.update(users).set({
-          balance: (currentBalance + reward).toString(),
-          updatedAt: new Date(),
-        }).where(eq(users.id, userId));
-      }
-
-      // Record transaction
-      await db.insert(transactions).values({
-        userId,
-        amount: reward.toString(),
-        type: 'addition',
-        source: 'mission_daily_checkin',
-        description: 'Daily Check-in Mission Reward',
-      });
-
-      res.json({
-        success: true,
-        reward,
-        message: `You earned ${reward} AXN!`,
-      });
-    } catch (error) {
-      console.error('❌ Error claiming daily check-in reward:', error);
-      res.status(500).json({ error: 'Failed to claim reward' });
-    }
+  // POST /api/missions/daily-checkin/claim - dailyMissions table dropped
+  app.post('/api/missions/daily-checkin/claim', requireAuth, async (_req: any, res) => {
+    res.status(410).json({ error: 'Mission system removed' });
   });
 
-  // POST /api/missions/check-for-updates/claim - Claim check for updates reward
-  app.post('/api/missions/check-for-updates/claim', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
-      }
-
-      const today = getTodayDate();
-      const reward = 5; // 5 AXN
-
-      // Check if already claimed
-      const existingMission = await db.query.dailyMissions.findFirst({
-        where: and(
-          eq(dailyMissions.userId, userId),
-          eq(dailyMissions.missionType, 'check_for_updates'),
-          eq(dailyMissions.resetDate, today)
-        ),
-      });
-
-      if (existingMission?.claimedAt) {
-        return res.status(400).json({ error: 'Already claimed today' });
-      }
-
-      // Create or update mission record
-      if (existingMission) {
-        await db.update(dailyMissions).set({
-          completed: true,
-          claimedAt: new Date(),
-        }).where(eq(dailyMissions.id, existingMission.id));
-      } else {
-        await db.insert(dailyMissions).values({
-          userId,
-          missionType: 'check_for_updates',
-          completed: true,
-          claimedAt: new Date(),
-          resetDate: today,
-        });
-      }
-
-      // Add reward to user balance
-      const user = await storage.getUser(userId);
-      if (user) {
-        const currentBalance = parseFloat(user.balance?.toString() || '0');
-        await db.update(users).set({
-          balance: (currentBalance + reward).toString(),
-          updatedAt: new Date(),
-        }).where(eq(users.id, userId));
-      }
-
-      // Record transaction
-      await db.insert(transactions).values({
-        userId,
-        amount: reward.toString(),
-        type: 'addition',
-        source: 'mission_check_for_updates',
-        description: 'Check for Updates Mission Reward',
-      });
-
-      res.json({
-        success: true,
-        reward,
-        message: `You earned ${reward} AXN!`,
-      });
-    } catch (error) {
-      console.error('❌ Error claiming check for updates reward:', error);
-      res.status(500).json({ error: 'Failed to claim reward' });
-    }
+  // POST /api/missions/check-for-updates/claim - dailyMissions table dropped
+  app.post('/api/missions/check-for-updates/claim', requireAuth, async (_req: any, res) => {
+    res.status(410).json({ error: 'Mission system removed' });
   });
 
-  // ── Daily Tasks ──────────────────────────────────────────────────────
-  // GET /api/daily-tasks/status - returns which daily tasks have been claimed today
+  // Daily tasks endpoints removed (dailyMissions table dropped)
   app.get('/api/daily-tasks/status', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const existingMissions = await db.select()
-        .from(dailyMissions)
-        .where(and(eq(dailyMissions.userId, userId), eq(dailyMissions.resetDate, todayStr)));
-
-      const claimed: string[] = existingMissions
-        .filter(m => m.claimedAt && m.missionType.startsWith('daily_task_'))
-        .map(m => m.missionType.replace('daily_task_', ''));
-
-      const user = await storage.getUser(userId);
-      res.json({ success: true, claimed, adsWatchedToday: (user as any)?.adsWatchedToday || 0 });
-    } catch (err) {
-      console.error('daily-tasks/status error:', err);
-      res.status(500).json({ error: 'Failed to get status' });
-    }
+    res.json({ success: true, claimed: [], adsWatchedToday: 0 });
   });
 
-  // POST /api/daily-tasks/claim - claim a daily task and apply mining boost for 24h
   app.post('/api/daily-tasks/claim', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
       const { taskId } = req.body;
       if (!taskId) return res.status(400).json({ error: 'taskId is required' });
-
-      const VALID_TASKS: Record<string, number> = {
-        login:    0.001,
-        share:    0.001,
-        ads15:    0.002,
-        ads25:    0.005,
-        ads60:    0.01,
-        ads120:   0.03,
-      };
-
-      if (!VALID_TASKS[taskId]) return res.status(400).json({ error: 'Invalid taskId' });
-
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const missionType = `daily_task_${taskId}`;
-
-      const existing = await db.select()
-        .from(dailyMissions)
-        .where(and(eq(dailyMissions.userId, userId), eq(dailyMissions.missionType, missionType), eq(dailyMissions.resetDate, todayStr)))
-        .limit(1);
-
-      if (existing.length > 0 && existing[0].claimedAt) {
-        return res.status(400).json({ error: 'Already claimed today' });
-      }
-
-      const boostRatePerHour = VALID_TASKS[taskId];
-      const boostRatePerSecond = boostRatePerHour / 3600;
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      await storage.addMiningBoost({
-        userId,
-        planId: `daily_task_${taskId}`,
-        miningRate: boostRatePerSecond.toFixed(10),
-        startTime: new Date(),
-        expiresAt,
-      });
-
-      if (existing.length > 0) {
-        await db.update(dailyMissions).set({ completed: true, claimedAt: new Date() }).where(eq(dailyMissions.id, existing[0].id));
-      } else {
-        await db.insert(dailyMissions).values({ userId, missionType, completed: true, claimedAt: new Date(), resetDate: todayStr });
-      }
+      const boostRatePerHour = 0;
 
       res.json({ success: true, boostRatePerHour, message: `+${boostRatePerHour} AXN/h boost applied for 24h!` });
     } catch (err) {
@@ -9584,46 +7768,6 @@ ${walletAddress}
     }
   });
 
-  app.get("/api/referrals/tasks", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      
-      const claimedTasks = await storage.getUserReferralTasks(user.id);
-      const tasks = [
-        { id: 'task_1', required: 1, rewardAXN: 1, boost: 0.0001, title: 'Invite 1 friend' },
-        { id: 'task_2', required: 3, rewardAXN: 3, boost: 0.0003, title: 'Invite 3 friends' },
-        { id: 'task_3', required: 10, rewardAXN: 5, boost: 0.0005, title: 'Invite 10 friends' },
-        { id: 'task_4', required: 25, rewardAXN: 10, boost: 0.001, title: 'Invite 25 friends' },
-        { id: 'task_5', required: 50, rewardAXN: 25, boost: 0.002, title: 'Invite 50 friends' },
-        { id: 'task_6', required: 100, rewardAXN: 30, boost: 0.003, title: 'Invite 100 friends' },
-      ].map(task => ({
-        ...task,
-        claimed: claimedTasks.some(ct => ct.taskId === task.id),
-        canClaim: (user.friendsInvited || 0) >= task.required
-      }));
-
-      res.json(tasks);
-    } catch (error) {
-      console.error("Error fetching referral tasks:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/referrals/tasks/:taskId/claim", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      
-      const result = await storage.claimReferralTask(user.id, req.params.taskId);
-      if (!result.success) return res.status(400).json({ message: result.message });
-      
-      res.json(result);
-    } catch (error) {
-      console.error("Error claiming referral task:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
 
   // Bitcoin price proxy - fetches from CoinGecko server-side to avoid browser CORS/network blocks
   let btcPriceCache: { price: number; change24h: number; history: number[]; ts: number } | null = null;
