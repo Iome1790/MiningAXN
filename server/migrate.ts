@@ -362,6 +362,22 @@ export async function ensureDatabaseSchema(): Promise<void> {
     } catch (error) {
       console.log('ℹ️ [MIGRATION] Rejection reason column already exists in withdrawals table');
     }
+
+    // Fix withdrawals.amount precision — old numeric(12,8) overflows for AXN amounts > 9999
+    try {
+      await db.execute(sql`
+        ALTER TABLE withdrawals
+        ALTER COLUMN amount TYPE NUMERIC(30, 10)
+        USING amount::NUMERIC(30, 10)
+      `);
+      console.log('✅ [MIGRATION] withdrawals.amount column precision fixed to NUMERIC(30,10)');
+    } catch (error: any) {
+      if (error?.message?.includes('already') || error?.code === '42P16') {
+        console.log('ℹ️ [MIGRATION] withdrawals.amount column precision already correct');
+      } else {
+        console.log('ℹ️ [MIGRATION] withdrawals.amount precision migration note:', error?.message);
+      }
+    }
     
     // Promotions table
     await db.execute(sql`
