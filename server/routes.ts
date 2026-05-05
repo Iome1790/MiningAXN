@@ -1497,7 +1497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activePromoCode,
         // Withdrawal packages (JSON array of {ton, bug} objects)
         withdrawalPackages: JSON.parse(getSetting('withdrawal_packages', '[{"ton":0.2,"bug":2000},{"ton":0.4,"bug":4000},{"ton":0.8,"bug":8000}]')),
-        // SAT-specific settings
+        // AXN-specific settings
         minimum_withdrawal_sat: parseFloat(getSetting('minimum_withdrawal_sat', '20')),
         withdrawal_fee_sat: parseFloat(getSetting('withdrawal_fee_sat', '10')),
         withdraw_ads_required: getSetting('withdraw_ads_required', 'false') === 'true',

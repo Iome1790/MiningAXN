@@ -373,6 +373,52 @@ export async function ensureDatabaseSchema(): Promise<void> {
         console.log('ℹ️ [MIGRATION] withdrawals.amount precision migration note:', error?.message);
       }
     }
+
+    // Fix earnings.amount precision — old numeric(12,8) overflows for AXN amounts > 9999
+    try {
+      await db.execute(sql`
+        ALTER TABLE earnings
+        ALTER COLUMN amount TYPE NUMERIC(30, 10)
+        USING amount::NUMERIC(30, 10)
+      `);
+      console.log('✅ [MIGRATION] earnings.amount column precision fixed to NUMERIC(30,10)');
+    } catch (error: any) {
+      console.log('ℹ️ [MIGRATION] earnings.amount precision migration note:', error?.message);
+    }
+
+    // Fix transactions.amount precision — old numeric(12,8) overflows for AXN amounts > 9999
+    try {
+      await db.execute(sql`
+        ALTER TABLE transactions
+        ALTER COLUMN amount TYPE NUMERIC(30, 10)
+        USING amount::NUMERIC(30, 10)
+      `);
+      console.log('✅ [MIGRATION] transactions.amount column precision fixed to NUMERIC(30,10)');
+    } catch (error: any) {
+      console.log('ℹ️ [MIGRATION] transactions.amount precision migration note:', error?.message);
+    }
+
+    // Fix pending_referral_bonus and total_claimed_referral_bonus precision
+    try {
+      await db.execute(sql`
+        ALTER TABLE users
+        ALTER COLUMN pending_referral_bonus TYPE NUMERIC(30, 10)
+        USING pending_referral_bonus::NUMERIC(30, 10)
+      `);
+      await db.execute(sql`
+        ALTER TABLE users
+        ALTER COLUMN total_claimed_referral_bonus TYPE NUMERIC(30, 10)
+        USING total_claimed_referral_bonus::NUMERIC(30, 10)
+      `);
+      await db.execute(sql`
+        ALTER TABLE users
+        ALTER COLUMN daily_earnings TYPE NUMERIC(30, 10)
+        USING daily_earnings::NUMERIC(30, 10)
+      `);
+      console.log('✅ [MIGRATION] users bonus/earnings column precision fixed to NUMERIC(30,10)');
+    } catch (error: any) {
+      console.log('ℹ️ [MIGRATION] users bonus/earnings precision migration note:', error?.message);
+    }
     
     // promotions and task_completions tables removed (dropped in migration)
     

@@ -51,13 +51,13 @@ export interface PaymentSystem {
 }
 
 export let PAYMENT_SYSTEMS: PaymentSystem[] = [
-  { id: 'sat_withdraw', name: 'SAT', emoji: '₿', minWithdrawal: 100, fee: 0 }
+  { id: 'axn_withdraw', name: 'AXN', emoji: '⚡', minWithdrawal: 100, fee: 0 }
 ];
 
 // Helper to update payment systems from admin settings
 export function updatePaymentSystemsFromSettings(minWithdraw: number, fee: number) {
   PAYMENT_SYSTEMS = [
-    { id: 'sat_withdraw', name: 'SAT', emoji: '₿', minWithdrawal: minWithdraw, fee: fee }
+    { id: 'axn_withdraw', name: 'AXN', emoji: '⚡', minWithdrawal: minWithdraw, fee: fee }
   ];
 }
 
@@ -1913,8 +1913,8 @@ export class DatabaseStorage implements IStorage {
       
       updatePaymentSystemsFromSettings(minWithdrawValue, feeValue);
 
-      // SAT withdrawal only
-      const effectivePaymentSystemId = 'sat_withdraw';
+      // AXN withdrawal only
+      const effectivePaymentSystemId = 'axn_withdraw';
       const paymentSystem = PAYMENT_SYSTEMS.find(p => p.id === effectivePaymentSystemId);
       if (!paymentSystem) {
         return { success: false, message: 'Invalid payment system' };
@@ -1926,14 +1926,14 @@ export class DatabaseStorage implements IStorage {
       
       // Validate minimum withdrawal amount and ensure net amount is positive
       if (requestedAmount < paymentSystem.minWithdrawal) {
-        return { success: false, message: `Minimum withdrawal is ${paymentSystem.minWithdrawal} SAT` };
+        return { success: false, message: `Minimum withdrawal is ${paymentSystem.minWithdrawal} AXN` };
       }
       
       if (netAmount <= 0) {
-        return { success: false, message: `Withdrawal amount must be greater than the fee of ${fee} SAT` };
+        return { success: false, message: `Withdrawal amount must be greater than the fee of ${fee} AXN` };
       }
 
-      // Check SAT balance (use main balance field)
+      // Check AXN balance (use main balance field)
       const isAdmin = user.telegram_id === process.env.TELEGRAM_ADMIN_ID;
       
       const userBalance = parseFloat(user.balance || '0');
@@ -1943,7 +1943,7 @@ export class DatabaseStorage implements IStorage {
       if (!isAdmin && userBalance < requestedAmount) {
         return { 
           success: false, 
-          message: `Insufficient SAT balance. You have ${Math.floor(userBalance)} SAT, but requested ${Math.floor(requestedAmount)} SAT.` 
+          message: `Insufficient AXN balance. You have ${Math.floor(userBalance)} AXN, but requested ${Math.floor(requestedAmount)} AXN.` 
         };
       }
 
@@ -1968,7 +1968,7 @@ export class DatabaseStorage implements IStorage {
 
       return { 
         success: true, 
-        message: `Withdrawal request created successfully. You will receive ${Math.floor(netAmount)} SAT.`,
+        message: `Withdrawal request created successfully. You will receive ${Math.floor(netAmount)} AXN.`,
         withdrawalId: withdrawal.id
       };
     } catch (error) {
@@ -2057,12 +2057,12 @@ export class DatabaseStorage implements IStorage {
       // Pending deposits count (deposits table removed)
       const pendingDepositsRes = { count: 0 };
 
-      // Total SAT mined (sum of all user balances + totalEarnings)
+      // Total AXN mined (sum of all user balances + totalEarnings)
       const [totalMiningSatsRes] = await db.select({
         total: sql<string>`COALESCE(SUM(CAST(total_earnings AS NUMERIC)), '0')`
       }).from(users);
 
-      // SAT mined today (sum of ad_watch earnings today)
+      // AXN mined today (sum of ad_watch earnings today)
       const [miningTodayRes] = await db.select({
         total: sql<string>`COALESCE(SUM(CAST(amount AS NUMERIC)), '0')`
       }).from(earnings).where(and(
@@ -2075,7 +2075,7 @@ export class DatabaseStorage implements IStorage {
         count: sql<number>`COUNT(DISTINCT referrer_id)`
       }).from(referrals).where(eq(referrals.status, 'completed'));
 
-      // Total SAT withdrawn (approved withdrawals)
+      // Total AXN withdrawn (approved withdrawals)
       const [totalSatsWithdrawnRes] = await db.select({
         total: sql<string>`COALESCE(SUM(CAST(amount AS NUMERIC)), '0')`
       }).from(withdrawals).where(sql`status IN ('completed', 'success', 'paid', 'Approved', 'approved')`);
@@ -2271,15 +2271,15 @@ export class DatabaseStorage implements IStorage {
         ? parseFloat(withdrawalDetails.totalDeducted) 
         : withdrawalAmount;
       
-      // ALL withdrawals use SAT balance
-      const currency = 'SAT';
+      // ALL withdrawals use AXN balance
+      const currency = 'AXN';
       const userBalance = parseFloat(user.balance || '0');
       
       if (userBalance >= totalToDeduct) {
-        // Deduct SAT balance on approval
-        console.log(`💰 Deducting SAT balance now for approved withdrawal`);
-        console.log(`💰 Net amount: ${withdrawalAmount} SAT, Total to deduct (with fee): ${totalToDeduct} SAT`);
-        console.log(`💰 Previous SAT balance: ${userBalance}, New balance: ${(userBalance - totalToDeduct).toFixed(2)}`);
+        // Deduct AXN balance on approval
+        console.log(`💰 Deducting AXN balance now for approved withdrawal`);
+        console.log(`💰 Net amount: ${withdrawalAmount} AXN, Total to deduct (with fee): ${totalToDeduct} AXN`);
+        console.log(`💰 Previous AXN balance: ${userBalance}, New balance: ${(userBalance - totalToDeduct).toFixed(2)}`);
 
         const newBalance = (userBalance - totalToDeduct).toFixed(2);
         
@@ -2290,11 +2290,11 @@ export class DatabaseStorage implements IStorage {
             updatedAt: new Date()
           })
           .where(eq(users.id, withdrawal.userId));
-        console.log(`✅ SAT balance deducted: ${userBalance} → ${newBalance}`);
+        console.log(`✅ AXN balance deducted: ${userBalance} → ${newBalance}`);
       } else {
         // Legacy withdrawal — balance already deducted at request time, just approve
         console.log(`⚠️ Legacy withdrawal detected - balance was already deducted at request time`);
-        console.log(`💰 Current SAT balance: ${userBalance}, Required: ${totalToDeduct}`);
+        console.log(`💰 Current AXN balance: ${userBalance}, Required: ${totalToDeduct}`);
         console.log(`✅ Approving without additional balance deduction (legacy flow)`);
       }
 
@@ -2380,9 +2380,9 @@ export class DatabaseStorage implements IStorage {
       const bugToRefund = withdrawalDetails?.bugDeducted ? parseFloat(withdrawalDetails.bugDeducted) : 0;
       const currentSatBalance = parseFloat(user.balance || '0');
       
-      // For legacy withdrawals (pre-SAT), refund the SAT balance
+      // For legacy withdrawals, refund the AXN balance
       if (currentSatBalance < totalToRefund) {
-        console.log(`⚠️ Legacy withdrawal detected - refunding SAT balance that was deducted at request time`);
+        console.log(`⚠️ Legacy withdrawal detected - refunding AXN balance that was deducted at request time`);
         const newSatBalance = (currentSatBalance + totalToRefund).toFixed(2);
         
         await db
@@ -2392,7 +2392,7 @@ export class DatabaseStorage implements IStorage {
             updatedAt: new Date()
           })
           .where(eq(users.id, withdrawal.userId));
-        console.log(`💰 SAT balance refunded: ${currentSatBalance} → ${newSatBalance}`);
+        console.log(`💰 AXN balance refunded: ${currentSatBalance} → ${newSatBalance}`);
       } else {
         // NEW withdrawal - balance was never deducted, nothing to refund
         console.log(`❌ Withdrawal #${withdrawalId} rejected - no refund needed (balance was never deducted)`);
