@@ -11,7 +11,6 @@ import {
   text,
   serial,
   unique,
-  uuid,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -30,14 +29,14 @@ export const sessions = pgTable(
 // Users table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  telegram_id: varchar("telegram_id", { length: 20 }).unique(), // ✅ Telegram ID for authentication (stored as string for compatibility)
+  telegram_id: varchar("telegram_id", { length: 20 }).unique(),
   username: varchar("username"),
   email: text("email"),
   firstName: text("first_name"),
   lastName: text("last_name"),
   profileImageUrl: text("profile_image_url"),
   personalCode: text("personal_code"),
-  balance: decimal("balance", { precision: 20, scale: 0 }).default("0"), // AXN stored as BIGINT
+  balance: decimal("balance", { precision: 20, scale: 0 }).default("0"),
   tonBalance: decimal("ton_balance", { precision: 30, scale: 10 }).default("0"),
   tonAppBalance: decimal("ton_app_balance", { precision: 30, scale: 10 }).default("0"),
   adsWatched: integer("ads_watched").default(0),
@@ -67,18 +66,15 @@ export const users = pgTable("users", {
   lastLoginIp: text("last_login_ip"),
   lastLoginDevice: text("last_login_device"),
   lastLoginUserAgent: text("last_login_user_agent"),
-  // Daily task tracking fields for eligibility validation  
   channelVisited: boolean("channel_visited").default(false),
   appShared: boolean("app_shared").default(false),
   lastResetDate: timestamp("last_reset_date"),
-  // Daily task completion tracking
   taskShareCompletedToday: boolean("task_share_completed_today").default(false),
   taskChannelCompletedToday: boolean("task_channel_completed_today").default(false),
   taskCommunityCompletedToday: boolean("task_community_completed_today").default(false),
   taskCheckinCompletedToday: boolean("task_checkin_completed_today").default(false),
   extraAdsWatchedToday: integer("extra_ads_watched_today").default(0),
   lastExtraAdDate: timestamp("last_extra_ad_date"),
-  // Wallet details
   tonWalletAddress: text("ton_wallet_address"),
   tonWalletComment: text("ton_wallet_comment"),
   usdtWalletAddress: text("usdt_wallet_address"),
@@ -88,30 +84,25 @@ export const users = pgTable("users", {
   walletUpdatedAt: timestamp("wallet_updated_at"),
   pendingReferralBonus: decimal("pending_referral_bonus", { precision: 30, scale: 10 }).default("0"),
   totalClaimedReferralBonus: decimal("total_claimed_referral_bonus", { precision: 30, scale: 10 }).default("0"),
-  // Keep legacy columns to prevent data loss during migration
   usdBalance: decimal("usd_balance", { precision: 30, scale: 10 }).default("0"),
   pdzBalance: decimal("pdz_balance", { precision: 30, scale: 10 }).default("0"),
   bugBalance: decimal("bug_balance", { precision: 30, scale: 10 }).default("0"),
   withdraw_balance: decimal("withdraw_balance", { precision: 30, scale: 10 }).default("0"),
   total_earnings: decimal("total_earnings", { precision: 30, scale: 10 }).default("0"),
   total_earned: decimal("total_earned", { precision: 30, scale: 10 }).default("0"),
-  // Enhanced tracking for auto-ban system
   appVersion: text("app_version"),
-  browserFingerprint: text("browser_fingerprint"), // Full fingerprint hash for WebApp detection
-  registeredAt: timestamp("registered_at").defaultNow(), // First account registration timestamp
-  referrerUid: text("referrer_uid"), // Referrer's UID for ban logs
-  // Mandatory channel/group join verification
+  browserFingerprint: text("browser_fingerprint"),
+  registeredAt: timestamp("registered_at").defaultNow(),
+  referrerUid: text("referrer_uid"),
   isChannelGroupVerified: boolean("is_channel_group_verified").default(false),
   lastMembershipCheck: timestamp("last_membership_check"),
-  // Ad boost tracking
   adSection1Boost: decimal("ad_section1_boost", { precision: 20, scale: 8 }).default("0"),
   adSection2Boost: decimal("ad_section2_boost", { precision: 20, scale: 8 }).default("0"),
   adSection1Count: integer("ad_section1_count").default(0),
   adSection2Count: integer("ad_section2_count").default(0),
-  // Mining fields
   lastMiningClaim: timestamp("last_mining_claim").defaultNow(),
-  miningRate: decimal("mining_rate", { precision: 20, scale: 8 }).default("0.00001"), // AXN per second
-  referralMiningBoost: decimal("referral_mining_boost", { precision: 20, scale: 8 }).default("0"), // Extra mining rate from active referrals (0.1/h per active friend)
+  miningRate: decimal("mining_rate", { precision: 20, scale: 8 }).default("0.00001"),
+  referralMiningBoost: decimal("referral_mining_boost", { precision: 20, scale: 8 }).default("0"),
   activePlanId: varchar("active_plan_id"),
   planExpiresAt: timestamp("plan_expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -128,15 +119,15 @@ export const earnings = pgTable("earnings", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Transactions table - For tracking all balance changes (deductions and additions)
+// Transactions table
 export const transactions = pgTable("transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
   amount: decimal("amount", { precision: 30, scale: 10 }).notNull(),
-  type: varchar("type").notNull(), // "deduction" or "addition"
-  source: varchar("source").notNull(), // "task_creation", "task_completion", "withdrawal", "ad_reward", etc.
+  type: varchar("type").notNull(),
+  source: varchar("source").notNull(),
   description: text("description"),
-  metadata: jsonb("metadata"), // Additional data like promotionId, taskType, etc.
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -171,43 +162,7 @@ export const referrals = pgTable("referrals", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Promo codes table
-export const promoCodes = pgTable("promo_codes", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  code: varchar("code").notNull().unique(),
-  rewardAmount: decimal("reward_amount", { precision: 30, scale: 10 }).notNull(),
-  rewardType: varchar("reward_type").default('AXN').notNull(), // 'AXN'
-  rewardCurrency: varchar("reward_currency").default(''),
-  usageLimit: integer("usage_limit"),
-  usageCount: integer("usage_count").default(0),
-  perUserLimit: integer("per_user_limit").default(1),
-  isActive: boolean("is_active").default(true),
-  expiresAt: timestamp("expires_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Promo code usage table
-export const promoCodeUsage = pgTable("promo_code_usage", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  promoCodeId: varchar("promo_code_id").references(() => promoCodes.id).notNull(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  rewardAmount: decimal("reward_amount", { precision: 30, scale: 10 }).notNull(),
-  usedAt: timestamp("used_at").defaultNow(),
-});
-
-// Referral commissions table
-export const referralCommissions = pgTable("referral_commissions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  referrerId: varchar("referrer_id").references(() => users.id).notNull(),
-  referredUserId: varchar("referred_user_id").references(() => users.id).notNull(),
-  originalEarningId: integer("original_earning_id").references(() => earnings.id).notNull(),
-  commissionAmount: decimal("commission_amount", { precision: 30, scale: 10 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-
-// User balances table - separate balance tracking  
+// User balances table
 export const userBalances = pgTable("user_balances", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").unique().notNull().references(() => users.id),
@@ -216,66 +171,18 @@ export const userBalances = pgTable("user_balances", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Simple daily tasks system - fixed sequential ads-based tasks
-export const dailyTasks = pgTable("daily_tasks", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  taskLevel: integer("task_level").notNull(), // 1-9 for the 9 tasks
-  progress: integer("progress").default(0), // current ads watched
-  required: integer("required").notNull(), // ads required for this task
-  completed: boolean("completed").default(false),
-  claimed: boolean("claimed").default(false),
-  rewardAmount: decimal("reward_amount", { precision: 30, scale: 10 }).notNull(),
-  completedAt: timestamp("completed_at"),
-  claimedAt: timestamp("claimed_at"),
-  resetDate: varchar("reset_date").notNull(), // YYYY-MM-DD format for daily reset
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  unique("daily_tasks_user_task_date_unique").on(table.userId, table.taskLevel, table.resetDate),
-]);
-
-// Admin settings table - for configurable app parameters
+// Admin settings table
 export const adminSettings = pgTable("admin_settings", {
   id: serial("id").primaryKey(),
   settingKey: varchar("setting_key").notNull().unique(),
   settingValue: text("setting_value").notNull(),
   description: text("description"),
-  updatedBy: varchar("updated_by"), // Admin user ID who last updated
+  updatedBy: varchar("updated_by"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Advertiser tasks table
-// Status values: under_review (pending admin approval), running (active/approved), paused, completed, rejected
-export const advertiserTasks = pgTable("advertiser_tasks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  advertiserId: varchar("advertiser_id").references(() => users.id).notNull(),
-  taskType: varchar("task_type").notNull(), // "channel" or "bot" or "partner"
-  title: text("title").notNull(),
-  link: text("link").notNull(),
-  totalClicksRequired: integer("total_clicks_required").notNull(),
-  currentClicks: integer("current_clicks").default(0).notNull(),
-  costPerClick: decimal("cost_per_click", { precision: 30, scale: 10 }).default("0.0003").notNull(), // 0.0003  per click (500 clicks = 0.15 )
-  totalCost: decimal("total_cost", { precision: 30, scale: 10 }).notNull(),
-  status: varchar("status").default("under_review").notNull(), // under_review, running, paused, completed, rejected
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  completedAt: timestamp("completed_at"),
-});
-
-// Task clicks tracking table - to prevent duplicate clicks
-export const taskClicks = pgTable("task_clicks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  taskId: varchar("task_id").references(() => advertiserTasks.id, { onDelete: 'cascade' }).notNull(),
-  publisherId: varchar("publisher_id").references(() => users.id).notNull(),
-  rewardAmount: decimal("reward_amount", { precision: 30, scale: 10 }).default("0.0001750").notNull(), // 1750 AXN = 0.000175 TON
-  clickedAt: timestamp("clicked_at").defaultNow(),
-}, (table) => [
-  unique("task_clicks_unique").on(table.taskId, table.publisherId),
-]);
-
-// Ban logs table - stores all ban records for admin panel
+// Ban logs table
 export const banLogs = pgTable("ban_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   bannedUserId: varchar("banned_user_id").references(() => users.id).notNull(),
@@ -285,51 +192,38 @@ export const banLogs = pgTable("ban_logs", {
   userAgent: text("user_agent"),
   fingerprint: jsonb("fingerprint"),
   reason: text("reason").notNull(),
-  banType: varchar("ban_type").notNull(), // 'auto' or 'manual'
-  bannedBy: varchar("banned_by"), // Admin user ID for manual bans, null for auto
-  relatedAccountIds: jsonb("related_account_ids"), // Array of related account IDs
-  referrerUid: text("referrer_uid"), // UID of the referrer if self-referral ban
-  telegramId: text("telegram_id"), // Telegram ID for tracking (not displayed)
-  appVersion: text("app_version"), // App version at time of ban
-  browserFingerprint: text("browser_fingerprint"), // Full fingerprint for detection
+  banType: varchar("ban_type").notNull(),
+  bannedBy: varchar("banned_by"),
+  relatedAccountIds: jsonb("related_account_ids"),
+  referrerUid: text("referrer_uid"),
+  telegramId: text("telegram_id"),
+  appVersion: text("app_version"),
+  browserFingerprint: text("browser_fingerprint"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Spin data table - tracks user spin state for the Free Spin feature
+// Spin data table
 export const spinData = pgTable("spin_data", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull().unique(),
-  freeSpinUsed: boolean("free_spin_used").default(false), // Whether daily free spin was used
-  extraSpins: integer("extra_spins").default(0), // Extra spins earned from ads/invites
-  spinAdsWatched: integer("spin_ads_watched").default(0), // Ads watched for spins (0-50 per day)
-  inviteSpinsEarned: integer("invite_spins_earned").default(0), // Total spins from verified invites
-  lastSpinDate: varchar("last_spin_date"), // YYYY-MM-DD for daily reset tracking
+  freeSpinUsed: boolean("free_spin_used").default(false),
+  extraSpins: integer("extra_spins").default(0),
+  spinAdsWatched: integer("spin_ads_watched").default(0),
+  inviteSpinsEarned: integer("invite_spins_earned").default(0),
+  lastSpinDate: varchar("last_spin_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Spin history table - tracks all spin results
+// Spin history table
 export const spinHistory = pgTable("spin_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  rewardType: varchar("reward_type").notNull(), // 'AXN' or ''
+  rewardType: varchar("reward_type").notNull(),
   rewardAmount: decimal("reward_amount", { precision: 30, scale: 10 }).notNull(),
-  spinType: varchar("spin_type").notNull(), // 'free', 'ad', 'invite'
+  spinType: varchar("spin_type").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
-
-// Daily mission completion tracking
-export const dailyMissions = pgTable("daily_missions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  missionType: varchar("mission_type").notNull(), // 'share_story', 'daily_checkin'
-  completed: boolean("completed").default(false),
-  claimedAt: timestamp("claimed_at"),
-  resetDate: varchar("reset_date").notNull(), // YYYY-MM-DD format for daily reset
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [
-  unique("daily_missions_user_type_date_unique").on(table.userId, table.missionType, table.resetDate),
-]);
 
 // Blocked countries for geo-restriction
 export const blockedCountries = pgTable("blocked_countries", {
@@ -338,29 +232,7 @@ export const blockedCountries = pgTable("blocked_countries", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Deposits table
-export const deposits = pgTable("deposits", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  amount: decimal("amount", { precision: 30, scale: 10 }).notNull(),
-  status: varchar("status").default('pending').notNull(), // 'pending', 'completed', 'failed'
-  memo: text("memo").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-// Mining boosts table
-export const miningBoosts = pgTable("mining_boosts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  planId: varchar("plan_id").notNull(),
-  miningRate: decimal("mining_rate", { precision: 20, scale: 8 }).notNull(),
-  startTime: timestamp("start_time").defaultNow().notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-// User machines table - AXN mining machine state per user
+// User machines table
 export const userMachines = pgTable("user_machines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").unique().notNull().references(() => users.id),
@@ -382,80 +254,40 @@ export const userMachines = pgTable("user_machines", {
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertMiningBoostSchema = createInsertSchema(miningBoosts).omit({ id: true, createdAt: true });
 export const insertEarningSchema = createInsertSchema(earnings).omit({ createdAt: true });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true });
 export const insertWithdrawalSchema = createInsertSchema(withdrawals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertUserBalanceSchema = createInsertSchema(userBalances).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertDailyTaskSchema = createInsertSchema(dailyTasks).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertReferralSchema = createInsertSchema(referrals).omit({ id: true, createdAt: true });
-export const insertReferralCommissionSchema = createInsertSchema(referralCommissions).omit({ id: true, createdAt: true });
-export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertPromoCodeUsageSchema = createInsertSchema(promoCodeUsage).omit({ id: true, usedAt: true });
 export const insertAdminSettingSchema = createInsertSchema(adminSettings).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertAdvertiserTaskSchema = createInsertSchema(advertiserTasks).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true });
-export const insertTaskClickSchema = createInsertSchema(taskClicks).omit({ id: true, clickedAt: true });
 export const insertBanLogSchema = createInsertSchema(banLogs).omit({ id: true, createdAt: true });
 export const insertSpinDataSchema = createInsertSchema(spinData).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertSpinHistorySchema = createInsertSchema(spinHistory).omit({ id: true, createdAt: true });
-export const insertDailyMissionSchema = createInsertSchema(dailyMissions).omit({ id: true, createdAt: true });
 export const insertBlockedCountrySchema = createInsertSchema(blockedCountries).omit({ id: true, createdAt: true });
-export const insertDepositSchema = createInsertSchema(deposits).omit({ id: true, createdAt: true, updatedAt: true });
-
-// User referral task completion tracking
-export const userReferralTasks = pgTable("user_referral_tasks", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  taskId: varchar("task_id").notNull(), // task_1, task_2, etc.
-  claimedAt: timestamp("claimed_at").defaultNow(),
-}, (table) => [
-  unique("user_referral_tasks_user_task_unique").on(table.userId, table.taskId),
-]);
+export const insertUserMachineSchema = createInsertSchema(userMachines).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
-export type UserReferralTask = typeof userReferralTasks.$inferSelect;
-export type InsertUserReferralTask = typeof userReferralTasks.$inferInsert;
-export const insertUserReferralTaskSchema = createInsertSchema(userReferralTasks).omit({ id: true, claimedAt: true });
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
-export type MiningBoost = typeof miningBoosts.$inferSelect;
-export type InsertMiningBoost = z.infer<typeof insertMiningBoostSchema>;
 export type InsertEarning = z.infer<typeof insertEarningSchema>;
 export type Earning = typeof earnings.$inferSelect;
 export type InsertWithdrawal = z.infer<typeof insertWithdrawalSchema>;
 export type Withdrawal = typeof withdrawals.$inferSelect;
 export type Referral = typeof referrals.$inferSelect;
 export type InsertReferral = z.infer<typeof insertReferralSchema>;
-export type ReferralCommission = typeof referralCommissions.$inferSelect;
-export type InsertReferralCommission = z.infer<typeof insertReferralCommissionSchema>;
-export type PromoCode = typeof promoCodes.$inferSelect;
-export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
-export type PromoCodeUsage = typeof promoCodeUsage.$inferSelect;
-export type InsertPromoCodeUsage = z.infer<typeof insertPromoCodeUsageSchema>;
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type UserBalance = typeof userBalances.$inferSelect;
 export type InsertUserBalance = z.infer<typeof insertUserBalanceSchema>;
-export type DailyTask = typeof dailyTasks.$inferSelect;
-export type InsertDailyTask = z.infer<typeof insertDailyTaskSchema>;
 export type AdminSetting = typeof adminSettings.$inferSelect;
 export type InsertAdminSetting = z.infer<typeof insertAdminSettingSchema>;
-export type AdvertiserTask = typeof advertiserTasks.$inferSelect;
-export type InsertAdvertiserTask = z.infer<typeof insertAdvertiserTaskSchema>;
-export type TaskClick = typeof taskClicks.$inferSelect;
-export type InsertTaskClick = z.infer<typeof insertTaskClickSchema>;
 export type BanLog = typeof banLogs.$inferSelect;
 export type InsertBanLog = z.infer<typeof insertBanLogSchema>;
 export type SpinData = typeof spinData.$inferSelect;
 export type InsertSpinData = z.infer<typeof insertSpinDataSchema>;
 export type SpinHistory = typeof spinHistory.$inferSelect;
 export type InsertSpinHistory = z.infer<typeof insertSpinHistorySchema>;
-export type DailyMission = typeof dailyMissions.$inferSelect;
-export type InsertDailyMission = z.infer<typeof insertDailyMissionSchema>;
 export type BlockedCountry = typeof blockedCountries.$inferSelect;
 export type InsertBlockedCountry = z.infer<typeof insertBlockedCountrySchema>;
-export type Deposit = typeof deposits.$inferSelect;
-export type InsertDeposit = z.infer<typeof insertDepositSchema>;
 export type UserMachine = typeof userMachines.$inferSelect;
 export type InsertUserMachine = typeof userMachines.$inferInsert;
-export const insertUserMachineSchema = createInsertSchema(userMachines).omit({ id: true, createdAt: true, updatedAt: true });
