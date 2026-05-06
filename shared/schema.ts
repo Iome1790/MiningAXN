@@ -248,6 +248,7 @@ export const userMachines = pgTable("user_machines", {
   lastVirusAttack: timestamp("last_virus_attack"),
   lastHealthDecay: timestamp("last_health_decay"),
   antivirusActivatedAt: timestamp("antivirus_activated_at"),
+  accumulatedAxn: decimal("accumulated_axn").default("0"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
