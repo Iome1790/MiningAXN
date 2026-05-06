@@ -137,16 +137,23 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
           exit={{ scale: 0.88, opacity: 0, y: 20 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
         >
-          {/* Header */}
-          <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
-            {antivirusActive
-              ? <RiShieldFlashFill style={{ width: 22, height: 22, color: "#4ade80", flexShrink: 0 }} />
-              : <FaBug style={{ width: 20, height: 20, color: "#f87171", flexShrink: 0 }} />
-            }
-            <div className="flex-1 min-w-0">
-              <p className="text-white font-black text-sm uppercase tracking-wider">Antivirus</p>
-              <p className="text-white/35 text-[11px] mt-0.5">Protects your CPU time from virus drain</p>
+          {/* Header with pixel art icon */}
+          <div className="flex flex-col items-center pt-6 pb-4 px-5 border-b border-[#1c1c1e]">
+            <div className="relative mb-3">
+              <div className="absolute inset-0 rounded-full"
+                style={{ background: antivirusActive ? "radial-gradient(circle, rgba(74,222,128,0.35) 0%, transparent 70%)" : "radial-gradient(circle, rgba(248,113,113,0.35) 0%, transparent 70%)", filter: "blur(12px)", transform: "scale(1.4)" }} />
+              <motion.img
+                src="/antivirus-icon.png"
+                alt="Antivirus"
+                className="relative w-36 h-36 object-contain"
+                style={{ imageRendering: "pixelated", filter: antivirusActive ? "drop-shadow(0 0 16px rgba(74,222,128,0.6))" : "drop-shadow(0 0 16px rgba(248,113,113,0.6))" }}
+                initial={{ scale: 0.5, opacity: 0, rotate: -12 }}
+                animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.08 }}
+              />
             </div>
+            <p className="text-white font-black text-base uppercase tracking-wider">Antivirus</p>
+            <p className="text-white/35 text-[11px] mt-0.5">Protects your CPU time from virus drain</p>
           </div>
 
           <div className="px-5 py-4 space-y-2.5">
