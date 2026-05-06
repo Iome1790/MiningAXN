@@ -15,18 +15,9 @@ export default function Layout({ children, hideNav }: LayoutProps) {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        backgroundImage: 'url(/app-bg.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'local',
+        background: '#0B0B0D',
       }}
     >
-      {/* Dark overlay so UI cards/text stay readable */}
-      <div
-        className="fixed inset-0 pointer-events-none z-0"
-        style={{ background: 'rgba(0,0,0,0.38)' }}
-      />
       <AnimatePresence mode="wait">
         <motion.div
           className="relative flex-1 flex flex-col overflow-hidden"
