@@ -1103,7 +1103,7 @@ export default function Home() {
           overscrollBehavior: 'contain',
         }}
       >
-        <MiningMachinePanel />
+        <MiningMachinePanel onWalletOpen={() => setWithdrawPopupOpen(true)} />
       </main>
 
       {false && boosterPopupOpen && (
