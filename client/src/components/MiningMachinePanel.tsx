@@ -355,14 +355,65 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                   </button>
                 ) : (
                   <button onClick={() => setRepairOpen(true)}
-                    className="mt-2 flex items-center gap-1.5 w-full max-w-[160px] active:opacity-70 transition-opacity">
-                    <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                      <div className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${state.machineHealth}%`, background: healthColor }} />
+                    className="mt-2 flex items-center gap-1 active:opacity-70 transition-opacity">
+                    {/* Pixel-art heart */}
+                    <motion.svg
+                      width="13" height="13" viewBox="0 0 8 8"
+                      style={{ imageRendering: "pixelated", flexShrink: 0 }}
+                      animate={state.machineHealth <= 30 ? { opacity: [1, 0.2, 1] } : { opacity: 1 }}
+                      transition={state.machineHealth <= 30 ? { duration: 0.6, repeat: Infinity, ease: "easeInOut" } : {}}
+                    >
+                      {state.machineHealth <= 30 ? (
+                        /* cracked / dark heart */
+                        <>
+                          <rect x="1" y="0" width="2" height="1" fill="#7a1a1a"/>
+                          <rect x="5" y="0" width="2" height="1" fill="#7a1a1a"/>
+                          <rect x="0" y="1" width="4" height="2" fill="#7a1a1a"/>
+                          <rect x="4" y="1" width="4" height="2" fill="#7a1a1a"/>
+                          <rect x="0" y="3" width="8" height="2" fill="#7a1a1a"/>
+                          <rect x="1" y="5" width="6" height="1" fill="#7a1a1a"/>
+                          <rect x="2" y="6" width="4" height="1" fill="#7a1a1a"/>
+                          <rect x="3" y="7" width="2" height="1" fill="#7a1a1a"/>
+                          <rect x="1" y="0" width="1" height="1" fill="#aa2a2a"/>
+                          <rect x="0" y="1" width="1" height="1" fill="#aa2a2a"/>
+                        </>
+                      ) : (
+                        /* full red heart */
+                        <>
+                          <rect x="1" y="0" width="2" height="1" fill="#cc0000"/>
+                          <rect x="5" y="0" width="2" height="1" fill="#cc0000"/>
+                          <rect x="0" y="1" width="4" height="2" fill="#cc0000"/>
+                          <rect x="4" y="1" width="4" height="2" fill="#cc0000"/>
+                          <rect x="0" y="3" width="8" height="2" fill="#cc0000"/>
+                          <rect x="1" y="5" width="6" height="1" fill="#cc0000"/>
+                          <rect x="2" y="6" width="4" height="1" fill="#cc0000"/>
+                          <rect x="3" y="7" width="2" height="1" fill="#cc0000"/>
+                          {/* highlight sheen */}
+                          <rect x="1" y="0" width="1" height="1" fill="#ff5555"/>
+                          <rect x="5" y="0" width="1" height="1" fill="#ff5555"/>
+                          <rect x="0" y="1" width="1" height="1" fill="#ff5555"/>
+                          <rect x="4" y="1" width="1" height="1" fill="#ff5555"/>
+                        </>
+                      )}
+                    </motion.svg>
+                    {/* Segmented HP bar */}
+                    <div className="flex gap-[2px]">
+                      {Array.from({ length: 10 }).map((_, i) => {
+                        const filled = i < Math.round(state.machineHealth / 10);
+                        const isLow = state.machineHealth <= 30;
+                        return (
+                          <div key={i} style={{
+                            width: 10, height: 6,
+                            background: filled ? (isLow ? "#aa1111" : "#cc2222") : "#1e1e1e",
+                            border: "1px solid rgba(0,0,0,0.7)",
+                            boxShadow: filled
+                              ? "inset 0 1px 0 rgba(255,120,120,0.45), inset 0 -1px 0 rgba(0,0,0,0.5)"
+                              : "inset 0 1px 0 rgba(255,255,255,0.04)",
+                            imageRendering: "pixelated" as any,
+                          }} />
+                        );
+                      })}
                     </div>
-                    <span className="text-[10px] font-bold tabular-nums" style={{ color: healthColor }}>
-                      {state.machineHealth}%
-                    </span>
                   </button>
                 )}
               </div>
@@ -378,10 +429,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
           <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${dim}` }}>
             {/* Mining Speed */}
             <div className="px-2.5 py-3 flex items-center gap-2.5" style={{ borderRight: `1px solid ${dim}` }}>
-              <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
-                style={{ background: "rgba(245,197,66,0.12)", border: "1px solid rgba(245,197,66,0.2)" }}>
-                <BsLightningChargeFill style={{ color: "#F5C542", width: 18, height: 18 }} />
-              </div>
+              <img src="/mining-speed-icon.png" alt="Mining Speed" className="flex-shrink-0"
+                style={{ width: 32, height: 32, imageRendering: "pixelated", objectFit: "contain" }} />
               <div className="min-w-0">
                 <span className="text-white/35 text-[9px] font-semibold uppercase block leading-none mb-1 truncate">Mining Speed</span>
                 <span className="text-white font-black text-sm tabular-nums block leading-none">
