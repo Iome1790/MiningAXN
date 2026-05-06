@@ -221,7 +221,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
   const statusText = machineStopped ? "Stopped" : isMining ? "Your machine is mining" : noEnergy ? "No Energy" : "Idle";
   const statusDesc = machineStopped
     ? "Repair required to resume mining."
-    : isMining ? "Keep it powered and running to earn more AXN"
+    : isMining ? "Machine is running. Keep it powered."
     : noEnergy ? "Refill energy to continue mining."
     : "Start your CPU to begin earning.";
   const dotColor = machineStopped ? "#ef4444" : isMining ? "#22c55e" : "#f59e0b";
@@ -342,8 +342,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                   <span className="text-white/40 text-[10px] font-semibold">Mining Status</span>
                 </div>
                 {/* Status text */}
-                <p className="text-white font-black text-[26px] leading-tight mb-1">{statusText}</p>
-                <p className="text-white/35 text-xs leading-snug">{statusDesc}</p>
+                <p className="text-white font-black text-[20px] leading-tight mb-1 truncate">{statusText}</p>
+                <p className="text-white/35 text-[10px] leading-snug">{statusDesc}</p>
 
                 {/* Health bar (compact, when stopped show repair btn) */}
                 {machineStopped ? (
@@ -383,7 +383,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 <BsLightningChargeFill style={{ color: "#F5C542", width: 18, height: 18 }} />
               </div>
               <div className="min-w-0">
-                <span className="text-white/35 text-[9px] font-semibold uppercase tracking-wider block leading-none mb-1">Mining Speed</span>
+                <span className="text-white/35 text-[9px] font-semibold uppercase block leading-none mb-1 truncate">Mining Speed</span>
                 <span className="text-white font-black text-sm tabular-nums block leading-none">
                   {state.miningRate}<span className="text-white/30 text-[9px] font-normal"> AXN/s</span>
                 </span>
@@ -397,7 +397,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 <RiCpuFill style={{ color: "#8B5CF6", width: 18, height: 18 }} />
               </div>
               <div className="min-w-0">
-                <span className="text-white/35 text-[9px] font-semibold uppercase tracking-wider block leading-none mb-1">CPU Status</span>
+                <span className="text-white/35 text-[9px] font-semibold uppercase block leading-none mb-1 truncate">CPU Status</span>
                 <span className="font-black text-sm tabular-nums block leading-none" style={{ color: isMining ? "#22c55e" : "rgba(255,255,255,0.35)" }}>
                   {isMining ? "Active" : state.cpuRunning ? formatTime(cpuCountdown) : "Idle"}
                 </span>
@@ -411,7 +411,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 <RiDatabase2Fill style={{ color: "#60a5fa", width: 18, height: 18 }} />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-white/35 text-[9px] font-semibold uppercase tracking-wider block leading-none mb-1">Capacity</span>
+                <span className="text-white/35 text-[9px] font-semibold uppercase block leading-none mb-1 truncate">Capacity</span>
                 <span className="text-white font-black text-xs tabular-nums block leading-none">
                   {localMined.toFixed(2)}<span className="text-white/30 text-[9px] font-normal">/{state.capacity}</span>
                 </span>
