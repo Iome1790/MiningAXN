@@ -625,6 +625,12 @@ export async function ensureDatabaseSchema(): Promise<void> {
     `);
     console.log('✅ [MIGRATION] antivirus_activated_at column ensured on user_machines');
 
+    // Add accumulated_axn to preserve unclaimed mining across energy refill cycles
+    await db.execute(sql`
+      ALTER TABLE user_machines ADD COLUMN IF NOT EXISTS accumulated_axn NUMERIC DEFAULT 0
+    `);
+    console.log('✅ [MIGRATION] accumulated_axn column ensured on user_machines');
+
     // Add indexes for referral performance
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_referrals_referee_id ON referrals(referee_id)`);

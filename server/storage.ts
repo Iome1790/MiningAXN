@@ -599,7 +599,9 @@ export class DatabaseStorage implements IStorage {
       : 0;
 
     // Compute mined AXN (capped at capacity, only while CPU running and health > 0)
-    let minedAxn = 0;
+    // accumulated_axn holds mining from previous runs that haven't been claimed yet
+    const accumulatedAxn = parseFloat(machine.accumulatedAxn || '0');
+    let minedAxn = accumulatedAxn;
     if (machine.machineHealth > 0 && machine.cpuStartTime && machine.lastClaimTime) {
       const mineFrom = machine.lastClaimTime > machine.cpuStartTime
         ? machine.lastClaimTime
@@ -607,7 +609,7 @@ export class DatabaseStorage implements IStorage {
       const mineUntil = machine.cpuEndTime && machine.cpuEndTime < now ? machine.cpuEndTime : now;
       if (mineUntil > mineFrom) {
         const seconds = Math.floor((mineUntil.getTime() - mineFrom.getTime()) / 1000);
-        minedAxn = Math.min(capacity, seconds * miningRate);
+        minedAxn = Math.min(capacity, accumulatedAxn + seconds * miningRate);
       }
     }
 
@@ -697,6 +699,24 @@ export class DatabaseStorage implements IStorage {
       return { success: false, message: 'CPU is already running!' };
     }
 
+    // Preserve any unclaimed AXN from the previous CPU run before starting a new one
+    // This prevents unclaimed mining from being wiped when energy is refilled and CPU restarted
+    let carryOver = parseFloat(machine.accumulatedAxn || '0');
+    if (machine.machineHealth > 0 && machine.cpuStartTime && machine.lastClaimTime) {
+      const mLvl = getMiningLevel(machine.miningLevel);
+      const cLvl = getMiningLevel(machine.capacityLevel);
+      const miningRate = mLvl.rate;
+      const capacity = cLvl.capacity;
+      const mineFrom = machine.lastClaimTime > machine.cpuStartTime
+        ? machine.lastClaimTime
+        : machine.cpuStartTime;
+      const mineUntil = machine.cpuEndTime && machine.cpuEndTime < now ? machine.cpuEndTime : now;
+      if (mineUntil > mineFrom) {
+        const seconds = Math.floor((mineUntil.getTime() - mineFrom.getTime()) / 1000);
+        carryOver = Math.min(capacity, carryOver + seconds * miningRate);
+      }
+    }
+
     const cpuLvl = getMiningLevel(machine.cpuLevel);
     const cpuDurationMs = cpuLvl.cpuMin * 60 * 1000;
     const cpuEndTime = new Date(now.getTime() + cpuDurationMs);
@@ -706,6 +726,7 @@ export class DatabaseStorage implements IStorage {
       cpuStartTime: now,
       cpuEndTime,
       lastClaimTime: now,
+      accumulatedAxn: carryOver.toFixed(4),
       updatedAt: now,
     }).where(eq(userMachines.userId, userId));
 
@@ -731,6 +752,7 @@ export class DatabaseStorage implements IStorage {
 
       await tx.update(userMachines).set({
         lastClaimTime: now,
+        accumulatedAxn: '0',
         updatedAt: now,
       }).where(eq(userMachines.userId, userId));
 
