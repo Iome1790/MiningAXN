@@ -298,9 +298,21 @@ export default function MiningMachinePanel() {
     queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
   }, [queryClient]);
 
+  // Optimistic update helper — instantly patches cached mining state
+  const patchState = useCallback((patch: Partial<MachineState>) => {
+    queryClient.setQueryData<MachineState>(["/api/axn-mining/state"], (old) =>
+      old ? { ...old, ...patch } : old
+    );
+  }, [queryClient]);
+
   const startCpuMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/axn-mining/start-cpu").then(r => r.json()),
-    onSuccess: (d) => { showNotification(d.message, "success"); invalidate(); },
+    onSuccess: (d) => {
+      showNotification(d.message, "success");
+      // Instantly show mining as started — no waiting for refetch
+      patchState({ cpuRunning: true, hasEnergy: false, cpuRemainingSeconds: state?.cpuDurationSec ?? 0 });
+      invalidate();
+    },
     onError: (e: any) => showNotification(e.message || "Failed", "error"),
   });
 
@@ -308,7 +320,9 @@ export default function MiningMachinePanel() {
     mutationFn: () => apiRequest("POST", "/api/axn-mining/claim").then(r => r.json()),
     onSuccess: (d) => {
       showNotification(`+${d.amount?.toFixed(2)} AXN collected!`, "success");
+      // Instantly clear mined buffer
       setLocalMined(0);
+      patchState({ minedAxn: 0 });
       invalidate();
     },
     onError: (e: any) => showNotification(e.message || "Nothing to collect", "error"),
@@ -562,7 +576,7 @@ export default function MiningMachinePanel() {
                     : { background: '#1c1c1e', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.25)' }
                 }
               >
-                {adRunning || startCpuMutation.isPending ? (
+                {startCpuMutation.isPending ? (
                   <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : state.cpuRunning ? (
                   <><RiCpuFill className="w-3.5 h-3.5" /> Running</>
@@ -588,7 +602,7 @@ export default function MiningMachinePanel() {
                   color: 'rgba(255,255,255,0.25)',
                 }}
               >
-                {adRunning || claimMutation.isPending
+                {claimMutation.isPending
                   ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   : <>Collect</>
                 }

@@ -52,9 +52,28 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
     queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
   };
 
+  // Instantly update health in cache — no waiting for refetch
+  const applyRepair = (deductCost = 0) => {
+    queryClient.setQueryData<any>(["/api/axn-mining/state"], (old: any) =>
+      old ? { ...old, machineHealth: 100 } : old
+    );
+    if (deductCost > 0) {
+      queryClient.setQueryData<any>(["/api/auth/user"], (old: any) => {
+        if (!old) return old;
+        const newBal = Math.max(0, parseFloat(old.balance || "0") - deductCost);
+        return { ...old, balance: String(Math.round(newBal)) };
+      });
+    }
+  };
+
   const repairPaidMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/axn-mining/repair").then((r) => r.json()),
-    onSuccess: (d) => { showNotification(d.message, "success"); invalidate(); onClose(); },
+    onSuccess: (d) => {
+      showNotification(d.message, "success");
+      applyRepair(repairCost);
+      invalidate();
+      onClose();
+    },
     onError: (e: any) => showNotification(e.message || "Repair failed", "error"),
   });
 
@@ -64,6 +83,7 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
       showNotification(d.message, "success");
       localStorage.setItem(COOLDOWN_KEY, String(Date.now()));
       setCooldown(COOLDOWN_MS / 1000);
+      applyRepair(0);
       invalidate();
       onClose();
     },

@@ -51,10 +51,25 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
     queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
   };
 
+  // Instantly update energy state in cache — no waiting for refetch
+  const applyEnergyRefill = (deductCost = 0) => {
+    queryClient.setQueryData<any>(["/api/axn-mining/state"], (old: any) =>
+      old ? { ...old, hasEnergy: true } : old
+    );
+    if (deductCost > 0) {
+      queryClient.setQueryData<any>(["/api/auth/user"], (old: any) => {
+        if (!old) return old;
+        const newBal = Math.max(0, parseFloat(old.balance || "0") - deductCost);
+        return { ...old, balance: String(Math.round(newBal)) };
+      });
+    }
+  };
+
   const paidMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/axn-mining/refill-energy").then((r) => r.json()),
     onSuccess: (d) => {
       showNotification(d.message || "Energy refilled!", "success");
+      applyEnergyRefill(energyCost);
       invalidate();
       onClose();
     },
@@ -67,6 +82,7 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
       showNotification(d.message || "Energy refilled for free!", "success");
       localStorage.setItem(ENERGY_FREE_COOLDOWN_KEY, String(Date.now()));
       setCooldown(COOLDOWN_MS / 1000);
+      applyEnergyRefill(0);
       invalidate();
       onClose();
     },
