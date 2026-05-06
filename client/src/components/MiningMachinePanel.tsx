@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ChevronRight, Info, Wrench, Gift } from "lucide-react";
+import { ChevronRight, Wrench, Gift } from "lucide-react";
 import { useAdFlow } from "@/hooks/useAdFlow";
 import { RiPlayFill, RiToolsFill, RiCpuFill, RiDatabase2Fill } from "react-icons/ri";
 import { BsLightningChargeFill } from "react-icons/bs";
@@ -218,10 +218,10 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
   const minedUsd = (localMined * 0.00014).toFixed(4);
 
-  const statusText = machineStopped ? "Stopped" : isMining ? "Mining..." : noEnergy ? "No Energy" : "Idle";
+  const statusText = machineStopped ? "Stopped" : isMining ? "Your machine is mining" : noEnergy ? "No Energy" : "Idle";
   const statusDesc = machineStopped
     ? "Repair required to resume mining."
-    : isMining ? "Your machine is running smoothly."
+    : isMining ? "Keep it powered and running to earn more AXN"
     : noEnergy ? "Refill energy to continue mining."
     : "Start your CPU to begin earning.";
   const dotColor = machineStopped ? "#ef4444" : isMining ? "#22c55e" : "#f59e0b";
@@ -377,40 +377,49 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
           {/* Stats row — 3 columns */}
           <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${dim}` }}>
             {/* Mining Speed */}
-            <div className="px-3 py-2.5" style={{ borderRight: `1px solid ${dim}` }}>
-              <div className="flex items-center gap-1 mb-1">
-                <BsLightningChargeFill style={{ color: "#F5C542", width: 12, height: 12 }} />
-                <span className="text-white/35 text-[9px] font-semibold uppercase tracking-wider">Mining Speed</span>
+            <div className="px-2.5 py-3 flex items-center gap-2.5" style={{ borderRight: `1px solid ${dim}` }}>
+              <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                style={{ background: "rgba(245,197,66,0.12)", border: "1px solid rgba(245,197,66,0.2)" }}>
+                <BsLightningChargeFill style={{ color: "#F5C542", width: 18, height: 18 }} />
               </div>
-              <span className="text-white font-black text-sm tabular-nums">
-                {state.miningRate} <span className="text-white/30 text-[9px] font-normal">AXN/s</span>
-              </span>
+              <div className="min-w-0">
+                <span className="text-white/35 text-[9px] font-semibold uppercase tracking-wider block leading-none mb-1">Mining Speed</span>
+                <span className="text-white font-black text-sm tabular-nums block leading-none">
+                  {state.miningRate}<span className="text-white/30 text-[9px] font-normal"> AXN/s</span>
+                </span>
+              </div>
             </div>
 
             {/* CPU Status */}
-            <div className="px-3 py-2.5" style={{ borderRight: `1px solid ${dim}` }}>
-              <div className="flex items-center gap-1 mb-1">
-                <RiCpuFill style={{ color: "#8B5CF6", width: 12, height: 12 }} />
-                <span className="text-white/35 text-[9px] font-semibold uppercase tracking-wider">CPU Status</span>
+            <div className="px-2.5 py-3 flex items-center gap-2.5" style={{ borderRight: `1px solid ${dim}` }}>
+              <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.2)" }}>
+                <RiCpuFill style={{ color: "#8B5CF6", width: 18, height: 18 }} />
               </div>
-              <span className="font-black text-sm tabular-nums" style={{ color: isMining ? "#22c55e" : "rgba(255,255,255,0.35)" }}>
-                {isMining ? "Active" : state.cpuRunning ? formatTime(cpuCountdown) : "Idle"}
-              </span>
+              <div className="min-w-0">
+                <span className="text-white/35 text-[9px] font-semibold uppercase tracking-wider block leading-none mb-1">CPU Status</span>
+                <span className="font-black text-sm tabular-nums block leading-none" style={{ color: isMining ? "#22c55e" : "rgba(255,255,255,0.35)" }}>
+                  {isMining ? "Active" : state.cpuRunning ? formatTime(cpuCountdown) : "Idle"}
+                </span>
+              </div>
             </div>
 
             {/* Capacity */}
-            <div className="px-3 py-2.5">
-              <div className="flex items-center gap-1 mb-1">
-                <RiDatabase2Fill style={{ color: "#60a5fa", width: 12, height: 12 }} />
-                <span className="text-white/35 text-[9px] font-semibold uppercase tracking-wider">Capacity</span>
+            <div className="px-2.5 py-3 flex items-center gap-2.5">
+              <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                style={{ background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.2)" }}>
+                <RiDatabase2Fill style={{ color: "#60a5fa", width: 18, height: 18 }} />
               </div>
-              <span className="text-white font-black text-xs tabular-nums">
-                {localMined.toFixed(2)}<span className="text-white/30 text-[9px] font-normal"> / {state.capacity} AXN</span>
-              </span>
-              <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                <motion.div className="h-full rounded-full"
-                  style={{ background: capacityPct > 90 ? "#ef4444" : "linear-gradient(90deg,#3B82F6,#8B5CF6)" }}
-                  animate={{ width: `${capacityPct}%` }} transition={{ duration: 0.5 }} />
+              <div className="min-w-0 flex-1">
+                <span className="text-white/35 text-[9px] font-semibold uppercase tracking-wider block leading-none mb-1">Capacity</span>
+                <span className="text-white font-black text-xs tabular-nums block leading-none">
+                  {localMined.toFixed(2)}<span className="text-white/30 text-[9px] font-normal">/{state.capacity}</span>
+                </span>
+                <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <motion.div className="h-full rounded-full"
+                    style={{ background: capacityPct > 90 ? "#ef4444" : "linear-gradient(90deg,#3B82F6,#8B5CF6)" }}
+                    animate={{ width: `${capacityPct}%` }} transition={{ duration: 0.5 }} />
+                </div>
               </div>
             </div>
           </div>
@@ -436,14 +445,14 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
           <button
             onClick={handleCollect}
             disabled={!canClaim || claimMutation.isPending}
-            className="h-[54px] px-4 rounded-xl font-black text-sm tracking-widest uppercase transition-all active:scale-95 disabled:opacity-40 flex-shrink-0 flex items-center justify-center gap-2"
+            className="h-10 px-3.5 rounded-xl font-black text-xs tracking-widest uppercase transition-all active:scale-95 disabled:opacity-40 flex-shrink-0 flex items-center justify-center gap-1.5"
             style={canClaim
-              ? { background: "linear-gradient(135deg,#3B82F6,#2563EB)", color: "#fff", boxShadow: "0 4px 18px rgba(59,130,246,0.45)", minWidth: 100 }
-              : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.25)", border: "1px solid rgba(255,255,255,0.08)", minWidth: 100 }}>
+              ? { background: "linear-gradient(135deg,#3B82F6,#2563EB)", color: "#fff", boxShadow: "0 4px 14px rgba(59,130,246,0.4)", minWidth: 80 }
+              : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.25)", border: "1px solid rgba(255,255,255,0.08)", minWidth: 80 }}>
             {claimMutation.isPending
-              ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
               : <>
-                  <Gift className="w-4 h-4" />
+                  <Gift className="w-3.5 h-3.5" />
                   <span>CLAIM</span>
                 </>}
           </button>
@@ -451,42 +460,40 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
         {/* ── 4. ENERGY SECTION ── */}
         <div className="rounded-2xl px-3.5 py-3" style={card}>
-          {/* Row 1: label + refill timer + recharge button */}
-          <div className="flex items-center justify-between mb-2">
+          {/* Row 1: label + refill timer */}
+          <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-1.5">
               <BsLightningChargeFill style={{ color: "#F5C542", width: 14, height: 14 }} />
               <span className="text-white font-semibold text-sm">Energy</span>
-              <button onClick={() => setAntivirusOpen(true)}>
-                <Info className="w-3 h-3 text-white/20" />
-              </button>
             </div>
-            <div className="flex items-center gap-2">
-              {state.cpuRunning && cpuCountdown > 0 && (
-                <div className="flex items-center gap-1 text-white/30 text-[10px]">
-                  <span>Refill in</span>
-                  <ChevronRight className="w-3 h-3" />
-                  <span className="tabular-nums">{formatTime(cpuCountdown)}</span>
-                </div>
-              )}
+            {state.cpuRunning && cpuCountdown > 0 ? (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <span className="text-white/30 text-[10px]">Refill in</span>
+                <span className="text-white/50 text-[10px] tabular-nums font-bold">{formatTime(cpuCountdown)}</span>
+              </div>
+            ) : !state.hasEnergy && !state.cpuRunning ? (
               <button onClick={() => setEnergyOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 active:scale-95 transition-transform"
-                style={{ background: "rgba(30,50,90,0.7)", border: "1px solid rgba(59,130,246,0.35)" }}>
-                <BsLightningChargeFill style={{ color: "#60a5fa", width: 11, height: 11 }} />
-                <span className="text-blue-400 text-[11px] font-bold">Recharge</span>
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg active:scale-95 transition-transform"
+                style={{ background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.25)" }}>
+                <BsLightningChargeFill style={{ color: "#60a5fa", width: 10, height: 10 }} />
+                <span className="text-blue-400 text-[10px] font-bold">Refill</span>
               </button>
-            </div>
+            ) : null}
           </div>
           {/* Row 2: percentage + progress bar */}
           <div className="flex items-center gap-2.5">
-            <span className="text-blue-400 font-black text-2xl tabular-nums w-14 flex-shrink-0 leading-none">{energyPct}%</span>
+            <span className="font-black text-2xl tabular-nums w-14 flex-shrink-0 leading-none"
+              style={{ color: energyPct > 50 ? "#60a5fa" : energyPct > 20 ? "#f59e0b" : "#ef4444" }}>
+              {energyPct}%
+            </span>
             <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
               <motion.div className="h-full rounded-full"
-                style={{ background: "linear-gradient(90deg,#3B82F6,#8B5CF6)" }}
+                style={{ background: energyPct > 50 ? "linear-gradient(90deg,#3B82F6,#8B5CF6)" : energyPct > 20 ? "linear-gradient(90deg,#f59e0b,#ef4444)" : "#ef4444" }}
                 animate={{ width: `${energyPct}%` }} transition={{ duration: 0.5 }} />
             </div>
           </div>
           {/* Antivirus status */}
-          <div className="flex items-center gap-1.5 mt-2 pt-2" style={{ borderTop: `1px solid ${dim}` }}>
+          <div className="flex items-center gap-1.5 mt-2.5 pt-2.5" style={{ borderTop: `1px solid ${dim}` }}>
             <FaBug style={{ color: state.antivirusActive ? "#4ade80" : "#f87171", width: 11, height: 11, flexShrink: 0 }} />
             {state.antivirusActive ? (
               <span className="text-green-400 text-[10px] font-medium">
