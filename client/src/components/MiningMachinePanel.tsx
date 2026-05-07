@@ -13,11 +13,11 @@ import AntivirusPopup from "@/components/AntivirusPopup";
 import UpgradeMachinePopup from "@/components/UpgradeMachinePopup";
 import EnergyPopup from "@/components/EnergyPopup";
 
-import miningSpeedImg from "@assets/mining-speed-nobg.png";
-import cpuImg from "@assets/cpu-nobg.png";
-import capacityImg from "@assets/capacity-nobg.png";
-import batteryStripImg from "@assets/battery-strip-nobg.png";
-import fanImg from "@assets/3a9ecce86c8b75945dc0097fe1ab901a_1778131665054.png";
+const miningSpeedImg = "/mining-speed-nobg.png";
+const cpuImg = "/cpu-nobg.png";
+const capacityImg = "/capacity-nobg.png";
+const batteryStripImg = "/battery-strip-nobg.png";
+const fanImg = "/fan-image.png";
 
 /* ── Pixel Battery Sprite ──
    The strip has 7 batteries left→right:
