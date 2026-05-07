@@ -691,7 +691,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
               <span className="font-black text-sm leading-tight" style={{ color: "#3B82F6" }}>AXN</span>
             </div>
             <p className="text-white/25 text-[9px] leading-none">≈ ${minedUsd} USD</p>
-            <div className="relative flex items-center justify-center" style={{ width: 96, height: 96 }}>
+            <div className="relative flex items-center justify-center" style={{ width: 120, height: 120 }}>
               {/* Glow behind piggy */}
               <motion.div
                 animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1.05, 0.9] }}
@@ -705,8 +705,10 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 }}
               />
               <motion.img
-                src="/piggy-bank-icon.png" alt="Collectable AXN"
-                style={{ width: 96, height: 96, objectFit: "contain", position: "relative" }}
+                src="/mining-machine-icon.png" alt="Collectable AXN"
+                loading="eager"
+                fetchPriority="high"
+                style={{ width: 120, height: 120, objectFit: "contain", position: "relative" }}
                 animate={isMining ? { y: [0, -5, 0, -3, 0] } : { y: 0 }}
                 transition={isMining ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
               />
@@ -745,7 +747,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 className="absolute bottom-0 left-0 right-0"
                 animate={{ height: `${energyPct}%` }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                style={{ background: energyPct > 50 ? "#1a6fcc" : energyPct > 20 ? "#c47d00" : "#cc1111", boxShadow: "inset 0 2px 0 rgba(255,255,255,0.15)" }}
+                style={{ background: energyPct > 50 ? "#f5c542" : energyPct > 20 ? "#e07b00" : "#cc1111", boxShadow: "inset 0 2px 0 rgba(255,255,255,0.15)" }}
               />
               {Array.from({ length: 9 }).map((_, i) => (
                 <div key={i} style={{ position: "absolute", left: 0, right: 0, bottom: `${(i + 1) * 10}%`, height: 1, background: "rgba(0,0,0,0.4)" }} />
