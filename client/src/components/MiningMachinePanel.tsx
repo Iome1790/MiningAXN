@@ -13,11 +13,8 @@ import AntivirusPopup from "@/components/AntivirusPopup";
 import UpgradeMachinePopup from "@/components/UpgradeMachinePopup";
 import EnergyPopup from "@/components/EnergyPopup";
 
-const miningSpeedImg = "/mining-speed-nobg.png";
-const cpuImg = "/cpu-nobg.png";
-const capacityImg = "/capacity-nobg.png";
-const batteryStripImg = "/battery-strip-nobg.png";
 const fanImg = "/fan-image.png";
+const batteryStripImg = "/battery-strip-nobg.png";
 
 /* ── Pixel Battery Sprite ──
    The strip has 7 batteries left→right:
@@ -581,8 +578,20 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
             {/* Mining Speed */}
             <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
-              <img src={miningSpeedImg} alt="Speed" className="flex-shrink-0"
-                style={{ width: 32, height: 32, imageRendering: "pixelated", objectFit: "contain" }} />
+              {/* Lightning bolt pixel icon */}
+              <svg width="28" height="28" viewBox="0 0 14 14" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
+                <rect x="7" y="1" width="3" height="1" fill="#facc15"/>
+                <rect x="6" y="2" width="3" height="1" fill="#facc15"/>
+                <rect x="5" y="3" width="3" height="1" fill="#facc15"/>
+                <rect x="4" y="4" width="3" height="1" fill="#facc15"/>
+                <rect x="4" y="5" width="5" height="1" fill="#facc15"/>
+                <rect x="3" y="6" width="5" height="1" fill="#facc15"/>
+                <rect x="3" y="7" width="4" height="1" fill="#facc15"/>
+                <rect x="4" y="8" width="3" height="1" fill="#facc15"/>
+                <rect x="4" y="9" width="2" height="1" fill="#facc15"/>
+                <rect x="4" y="10" width="1" height="1" fill="#facc15"/>
+                <rect x="8" y="1" width="1" height="1" fill="#fef08a" opacity="0.6"/>
+              </svg>
               <div className="min-w-0">
                 <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Speed</span>
                 <span className="text-white font-black text-[11px] tabular-nums block leading-none">
@@ -593,8 +602,27 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
             {/* CPU */}
             <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
-              <img src={cpuImg} alt="CPU" className="flex-shrink-0"
-                style={{ width: 32, height: 32, objectFit: "contain" }} />
+              {/* CPU chip pixel icon */}
+              <svg width="28" height="28" viewBox="0 0 14 14" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
+                {/* chip body */}
+                <rect x="3" y="3" width="8" height="8" fill="#475569"/>
+                <rect x="4" y="4" width="6" height="6" fill="#60a5fa"/>
+                {/* inner core */}
+                <rect x="5" y="5" width="4" height="4" fill="#1e40af"/>
+                <rect x="6" y="6" width="2" height="2" fill="#93c5fd"/>
+                {/* pins left */}
+                <rect x="1" y="5" width="2" height="1" fill="#94a3b8"/>
+                <rect x="1" y="7" width="2" height="1" fill="#94a3b8"/>
+                {/* pins right */}
+                <rect x="11" y="5" width="2" height="1" fill="#94a3b8"/>
+                <rect x="11" y="7" width="2" height="1" fill="#94a3b8"/>
+                {/* pins top */}
+                <rect x="5" y="1" width="1" height="2" fill="#94a3b8"/>
+                <rect x="7" y="1" width="1" height="2" fill="#94a3b8"/>
+                {/* pins bottom */}
+                <rect x="5" y="11" width="1" height="2" fill="#94a3b8"/>
+                <rect x="7" y="11" width="1" height="2" fill="#94a3b8"/>
+              </svg>
               <div className="min-w-0">
                 <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">CPU</span>
                 <span className="font-black text-[11px] tabular-nums block leading-none"
@@ -606,8 +634,24 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
             {/* Capacity */}
             <div className="px-2 py-2 flex items-center gap-1.5">
-              <img src={capacityImg} alt="Cap" className="flex-shrink-0"
-                style={{ width: 32, height: 32, imageRendering: "pixelated", objectFit: "contain" }} />
+              {/* Server/database pixel icon */}
+              <svg width="28" height="28" viewBox="0 0 14 14" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
+                {/* top server block */}
+                <rect x="2" y="2" width="10" height="3" fill="#334155"/>
+                <rect x="2" y="2" width="10" height="1" fill="#475569"/>
+                <rect x="10" y="3" width="1" height="1" fill="#22c55e"/>
+                <rect x="8"  y="3" width="1" height="1" fill="#3b82f6"/>
+                {/* middle server block */}
+                <rect x="2" y="6" width="10" height="3" fill="#334155"/>
+                <rect x="2" y="6" width="10" height="1" fill="#475569"/>
+                <rect x="10" y="7" width="1" height="1" fill="#22c55e"/>
+                <rect x="8"  y="7" width="1" height="1" fill="#f59e0b"/>
+                {/* bottom server block */}
+                <rect x="2" y="10" width="10" height="3" fill="#334155"/>
+                <rect x="2" y="10" width="10" height="1" fill="#475569"/>
+                <rect x="10" y="11" width="1" height="1" fill="#ef4444"/>
+                <rect x="8"  y="11" width="1" height="1" fill="#94a3b8"/>
+              </svg>
               <div className="min-w-0 flex-1">
                 <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Cap</span>
                 <span className="text-white font-black text-[10px] tabular-nums block leading-none">
