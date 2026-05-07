@@ -21,12 +21,13 @@ interface MachineState {
 
 interface UpgradeMachinePopupProps {
   onClose: () => void;
+  initialSubView?: "mining" | "capacity" | "cpu";
 }
 
 type SubView = null | "mining" | "capacity" | "cpu";
 
-export default function UpgradeMachinePopup({ onClose }: UpgradeMachinePopupProps) {
-  const [subView, setSubView] = useState<SubView>(null);
+export default function UpgradeMachinePopup({ onClose, initialSubView }: UpgradeMachinePopupProps) {
+  const [subView, setSubView] = useState<SubView>(initialSubView ?? null);
   const queryClient = useQueryClient();
 
   const { data: state } = useQuery<MachineState>({
@@ -46,7 +47,7 @@ export default function UpgradeMachinePopup({ onClose }: UpgradeMachinePopupProp
     onSuccess: (d) => {
       showNotification(d.message, "success");
       invalidate();
-      setSubView(null);
+      if (initialSubView) { onClose(); } else { setSubView(null); }
     },
     onError: (e: any) => showNotification(e.message || "Upgrade failed", "error"),
   });
@@ -187,7 +188,7 @@ export default function UpgradeMachinePopup({ onClose }: UpgradeMachinePopupProp
                 isMax={state.miningLevel >= 25}
                 isPending={upgradeMutation.isPending}
                 onUpgrade={() => upgradeMutation.mutate("mining")}
-                onBack={() => setSubView(null)}
+                onBack={() => initialSubView ? onClose() : setSubView(null)}
               />
             )}
 
@@ -207,7 +208,7 @@ export default function UpgradeMachinePopup({ onClose }: UpgradeMachinePopupProp
                 isMax={state.capacityLevel >= 25}
                 isPending={upgradeMutation.isPending}
                 onUpgrade={() => upgradeMutation.mutate("capacity")}
-                onBack={() => setSubView(null)}
+                onBack={() => initialSubView ? onClose() : setSubView(null)}
               />
             )}
 
@@ -227,7 +228,7 @@ export default function UpgradeMachinePopup({ onClose }: UpgradeMachinePopupProp
                 isMax={state.cpuLevel >= 25}
                 isPending={upgradeMutation.isPending}
                 onUpgrade={() => upgradeMutation.mutate("cpu")}
-                onBack={() => setSubView(null)}
+                onBack={() => initialSubView ? onClose() : setSubView(null)}
               />
             )}
           </AnimatePresence>
