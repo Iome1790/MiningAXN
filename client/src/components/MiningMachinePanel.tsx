@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ChevronRight, Wrench, Gift } from "lucide-react";
+import { ChevronRight, Wrench, Gift, Wifi, Thermometer, Clock, TrendingUp, ShieldCheck, ShieldOff } from "lucide-react";
 import { useAdFlow } from "@/hooks/useAdFlow";
 import { RiPlayFill, RiToolsFill, RiCpuFill, RiDatabase2Fill } from "react-icons/ri";
 import { BsLightningChargeFill } from "react-icons/bs";
@@ -409,8 +409,43 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
   const [repairOpen, setRepairOpen] = useState(false);
   const [antivirusOpen, setAntivirusOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeType, setUpgradeType] = useState<null | "mining" | "cpu" | "capacity">(null);
   const [energyOpen, setEnergyOpen] = useState(false);
   const [adRunning, setAdRunning] = useState(false);
+
+  // ── Uptime tracking ──
+  const sessionStartRef = useRef(Date.now());
+  const [uptimeDisplay, setUptimeDisplay] = useState("0m");
+  useEffect(() => {
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - sessionStartRef.current) / 1000);
+      const h = Math.floor(elapsed / 3600);
+      const m = Math.floor((elapsed % 3600) / 60);
+      setUptimeDisplay(h > 0 ? `${h}h ${m}m` : `${m}m`);
+    };
+    tick();
+    const t = setInterval(tick, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  // ── Network quality ──
+  const [networkQuality, setNetworkQuality] = useState<"Weak" | "Stable" | "Excellent">("Stable");
+  useEffect(() => {
+    const conn = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+    if (conn) {
+      const map: Record<string, "Weak" | "Stable" | "Excellent"> = {
+        "slow-2g": "Weak", "2g": "Weak", "3g": "Stable", "4g": "Excellent", "5g": "Excellent",
+      };
+      setNetworkQuality(map[conn.effectiveType] ?? "Stable");
+      const handler = () => setNetworkQuality(map[conn.effectiveType] ?? "Stable");
+      conn.addEventListener("change", handler);
+      return () => conn.removeEventListener("change", handler);
+    }
+  }, []);
+
+  // ── Simulated temperature — updated after state loads ──
+  const [temperature, setTemperature] = useState(38);
+  const cpuActiveRef = useRef(false);
 
   const { data: state } = useQuery<MachineState>({
     queryKey: ["/api/axn-mining/state"],
@@ -537,7 +572,18 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
   const minedUsd = (localMined * 0.00014).toFixed(4);
 
+  // Keep cpuActiveRef in sync and update simulated temperature
+  if (cpuActiveRef.current !== isMining) {
+    cpuActiveRef.current = isMining;
+    setTemperature(isMining ? 44 + Math.floor(Math.random() * 5) : 38 + Math.floor(Math.random() * 3));
+  }
+
   const dotColor = machineStopped ? "#ef4444" : isMining ? "#22c55e" : "#f59e0b";
+
+  // Efficiency: ratio of current mining rate fill vs capacity utilization
+  const efficiencyPct = Math.min(100, Math.round(
+    isMining ? 70 + (state.miningLevel / 25) * 25 : 40 + (state.miningLevel / 25) * 20
+  ));
 
   const nextMiningRate = (state.miningRate * 1.5).toFixed(4);
   const nextCapacity = (state.capacity * 2).toFixed(0);
@@ -555,21 +601,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
           <div className="grid grid-cols-3">
 
             {/* Mining Speed */}
-            <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
-              {/* Lightning bolt pixel icon */}
-              <svg width="28" height="28" viewBox="0 0 14 14" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
-                <rect x="7" y="1" width="3" height="1" fill="#facc15"/>
-                <rect x="6" y="2" width="3" height="1" fill="#facc15"/>
-                <rect x="5" y="3" width="3" height="1" fill="#facc15"/>
-                <rect x="4" y="4" width="3" height="1" fill="#facc15"/>
-                <rect x="4" y="5" width="5" height="1" fill="#facc15"/>
-                <rect x="3" y="6" width="5" height="1" fill="#facc15"/>
-                <rect x="3" y="7" width="4" height="1" fill="#facc15"/>
-                <rect x="4" y="8" width="3" height="1" fill="#facc15"/>
-                <rect x="4" y="9" width="2" height="1" fill="#facc15"/>
-                <rect x="4" y="10" width="1" height="1" fill="#facc15"/>
-                <rect x="8" y="1" width="1" height="1" fill="#fef08a" opacity="0.6"/>
-              </svg>
+            <div className="px-2 py-2 flex items-center gap-1" style={{ borderRight: `1px solid ${dim}` }}>
+              <img src="/icon-mining-speed.png" alt="" style={{ width: 26, height: 26, objectFit: "contain", flexShrink: 0, imageRendering: "pixelated" }} />
               <div className="min-w-0">
                 <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Speed</span>
                 <span className="text-white font-black text-[11px] tabular-nums block leading-none">
@@ -579,28 +612,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             </div>
 
             {/* CPU */}
-            <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
-              {/* CPU chip pixel icon */}
-              <svg width="28" height="28" viewBox="0 0 14 14" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
-                {/* chip body */}
-                <rect x="3" y="3" width="8" height="8" fill="#475569"/>
-                <rect x="4" y="4" width="6" height="6" fill="#60a5fa"/>
-                {/* inner core */}
-                <rect x="5" y="5" width="4" height="4" fill="#1e40af"/>
-                <rect x="6" y="6" width="2" height="2" fill="#93c5fd"/>
-                {/* pins left */}
-                <rect x="1" y="5" width="2" height="1" fill="#94a3b8"/>
-                <rect x="1" y="7" width="2" height="1" fill="#94a3b8"/>
-                {/* pins right */}
-                <rect x="11" y="5" width="2" height="1" fill="#94a3b8"/>
-                <rect x="11" y="7" width="2" height="1" fill="#94a3b8"/>
-                {/* pins top */}
-                <rect x="5" y="1" width="1" height="2" fill="#94a3b8"/>
-                <rect x="7" y="1" width="1" height="2" fill="#94a3b8"/>
-                {/* pins bottom */}
-                <rect x="5" y="11" width="1" height="2" fill="#94a3b8"/>
-                <rect x="7" y="11" width="1" height="2" fill="#94a3b8"/>
-              </svg>
+            <div className="px-2 py-2 flex items-center gap-1" style={{ borderRight: `1px solid ${dim}` }}>
+              <img src="/icon-cpu-time.png" alt="" style={{ width: 26, height: 26, objectFit: "contain", flexShrink: 0, imageRendering: "pixelated" }} />
               <div className="min-w-0">
                 <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">CPU</span>
                 <span className="font-black text-[11px] tabular-nums block leading-none"
@@ -611,25 +624,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             </div>
 
             {/* Capacity */}
-            <div className="px-2 py-2 flex items-center gap-1.5">
-              {/* Server/database pixel icon */}
-              <svg width="28" height="28" viewBox="0 0 14 14" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
-                {/* top server block */}
-                <rect x="2" y="2" width="10" height="3" fill="#334155"/>
-                <rect x="2" y="2" width="10" height="1" fill="#475569"/>
-                <rect x="10" y="3" width="1" height="1" fill="#22c55e"/>
-                <rect x="8"  y="3" width="1" height="1" fill="#3b82f6"/>
-                {/* middle server block */}
-                <rect x="2" y="6" width="10" height="3" fill="#334155"/>
-                <rect x="2" y="6" width="10" height="1" fill="#475569"/>
-                <rect x="10" y="7" width="1" height="1" fill="#22c55e"/>
-                <rect x="8"  y="7" width="1" height="1" fill="#f59e0b"/>
-                {/* bottom server block */}
-                <rect x="2" y="10" width="10" height="3" fill="#334155"/>
-                <rect x="2" y="10" width="10" height="1" fill="#475569"/>
-                <rect x="10" y="11" width="1" height="1" fill="#ef4444"/>
-                <rect x="8"  y="11" width="1" height="1" fill="#94a3b8"/>
-              </svg>
+            <div className="px-2 py-2 flex items-center gap-1">
+              <img src="/icon-capacity.png" alt="" style={{ width: 26, height: 26, objectFit: "contain", flexShrink: 0, imageRendering: "pixelated" }} />
               <div className="min-w-0 flex-1">
                 <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Cap</span>
                 <span className="text-white font-black text-[10px] tabular-nums block leading-none">
@@ -691,25 +687,25 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
               <span className="font-black text-sm leading-tight" style={{ color: "#3B82F6" }}>AXN</span>
             </div>
             <p className="text-white/25 text-[9px] leading-none">≈ ${minedUsd} USD</p>
-            <div className="relative flex items-center justify-center" style={{ width: 120, height: 120 }}>
-              {/* Glow behind piggy */}
+            <div className="relative flex items-center justify-center" style={{ width: 170, height: 170 }}>
+              {/* Glow behind machine */}
               <motion.div
                 animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1.05, 0.9] }}
                 transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                 style={{
                   position: "absolute", inset: -10,
                   borderRadius: "50%",
-                  background: "radial-gradient(circle, rgba(236,72,153,0.45) 0%, rgba(245,158,11,0.2) 50%, transparent 75%)",
-                  filter: "blur(10px)",
+                  background: "radial-gradient(circle, rgba(59,130,246,0.5) 0%, rgba(139,92,246,0.2) 50%, transparent 75%)",
+                  filter: "blur(14px)",
                   pointerEvents: "none",
                 }}
               />
               <motion.img
-                src="/mining-machine-icon.png" alt="Collectable AXN"
+                src="/mining-machine-v2.png" alt="Collectable AXN"
                 loading="eager"
                 fetchPriority="high"
-                style={{ width: 120, height: 120, objectFit: "contain", position: "relative" }}
-                animate={isMining ? { y: [0, -5, 0, -3, 0] } : { y: 0 }}
+                style={{ width: 170, height: 170, objectFit: "contain", position: "relative" }}
+                animate={isMining ? { y: [0, -6, 0, -4, 0] } : { y: 0 }}
                 transition={isMining ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
               />
               {isMining && [0, 1, 2, 3].map((i) => (
@@ -771,32 +767,53 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
         </div>
 
-        {/* ── ANTIVIRUS STATUS ── */}
-        <div className="rounded-2xl px-3.5 py-2.5 flex items-center gap-1.5" style={card}>
-          <img
-            src="/virus-icon.png"
-            alt="virus"
-            style={{
-              width: 26, height: 26, flexShrink: 0,
-              imageRendering: "pixelated",
-              filter: state.antivirusActive
-                ? "hue-rotate(90deg) brightness(1.2) drop-shadow(0 0 4px #4ade80)"
-                : "brightness(1.0) drop-shadow(0 0 4px #f87171)",
-              opacity: state.antivirusActive ? 1 : 0.9,
-            }}
-          />
-          {state.antivirusActive ? (
-            <span className="text-green-400 text-[10px] font-medium">
-              Antivirus active{avSecondsLeft > 0 && <span className="text-green-400/50 ml-1">({formatTime(avSecondsLeft)})</span>}
-            </span>
-          ) : (
-            <button onClick={() => setAntivirusOpen(true)} className="text-red-400 text-[10px] font-medium active:opacity-70">
-              No antivirus — tap to protect
-            </button>
-          )}
+        {/* ── SYSTEM STATS ROW ── */}
+        <div className="grid grid-cols-4 gap-1.5">
+          {/* Network */}
+          {(() => {
+            const netColor = networkQuality === "Excellent" ? "#22c55e" : networkQuality === "Stable" ? "#60a5fa" : "#f59e0b";
+            return (
+              <div className="rounded-2xl p-2 flex flex-col items-center gap-1" style={card}>
+                <Wifi className="w-4 h-4" style={{ color: netColor }} />
+                <span className="text-white/40 text-[7px] uppercase tracking-wide leading-none font-semibold">Network</span>
+                <span className="font-black text-[9px] leading-none" style={{ color: netColor }}>{networkQuality}</span>
+              </div>
+            );
+          })()}
+
+          {/* Temperature */}
+          {(() => {
+            const tempColor = temperature >= 50 ? "#ef4444" : temperature >= 44 ? "#f59e0b" : "#60a5fa";
+            return (
+              <div className="rounded-2xl p-2 flex flex-col items-center gap-1" style={card}>
+                <Thermometer className="w-4 h-4" style={{ color: tempColor }} />
+                <span className="text-white/40 text-[7px] uppercase tracking-wide leading-none font-semibold">TEMP</span>
+                <span className="font-black text-[9px] leading-none" style={{ color: tempColor }}>{temperature}°C</span>
+              </div>
+            );
+          })()}
+
+          {/* Uptime */}
+          <div className="rounded-2xl p-2 flex flex-col items-center gap-1" style={card}>
+            <Clock className="w-4 h-4 text-purple-400" />
+            <span className="text-white/40 text-[7px] uppercase tracking-wide leading-none font-semibold">Uptime</span>
+            <span className="font-black text-[9px] leading-none text-purple-300">{uptimeDisplay}</span>
+          </div>
+
+          {/* Efficiency */}
+          {(() => {
+            const effColor = efficiencyPct >= 80 ? "#22c55e" : efficiencyPct >= 55 ? "#f59e0b" : "#ef4444";
+            return (
+              <div className="rounded-2xl p-2 flex flex-col items-center gap-1" style={card}>
+                <TrendingUp className="w-4 h-4" style={{ color: effColor }} />
+                <span className="text-white/40 text-[7px] uppercase tracking-wide leading-none font-semibold">Effic.</span>
+                <span className="font-black text-[9px] leading-none" style={{ color: effColor }}>{efficiencyPct}%</span>
+              </div>
+            );
+          })()}
         </div>
 
-        {/* ── 5. UPGRADE MACHINE ── */}
+        {/* ── UPGRADE MACHINE ── */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-white font-black text-[11px] uppercase tracking-[0.14em]">Upgrade Machine</span>
@@ -806,91 +823,117 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="space-y-2">
             {/* Mining Speed */}
-            <div className="rounded-2xl p-2.5 flex flex-col gap-1.5" style={card}>
-              <div className="flex items-center gap-1.5">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(139,92,246,0.2)", border: "1px solid rgba(139,92,246,0.25)" }}>
-                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none">
-                    <polyline points="22,12 18,12 15,21 9,3 6,12 2,12" stroke="#a78bfa" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-white/55 text-[9px] leading-none">Mining Speed</p>
-                  <p className="text-purple-400 font-black text-[10px] leading-tight">Lv. {state.miningLevel}</p>
-                </div>
+            <div className="rounded-2xl px-3 py-3 flex items-center gap-3" style={card}>
+              <div className="flex-shrink-0" style={{ width: 56, height: 56 }}>
+                <img src="/icon-mining-speed.png" alt="" style={{ width: 56, height: 56, objectFit: "contain", imageRendering: "pixelated" }} />
               </div>
-              <p className="text-white/30 text-[9px] tabular-nums leading-none">{state.miningRate} → {nextMiningRate} AXN/s</p>
-              <div className="flex items-center justify-between">
-                <button onClick={() => setUpgradeOpen(true)} disabled={state.isMaxLevel}
-                  className="rounded-lg px-2 py-1 text-white/55 text-[9px] font-bold active:scale-95 transition-transform disabled:opacity-40"
-                  style={{ border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)" }}>
-                  {state.isMaxLevel ? "Max" : "Upgrade"}
-                </button>
-                {!state.isMaxLevel && (
-                  <div className="flex items-center gap-0.5">
-                    <img src="/axn-logo.svg" className="w-2.5 h-2.5" alt="" />
-                    <span className="text-white/40 text-[9px] font-bold">{state.upgMining}</span>
-                  </div>
-                )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-white font-black text-[11px]">MINING SPEED</span>
+                  <span className="text-purple-400 text-[9px] font-bold tabular-nums">{state.miningLevel}/25</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden mb-1.5" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div className="h-full rounded-full" style={{ width: `${(state.miningLevel / 25) * 100}%`, background: "linear-gradient(90deg,#7c3aed,#a78bfa)" }} />
+                </div>
+                <p className="text-white/30 text-[9px] tabular-nums">{state.miningRate} → {nextMiningRate} AXN/s</p>
               </div>
+              <button
+                onClick={() => setUpgradeType("mining")}
+                disabled={state.miningLevel >= 25}
+                className="flex-shrink-0 rounded-xl px-3 py-2 active:scale-95 transition-transform disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg,#7c3aed,#5b21b6)", border: "1px solid rgba(139,92,246,0.4)" }}>
+                <span className="text-white font-black text-[9px] uppercase tracking-wide">{state.miningLevel >= 25 ? "MAX" : "UPGRADE"}</span>
+              </button>
             </div>
 
             {/* CPU Time */}
-            <div className="rounded-2xl p-2.5 flex flex-col gap-1.5" style={card}>
-              <div className="flex items-center gap-1.5">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(139,92,246,0.2)", border: "1px solid rgba(139,92,246,0.25)" }}>
-                  <RiCpuFill style={{ color: "#a78bfa", width: 16, height: 16 }} />
-                </div>
-                <div>
-                  <p className="text-white/55 text-[9px] leading-none">CPU Time</p>
-                  <p className="text-purple-400 font-black text-[10px] leading-tight">Lv. {state.cpuLevel}</p>
-                </div>
+            <div className="rounded-2xl px-3 py-3 flex items-center gap-3" style={card}>
+              <div className="flex-shrink-0" style={{ width: 56, height: 56 }}>
+                <img src="/icon-cpu-time.png" alt="" style={{ width: 56, height: 56, objectFit: "contain", imageRendering: "pixelated" }} />
               </div>
-              <p className="text-white/30 text-[9px] tabular-nums leading-none">{formatTime(state.cpuDurationSec)} → {formatTime(nextCpuSec)}</p>
-              <div className="flex items-center justify-between">
-                <button onClick={() => setUpgradeOpen(true)} disabled={state.isMaxLevel}
-                  className="rounded-lg px-2 py-1 text-white/55 text-[9px] font-bold active:scale-95 transition-transform disabled:opacity-40"
-                  style={{ border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)" }}>
-                  {state.isMaxLevel ? "Max" : "Upgrade"}
-                </button>
-                {!state.isMaxLevel && (
-                  <div className="flex items-center gap-0.5">
-                    <img src="/axn-logo.svg" className="w-2.5 h-2.5" alt="" />
-                    <span className="text-white/40 text-[9px] font-bold">{state.upgCpu}</span>
-                  </div>
-                )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-white font-black text-[11px]">CPU TIME</span>
+                  <span className="text-blue-400 text-[9px] font-bold tabular-nums">{state.cpuLevel}/25</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden mb-1.5" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div className="h-full rounded-full" style={{ width: `${(state.cpuLevel / 25) * 100}%`, background: "linear-gradient(90deg,#1d4ed8,#60a5fa)" }} />
+                </div>
+                <p className="text-white/30 text-[9px] tabular-nums">{formatTime(state.cpuDurationSec)} → {formatTime(nextCpuSec)}</p>
               </div>
+              <button
+                onClick={() => setUpgradeType("cpu")}
+                disabled={state.cpuLevel >= 25}
+                className="flex-shrink-0 rounded-xl px-3 py-2 active:scale-95 transition-transform disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg,#1d4ed8,#1e40af)", border: "1px solid rgba(59,130,246,0.4)" }}>
+                <span className="text-white font-black text-[9px] uppercase tracking-wide">{state.cpuLevel >= 25 ? "MAX" : "UPGRADE"}</span>
+              </button>
             </div>
 
             {/* Capacity */}
-            <div className="rounded-2xl p-2.5 flex flex-col gap-1.5" style={card}>
-              <div className="flex items-center gap-1.5">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(139,92,246,0.2)", border: "1px solid rgba(139,92,246,0.25)" }}>
-                  <RiDatabase2Fill style={{ color: "#a78bfa", width: 16, height: 16 }} />
-                </div>
-                <div>
-                  <p className="text-white/55 text-[9px] leading-none">Capacity</p>
-                  <p className="text-purple-400 font-black text-[10px] leading-tight">Lv. {state.capacityLevel}</p>
-                </div>
+            <div className="rounded-2xl px-3 py-3 flex items-center gap-3" style={card}>
+              <div className="flex-shrink-0" style={{ width: 56, height: 56 }}>
+                <img src="/icon-capacity.png" alt="" style={{ width: 56, height: 56, objectFit: "contain", imageRendering: "pixelated" }} />
               </div>
-              <p className="text-white/30 text-[9px] tabular-nums leading-none">{state.capacity} → {nextCapacity} AXN</p>
-              <div className="flex items-center justify-between">
-                <button onClick={() => setUpgradeOpen(true)} disabled={state.isMaxLevel}
-                  className="rounded-lg px-2 py-1 text-white/55 text-[9px] font-bold active:scale-95 transition-transform disabled:opacity-40"
-                  style={{ border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)" }}>
-                  {state.isMaxLevel ? "Max" : "Upgrade"}
-                </button>
-                {!state.isMaxLevel && (
-                  <div className="flex items-center gap-0.5">
-                    <img src="/axn-logo.svg" className="w-2.5 h-2.5" alt="" />
-                    <span className="text-white/40 text-[9px] font-bold">{state.upgCapacity}</span>
-                  </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-white font-black text-[11px]">CAPACITY</span>
+                  <span className="text-amber-400 text-[9px] font-bold tabular-nums">{state.capacityLevel}/25</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden mb-1.5" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div className="h-full rounded-full" style={{ width: `${(state.capacityLevel / 25) * 100}%`, background: "linear-gradient(90deg,#b45309,#fbbf24)" }} />
+                </div>
+                <p className="text-white/30 text-[9px] tabular-nums">{state.capacity} → {nextCapacity} AXN</p>
+              </div>
+              <button
+                onClick={() => setUpgradeType("capacity")}
+                disabled={state.capacityLevel >= 25}
+                className="flex-shrink-0 rounded-xl px-3 py-2 active:scale-95 transition-transform disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg,#b45309,#92400e)", border: "1px solid rgba(245,158,11,0.4)" }}>
+                <span className="text-white font-black text-[9px] uppercase tracking-wide">{state.capacityLevel >= 25 ? "MAX" : "UPGRADE"}</span>
+              </button>
+            </div>
+
+            {/* Antivirus */}
+            <div className="rounded-2xl px-3.5 py-3 flex items-center gap-3" style={card}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={state.antivirusActive
+                  ? { background: "rgba(34,197,94,0.18)", border: "1px solid rgba(34,197,94,0.3)" }
+                  : { background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                {state.antivirusActive
+                  ? <ShieldCheck className="w-5 h-5 text-green-400" />
+                  : <ShieldOff className="w-5 h-5 text-red-400" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-white font-black text-[11px]">ANTIVIRUS</span>
+                  <span className={`text-[9px] font-bold ${state.antivirusActive ? "text-green-400" : "text-red-400"}`}>
+                    {state.antivirusActive ? "Active" : "Inactive"}
+                  </span>
+                </div>
+                <p className="text-white/30 text-[9px]">Protects your miner from malware</p>
+                {state.antivirusActive && avSecondsLeft > 0 && (
+                  <p className="text-green-400/50 text-[9px] mt-0.5">{formatTime(avSecondsLeft)} remaining</p>
                 )}
               </div>
+              <button
+                onClick={() => setAntivirusOpen(true)}
+                className="flex-shrink-0 rounded-xl px-2.5 py-2 flex flex-col items-center gap-0.5 active:scale-95 transition-transform"
+                style={state.antivirusActive
+                  ? { background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.35)" }
+                  : { background: "linear-gradient(135deg,#16a34a,#15803d)", border: "1px solid rgba(34,197,94,0.4)" }}>
+                <span className={`font-black text-[9px] uppercase tracking-wide ${state.antivirusActive ? "text-green-400" : "text-white"}`}>
+                  {state.antivirusActive ? "MANAGE" : "ACTIVATE"}
+                </span>
+                {!state.antivirusActive && (
+                  <div className="flex items-center gap-0.5">
+                    <img src="/axn-logo.svg" className="w-2.5 h-2.5" alt="" />
+                    <span className="text-white/80 text-[8px] font-bold">{state.antivirusCost}</span>
+                  </div>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -960,6 +1003,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
       {repairOpen && <RepairPopup repairCost={state.repairCost} machineHealth={state.machineHealth} balance={state.balance} onClose={() => setRepairOpen(false)} />}
       {antivirusOpen && <AntivirusPopup antivirusCost={state.antivirusCost} antivirusActive={state.antivirusActive} balance={state.balance} miningLevel={state.miningLevel} onClose={() => setAntivirusOpen(false)} />}
       {upgradeOpen && <UpgradeMachinePopup onClose={() => setUpgradeOpen(false)} />}
+      {upgradeType && <UpgradeMachinePopup initialSubView={upgradeType} onClose={() => setUpgradeType(null)} />}
       {energyOpen && <EnergyPopup energyCost={state.energyCost} balance={state.balance} onClose={() => setEnergyOpen(false)} />}
     </>
   );
