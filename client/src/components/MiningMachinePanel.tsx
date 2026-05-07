@@ -82,6 +82,41 @@ function MiniWaveform({ active }: { active: boolean }) {
   );
 }
 
+/* ── Pixel-art heart (full / half / empty) ── */
+function PixelHeart({ type, isLow }: { type: "full" | "half" | "empty"; isLow: boolean }) {
+  const red = isLow ? "#bb1111" : "#cc2222";
+  const hi  = "#ff7777";
+  const dark = "#1c1010";
+  // heart shape rects on a 9×8 grid
+  const shape = [
+    {x:1,y:0,w:2,h:1},{x:5,y:0,w:2,h:1},
+    {x:0,y:1,w:9,h:3},
+    {x:1,y:4,w:7,h:1},
+    {x:2,y:5,w:5,h:1},
+    {x:3,y:6,w:3,h:1},
+    {x:4,y:7,w:1,h:1},
+  ];
+  // left-side rects for half heart (x < 4.5)
+  const halfRed = [
+    {x:1,y:0,w:2,h:1},
+    {x:0,y:1,w:4,h:3},
+    {x:1,y:4,w:3,h:1},
+    {x:2,y:5,w:2,h:1},
+    {x:3,y:6,w:1,h:1},
+  ];
+  return (
+    <svg width="17" height="17" viewBox="0 0 9 8" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
+      {/* base: dark fill for empty/half, red for full */}
+      {shape.map((r,i) => <rect key={i} {...r} fill={type === "full" ? red : dark} />)}
+      {/* half: paint left side red */}
+      {type === "half" && halfRed.map((r,i) => <rect key={i} {...r} fill={red} />)}
+      {/* highlight on filled areas */}
+      {type !== "empty" && <><rect x="1" y="0" width="1" height="1" fill={hi} /><rect x="0" y="1" width="1" height="1" fill={hi} /></>}
+      {type === "half"  && <><rect x="1" y="0" width="1" height="1" fill={hi} /><rect x="0" y="1" width="1" height="1" fill={hi} /></>}
+    </svg>
+  );
+}
+
 export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelProps) {
   const queryClient = useQueryClient();
   const { showMonetagAd } = useAdFlow();
@@ -354,67 +389,26 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                     <span className="text-red-400 text-[10px] font-bold">Repair Now</span>
                   </button>
                 ) : (
-                  <button onClick={() => setRepairOpen(true)}
-                    className="mt-2 flex items-center gap-1 active:opacity-70 transition-opacity">
-                    {/* Pixel-art heart */}
-                    <motion.svg
-                      width="13" height="13" viewBox="0 0 8 8"
-                      style={{ imageRendering: "pixelated", flexShrink: 0 }}
-                      animate={state.machineHealth <= 30 ? { opacity: [1, 0.2, 1] } : { opacity: 1 }}
-                      transition={state.machineHealth <= 30 ? { duration: 0.6, repeat: Infinity, ease: "easeInOut" } : {}}
-                    >
-                      {state.machineHealth <= 30 ? (
-                        /* cracked / dark heart */
-                        <>
-                          <rect x="1" y="0" width="2" height="1" fill="#7a1a1a"/>
-                          <rect x="5" y="0" width="2" height="1" fill="#7a1a1a"/>
-                          <rect x="0" y="1" width="4" height="2" fill="#7a1a1a"/>
-                          <rect x="4" y="1" width="4" height="2" fill="#7a1a1a"/>
-                          <rect x="0" y="3" width="8" height="2" fill="#7a1a1a"/>
-                          <rect x="1" y="5" width="6" height="1" fill="#7a1a1a"/>
-                          <rect x="2" y="6" width="4" height="1" fill="#7a1a1a"/>
-                          <rect x="3" y="7" width="2" height="1" fill="#7a1a1a"/>
-                          <rect x="1" y="0" width="1" height="1" fill="#aa2a2a"/>
-                          <rect x="0" y="1" width="1" height="1" fill="#aa2a2a"/>
-                        </>
-                      ) : (
-                        /* full red heart */
-                        <>
-                          <rect x="1" y="0" width="2" height="1" fill="#cc0000"/>
-                          <rect x="5" y="0" width="2" height="1" fill="#cc0000"/>
-                          <rect x="0" y="1" width="4" height="2" fill="#cc0000"/>
-                          <rect x="4" y="1" width="4" height="2" fill="#cc0000"/>
-                          <rect x="0" y="3" width="8" height="2" fill="#cc0000"/>
-                          <rect x="1" y="5" width="6" height="1" fill="#cc0000"/>
-                          <rect x="2" y="6" width="4" height="1" fill="#cc0000"/>
-                          <rect x="3" y="7" width="2" height="1" fill="#cc0000"/>
-                          {/* highlight sheen */}
-                          <rect x="1" y="0" width="1" height="1" fill="#ff5555"/>
-                          <rect x="5" y="0" width="1" height="1" fill="#ff5555"/>
-                          <rect x="0" y="1" width="1" height="1" fill="#ff5555"/>
-                          <rect x="4" y="1" width="1" height="1" fill="#ff5555"/>
-                        </>
-                      )}
-                    </motion.svg>
-                    {/* Segmented HP bar */}
-                    <div className="flex gap-[2px]">
-                      {Array.from({ length: 10 }).map((_, i) => {
-                        const filled = i < Math.round(state.machineHealth / 10);
-                        const isLow = state.machineHealth <= 30;
-                        return (
-                          <div key={i} style={{
-                            width: 10, height: 6,
-                            background: filled ? (isLow ? "#aa1111" : "#cc2222") : "#1e1e1e",
-                            border: "1px solid rgba(0,0,0,0.7)",
-                            boxShadow: filled
-                              ? "inset 0 1px 0 rgba(255,120,120,0.45), inset 0 -1px 0 rgba(0,0,0,0.5)"
-                              : "inset 0 1px 0 rgba(255,255,255,0.04)",
-                            imageRendering: "pixelated" as any,
-                          }} />
-                        );
-                      })}
-                    </div>
-                  </button>
+                  <motion.button
+                    onClick={() => setRepairOpen(true)}
+                    className="mt-2 flex items-center gap-[3px] active:opacity-70 transition-opacity"
+                    animate={state.machineHealth <= 30 ? { opacity: [1, 0.25, 1] } : { opacity: 1 }}
+                    transition={state.machineHealth <= 30 ? { duration: 0.65, repeat: Infinity, ease: "easeInOut" } : {}}
+                  >
+                    {Array.from({ length: 5 }).map((_, i) => {
+                      const halfHearts = Math.round(state.machineHealth / 10);
+                      const isFull = halfHearts >= (i + 1) * 2;
+                      const isHalf = !isFull && halfHearts >= i * 2 + 1;
+                      const isLow = state.machineHealth <= 30;
+                      return (
+                        <PixelHeart
+                          key={i}
+                          type={isFull ? "full" : isHalf ? "half" : "empty"}
+                          isLow={isLow}
+                        />
+                      );
+                    })}
+                  </motion.button>
                 )}
               </div>
 
@@ -430,7 +424,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             {/* Mining Speed */}
             <div className="px-2.5 py-3 flex items-center gap-2.5" style={{ borderRight: `1px solid ${dim}` }}>
               <img src="/mining-speed-icon.png" alt="Mining Speed" className="flex-shrink-0"
-                style={{ width: 32, height: 32, imageRendering: "pixelated", objectFit: "contain" }} />
+                style={{ width: 38, height: 38, imageRendering: "pixelated", objectFit: "contain" }} />
               <div className="min-w-0">
                 <span className="text-white/35 text-[9px] font-semibold uppercase block leading-none mb-1 truncate">Mining Speed</span>
                 <span className="text-white font-black text-sm tabular-nums block leading-none">
@@ -441,10 +435,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
             {/* CPU Status */}
             <div className="px-2.5 py-3 flex items-center gap-2.5" style={{ borderRight: `1px solid ${dim}` }}>
-              <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
-                style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.2)" }}>
-                <RiCpuFill style={{ color: "#8B5CF6", width: 18, height: 18 }} />
-              </div>
+              <img src="/cpu-status-icon.png" alt="CPU Status" className="flex-shrink-0"
+                style={{ width: 38, height: 38, imageRendering: "pixelated", objectFit: "contain" }} />
               <div className="min-w-0">
                 <span className="text-white/35 text-[9px] font-semibold uppercase block leading-none mb-1 truncate">CPU Status</span>
                 <span className="font-black text-sm tabular-nums block leading-none" style={{ color: isMining ? "#22c55e" : "rgba(255,255,255,0.35)" }}>
@@ -455,10 +447,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
             {/* Capacity */}
             <div className="px-2.5 py-3 flex items-center gap-2.5">
-              <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
-                style={{ background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.2)" }}>
-                <RiDatabase2Fill style={{ color: "#60a5fa", width: 18, height: 18 }} />
-              </div>
+              <img src="/capacity-icon.png" alt="Capacity" className="flex-shrink-0"
+                style={{ width: 38, height: 38, imageRendering: "pixelated", objectFit: "contain" }} />
               <div className="min-w-0 flex-1">
                 <span className="text-white/35 text-[9px] font-semibold uppercase block leading-none mb-1 truncate">Capacity</span>
                 <span className="text-white font-black text-xs tabular-nums block leading-none">
@@ -475,12 +465,11 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
         </div>
 
         {/* ── 3. COLLECT CARD ── */}
-        <div className="rounded-2xl p-3.5 flex items-center gap-3" style={card}>
-          {/* Purple coin icon */}
-          <div className="w-[54px] h-[54px] rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg,rgba(139,92,246,0.28),rgba(109,40,217,0.15))", border: "1px solid rgba(139,92,246,0.3)" }}>
-            <RiDatabase2Fill style={{ color: "#a78bfa", width: 26, height: 26 }} />
-          </div>
+        <div className="rounded-2xl py-1.5 px-3.5 flex items-center gap-3" style={card}>
+          {/* Piggy bank icon */}
+          <img src="/piggy-bank-icon.png" alt="Collectable AXN"
+            className="flex-shrink-0"
+            style={{ width: 76, height: 76, objectFit: "contain" }} />
           {/* Amount */}
           <div className="flex-1 min-w-0">
             <p className="text-white/40 text-[10px] font-semibold leading-none mb-0.5">Collectable AXN</p>
