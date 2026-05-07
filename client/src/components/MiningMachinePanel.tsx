@@ -466,10 +466,32 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
         {/* ── 3. COLLECT CARD ── */}
         <div className="rounded-2xl py-1.5 px-3.5 flex items-center gap-3" style={card}>
-          {/* Piggy bank icon */}
-          <img src="/piggy-bank-icon.png" alt="Collectable AXN"
-            className="flex-shrink-0"
-            style={{ width: 76, height: 76, objectFit: "contain" }} />
+          {/* Piggy bank icon + floating coins */}
+          <div className="relative flex-shrink-0" style={{ width: 76, height: 76 }}>
+            <motion.img
+              src="/piggy-bank-icon.png" alt="Collectable AXN"
+              style={{ width: 76, height: 76, objectFit: "contain" }}
+              animate={isMining ? { y: [0, -5, 0, -3, 0] } : { y: 0 }}
+              transition={isMining ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
+            />
+            {isMining && [0, 1, 2, 3].map((i) => (
+              <motion.div
+                key={i}
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  left: 28 + (i % 2 === 0 ? -6 : 6),
+                  width: 8, height: 8,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle at 35% 35%, #ffe066, #f59e0b, #b45309)",
+                  boxShadow: "0 0 4px rgba(245,158,11,0.8)",
+                  pointerEvents: "none",
+                }}
+                animate={{ y: [0, -38, -50], opacity: [0, 1, 0], scale: [0.6, 1, 0.7] }}
+                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3, ease: "easeOut" }}
+              />
+            ))}
+          </div>
           {/* Amount */}
           <div className="flex-1 min-w-0">
             <p className="text-white/40 text-[10px] font-semibold leading-none mb-0.5">Collectable AXN</p>
