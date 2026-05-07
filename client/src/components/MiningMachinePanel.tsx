@@ -14,43 +14,125 @@ import UpgradeMachinePopup from "@/components/UpgradeMachinePopup";
 import EnergyPopup from "@/components/EnergyPopup";
 
 const fanImg = "/fan-image.png";
-const batteryStripImg = "/battery-strip-nobg.png";
 
-/* ── Pixel Battery Sprite ──
-   The strip has 7 batteries left→right:
-   0: full green | 1: yellow | 2: orange | 3: red-orange
-   4: gray/critical (!) | 5: green lightning | 6: green +/-
+/* ── Pixel Battery ──
+   Vertical pixel-art battery (AA style) with 5 stacked segments,
+   terminal cap on top, glow + charge bolt animation.
+   Green (full) → Orange (mid) → Red (low) → Dark (empty)
 */
 function PixelBattery({ energyPct, isCharging }: { energyPct: number; isCharging: boolean }) {
-  let idx: number;
-  if (isCharging && energyPct === 0) idx = 5;
-  else if (energyPct >= 80) idx = 0;
-  else if (energyPct >= 55) idx = 1;
-  else if (energyPct >= 35) idx = 2;
-  else if (energyPct >= 15) idx = 3;
-  else if (energyPct > 0)   idx = 4;
-  else                       idx = 4;
+  const [blink, setBlink] = useState(false);
 
-  const posX = `${(idx / 6) * 100}%`;
+  const isEmpty = energyPct <= 0;
+  const isLow   = energyPct > 0 && energyPct <= 25;
+  const isMid   = energyPct > 25 && energyPct <= 60;
+
+  const fillColor = isEmpty ? "#252525" : isLow ? "#ef4444" : isMid ? "#f97316" : "#22c55e";
+  const glowColor = isEmpty ? "transparent" : isLow ? "rgba(239,68,68,0.5)" : isMid ? "rgba(249,115,22,0.5)" : "rgba(34,197,94,0.5)";
+  const shellColor = isEmpty ? "#2a2a2a" : isLow ? "#450a0a" : isMid ? "#431407" : "#052e16";
+  const rimColor   = isEmpty ? "#3a3a3a" : isLow ? "#991b1b" : isMid ? "#9a3412" : "#166534";
+
+  const filledSegs = isEmpty ? 0 : Math.max(1, Math.ceil((energyPct / 100) * 5));
+
+  // blink when low
+  useEffect(() => {
+    if (!isLow) { setBlink(false); return; }
+    const t = setInterval(() => setBlink(p => !p), 500);
+    return () => clearInterval(t);
+  }, [isLow]);
+
+  const segOpacity = (i: number) => {
+    if (i >= filledSegs) return 0;
+    if (isLow && blink) return 0.35;
+    return 1;
+  };
 
   return (
-    <motion.div
-      key={idx}
-      initial={{ scale: 0.85, opacity: 0.5 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      style={{
-        width: 56,
-        height: 56,
-        backgroundImage: `url(${batteryStripImg})`,
-        backgroundSize: "700% 100%",
-        backgroundPositionX: posX,
-        backgroundPositionY: "center",
-        backgroundRepeat: "no-repeat",
-        imageRendering: "pixelated",
-        flexShrink: 0,
-      }}
-    />
+    <div style={{ position: "relative", width: 32, height: 68, flexShrink: 0 }}>
+
+      {/* ambient glow behind battery */}
+      <motion.div
+        animate={!isEmpty ? { opacity: [0.4, 1, 0.4] } : { opacity: 0.05 }}
+        transition={{ duration: isCharging ? 0.75 : 2.4, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          position: "absolute", inset: -8,
+          borderRadius: 12,
+          background: `radial-gradient(ellipse, ${glowColor} 0%, transparent 70%)`,
+          filter: "blur(7px)",
+          pointerEvents: "none",
+        }}
+      />
+
+      <svg width="32" height="68" viewBox="0 0 32 68"
+        style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+
+        {/* ── terminal cap (top nub) ── */}
+        <rect x="10" y="0" width="12" height="6" rx="2"
+          fill={isEmpty ? "#222" : fillColor}
+          stroke={rimColor} strokeWidth="1.5" />
+
+        {/* ── battery shell ── */}
+        <rect x="2" y="5" width="28" height="62" rx="4"
+          fill={shellColor} stroke={rimColor} strokeWidth="2" />
+
+        {/* top gloss */}
+        <rect x="5" y="7" width="22" height="3" rx="1.5"
+          fill="rgba(255,255,255,0.12)" />
+
+        {/* ── 5 fill segments (bottom→top = index 0→4) ── */}
+        {[0,1,2,3,4].map(i => {
+          const segY = 56 - i * 11; // bottom-up
+          return (
+            <g key={i}>
+              {/* slot outline */}
+              <rect x="6" y={segY} width="20" height="9" rx="1.5"
+                fill="rgba(0,0,0,0.3)"
+                stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" />
+              {/* filled block */}
+              <rect x="6" y={segY} width="20" height="9" rx="1.5"
+                fill={fillColor}
+                opacity={segOpacity(i)} />
+              {/* shine on top of filled block */}
+              {i < filledSegs && (
+                <rect x="8" y={segY + 1} width="6" height="3" rx="1"
+                  fill="rgba(255,255,255,0.3)"
+                  opacity={segOpacity(i)} />
+              )}
+            </g>
+          );
+        })}
+
+        {/* ── charging bolt (center, when active) ── */}
+        {isCharging && !isEmpty && (
+          <motion.polygon
+            points="18,18 12,34 17,34 14,50 22,32 17,32"
+            fill="rgba(255,255,255,0.9)"
+            style={{ filter: `drop-shadow(0 0 4px ${fillColor})` }}
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 0.55, repeat: Infinity, ease: "easeInOut" }}
+          />
+        )}
+
+        {/* bottom rounded cap */}
+        <rect x="2" y="62" width="28" height="5" rx="3"
+          fill={isEmpty ? "#1a1a1a" : fillColor} opacity="0.6" />
+      </svg>
+
+      {/* LOW / EMPTY label */}
+      {(isLow || isEmpty) && (
+        <div style={{
+          position: "absolute", bottom: -12, left: "50%", transform: "translateX(-50%)",
+          background: isEmpty ? "#111" : "#3f0808",
+          border: `1px solid ${isEmpty ? "#444" : "#dc2626"}`,
+          borderRadius: 3, padding: "1px 4px", whiteSpace: "nowrap",
+        }}>
+          <span style={{
+            fontFamily: "monospace", fontSize: 7, fontWeight: 900,
+            color: isEmpty ? "#555" : "#fca5a5", letterSpacing: 0.5,
+          }}>{isEmpty ? "DEAD" : "LOW"}</span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -269,14 +351,14 @@ function PixelHPBar({ health, onClick }: { health: number; onClick: () => void }
 
       {/* HP bar */}
       <div className="flex flex-col gap-0.5">
-        {/* HP label */}
+        {/* HEALTH label */}
         <span style={{
           fontFamily: "'Courier New', monospace",
           fontSize: 9, fontWeight: 900, color: "#22c55e",
           letterSpacing: 1, lineHeight: 1,
           textShadow: "0 0 4px #22c55e",
           imageRendering: "pixelated",
-        }}>HP</span>
+        }}>HEALTH</span>
         {/* bar track */}
         <div style={{
           width: 90, height: 10,
@@ -553,7 +635,12 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             </div>
 
             {/* RIGHT — HP bar + terminal logs */}
-            <div className="flex-1 flex flex-col justify-center gap-2 py-2.5 pr-3 min-w-0">
+            <div className="flex-1 relative flex flex-col justify-center gap-2 py-2.5 pr-3 min-w-0">
+
+              {/* Battery — vertically centered, right side (same as AXN logo) */}
+              <div className="absolute top-1/2 -translate-y-1/2 right-0">
+                <PixelBattery energyPct={energyPct} isCharging={state.cpuRunning} />
+              </div>
 
               {/* Pixel HP bar */}
               <PixelHPBar health={state.machineHealth} onClick={() => setRepairOpen(true)} />
@@ -691,7 +778,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             ))}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white/40 text-[10px] font-semibold leading-none mb-0.5">Collectable AXN</p>
+            <p className="text-white/40 text-[10px] font-semibold leading-none mb-0.5">Collectable</p>
             <div className="flex items-baseline gap-1">
               <span className="text-white font-black text-xl tabular-nums leading-tight">{localMined.toFixed(2)}</span>
               <span className="font-black text-sm leading-tight" style={{ color: "#3B82F6" }}>AXN</span>
@@ -713,45 +800,67 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
         {/* ── 4. ENERGY SECTION ── */}
         <div className="rounded-2xl px-3.5 py-3" style={card}>
-          <div className="flex items-center justify-between mb-2.5">
-            <div className="flex items-center gap-1.5">
-              <BsLightningChargeFill style={{ color: "#F5C542", width: 14, height: 14 }} />
-              <span className="text-white font-semibold text-sm">Energy</span>
-            </div>
-            {state.cpuRunning && cpuCountdown > 0 ? (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="text-white/30 text-[10px]">Refill in</span>
-                <span className="text-white/50 text-[10px] tabular-nums font-bold">{formatTime(cpuCountdown)}</span>
-              </div>
-            ) : !state.hasEnergy && !state.cpuRunning ? (
-              <button onClick={() => setEnergyOpen(true)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg active:scale-95 transition-transform"
-                style={{ background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.25)" }}>
-                <BsLightningChargeFill style={{ color: "#60a5fa", width: 10, height: 10 }} />
-                <span className="text-blue-400 text-[10px] font-bold">Refill</span>
-              </button>
-            ) : null}
-          </div>
           <div className="flex items-center gap-3">
-            {/* Pixel battery sprite */}
-            <PixelBattery energyPct={energyPct} isCharging={state.cpuRunning} />
-            <div className="flex-1 flex flex-col gap-1.5">
-              <div className="flex items-baseline gap-1">
-                <span className="font-black text-2xl tabular-nums leading-none"
-                  style={{ color: energyPct > 50 ? "#60a5fa" : energyPct > 20 ? "#f59e0b" : "#ef4444" }}>
+            <div className="flex-1 flex flex-col gap-1">
+              {/* Energy pixel HP-style bar */}
+              <div className="flex flex-col gap-0.5">
+                <span style={{
+                  fontFamily: "'Courier New', monospace",
+                  fontSize: 9, fontWeight: 900, color: "#F5C542",
+                  letterSpacing: 1, lineHeight: 1,
+                  textShadow: "0 0 4px #F5C542",
+                  imageRendering: "pixelated",
+                }}>ENERGY</span>
+                <div style={{
+                  width: "100%", height: 10,
+                  background: "#1a1a1a",
+                  border: "1.5px solid #333",
+                  imageRendering: "pixelated",
+                  position: "relative",
+                  overflow: "hidden",
+                }}>
+                  <motion.div
+                    animate={{ width: `${energyPct}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    style={{
+                      position: "absolute", top: 0, left: 0,
+                      height: "100%",
+                      background: energyPct > 50 ? "#1a6fcc" : energyPct > 20 ? "#c47d00" : "#cc1111",
+                      boxShadow: `inset 0 2px 0 rgba(255,255,255,0.2), inset 0 -2px 0 rgba(0,0,0,0.4)`,
+                    }}
+                  />
+                  {Array.from({ length: 9 }).map((_, i) => (
+                    <div key={i} style={{
+                      position: "absolute", top: 0, bottom: 0,
+                      left: `${(i + 1) * 10}%`, width: 1,
+                      background: "rgba(0,0,0,0.35)",
+                    }} />
+                  ))}
+                  <div style={{
+                    position: "absolute", top: 0, right: 0,
+                    height: "100%", width: `${100 - energyPct}%`,
+                    background: "rgba(80,80,80,0.25)",
+                  }} />
+                </div>
+                <span style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", fontFamily: "monospace", lineHeight: 1 }}>
                   {energyPct}%
                 </span>
-                <span className="text-white/30 text-[10px]">energy</span>
-              </div>
-              <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                <motion.div className="h-full rounded-full"
-                  style={{ background: energyPct > 50 ? "linear-gradient(90deg,#3B82F6,#8B5CF6)" : energyPct > 20 ? "linear-gradient(90deg,#f59e0b,#ef4444)" : "#ef4444" }}
-                  animate={{ width: `${energyPct}%` }} transition={{ duration: 0.5 }} />
               </div>
             </div>
           </div>
           <div className="flex items-center gap-1.5 mt-2.5 pt-2.5" style={{ borderTop: `1px solid ${dim}` }}>
-            <FaBug style={{ color: state.antivirusActive ? "#4ade80" : "#f87171", width: 11, height: 11, flexShrink: 0 }} />
+            <img
+              src="/virus-icon.png"
+              alt="virus"
+              style={{
+                width: 26, height: 26, flexShrink: 0,
+                imageRendering: "pixelated",
+                filter: state.antivirusActive
+                  ? "hue-rotate(90deg) brightness(1.2) drop-shadow(0 0 4px #4ade80)"
+                  : "brightness(1.0) drop-shadow(0 0 4px #f87171)",
+                opacity: state.antivirusActive ? 1 : 0.9,
+              }}
+            />
             {state.antivirusActive ? (
               <span className="text-green-400 text-[10px] font-medium">
                 Antivirus active{avSecondsLeft > 0 && <span className="text-green-400/50 ml-1">({formatTime(avSecondsLeft)})</span>}
