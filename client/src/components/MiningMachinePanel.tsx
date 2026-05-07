@@ -550,118 +550,9 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
     <>
       <div className="w-full px-3 space-y-2 pb-24">
 
-        {/* ── 1. MINING MACHINE CARD ── */}
+        {/* ── STATS ROW ── */}
         <div className="rounded-2xl overflow-hidden" style={card}>
-
-          {/* Top: Left machine illustration | Right: health + terminal */}
-          <div className="flex">
-
-            {/* LEFT — mining machine box (original) */}
-            <div className="flex-shrink-0 flex flex-col items-center justify-center p-3 pb-4"
-              style={{ width: 152 }}>
-              <div className="relative flex items-center justify-center">
-                {/* blue outer glow */}
-                <div className="absolute rounded-2xl"
-                  style={{ inset: -6, background: "radial-gradient(ellipse,rgba(59,130,246,0.18) 0%,transparent 72%)", filter: "blur(6px)" }} />
-
-                {/* main machine body */}
-                <div className="relative rounded-2xl overflow-hidden"
-                  style={{
-                    width: 120, height: 120,
-                    background: "linear-gradient(160deg,#111118 0%,#0a0a0f 55%,#0d0d18 100%)",
-                    border: "1.5px solid rgba(59,130,246,0.28)",
-                    boxShadow: "0 0 24px rgba(59,130,246,0.22), inset 0 1px 0 rgba(255,255,255,0.06)",
-                  }}>
-
-                  {/* fan grille dot grid */}
-                  <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 120 120">
-                    {Array.from({ length: 8 }).map((_, row) =>
-                      Array.from({ length: 8 }).map((_, col) => (
-                        <circle key={`${row}-${col}`}
-                          cx={10 + col * 14} cy={10 + row * 14}
-                          r="2" fill="rgba(100,160,255,0.7)" />
-                      ))
-                    )}
-                  </svg>
-
-                  {/* dark panel overlay lower half */}
-                  <div className="absolute bottom-0 left-0 right-0"
-                    style={{ height: 48, background: "linear-gradient(to top,#0a0a12,transparent)" }} />
-
-                  {/* edge LEDs */}
-                  <div className="absolute top-0 left-4 right-4 h-px"
-                    style={{ background: "linear-gradient(90deg,transparent,#3B82F6,transparent)", boxShadow: "0 0 6px #3B82F6" }} />
-                  <div className="absolute bottom-0 left-4 right-4 h-px"
-                    style={{ background: "linear-gradient(90deg,transparent,#6366f1,transparent)", boxShadow: "0 0 6px #6366f1" }} />
-                  <div className="absolute left-0 top-4 bottom-4 w-px"
-                    style={{ background: "linear-gradient(180deg,transparent,#3B82F6,transparent)" }} />
-                  <div className="absolute right-0 top-4 bottom-4 w-px"
-                    style={{ background: "linear-gradient(180deg,transparent,#3B82F6,transparent)" }} />
-
-                  {/* corner screws */}
-                  {(["top-2 left-2","top-2 right-2","bottom-2 left-2","bottom-2 right-2"] as const).map((pos, i) => (
-                    <div key={i} className={`absolute ${pos} w-3 h-3 rounded-full flex items-center justify-center`}
-                      style={{ background: "#1a1a24", border: "1px solid rgba(59,130,246,0.5)", boxShadow: "0 0 4px rgba(59,130,246,0.3)" }}>
-                      <div className="w-1 h-px bg-blue-400/60 rotate-45 absolute" />
-                      <div className="w-1 h-px bg-blue-400/60 -rotate-45 absolute" />
-                    </div>
-                  ))}
-
-                  {/* center — AXN logo with purple glow */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative flex items-center justify-center" style={{ width: 56, height: 56 }}>
-                      <div className="absolute inset-0 rounded-full"
-                        style={{ background: "radial-gradient(circle,rgba(139,92,246,0.45) 0%,transparent 70%)", filter: "blur(6px)" }} />
-                      <img src="/axionet-logo-nobg.png"
-                        className="relative w-14 h-14 object-contain"
-                        style={{ filter: "drop-shadow(0 0 8px rgba(139,92,246,0.9)) drop-shadow(0 0 16px rgba(59,130,246,0.5))" }}
-                        alt="AXN" />
-                    </div>
-                  </div>
-
-                  {/* active mining pulse overlay */}
-                  {isMining && (
-                    <motion.div className="absolute inset-0 rounded-2xl"
-                      style={{ background: "radial-gradient(circle at 50% 50%,rgba(59,130,246,0.08),transparent 60%)" }}
-                      animate={{ opacity: [0.4, 1, 0.4] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} />
-                  )}
-                </div>
-
-                {/* blue base glow */}
-                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2"
-                  style={{ width: 80, height: 10, background: "rgba(59,130,246,0.55)", filter: "blur(10px)", borderRadius: "50%" }} />
-              </div>
-            </div>
-
-            {/* RIGHT — HP bar + terminal logs */}
-            <div className="flex-1 relative flex flex-col justify-center gap-2 py-2.5 pr-3 min-w-0">
-
-              {/* Battery — vertically centered, right side (same as AXN logo) */}
-              <div className="absolute top-1/2 -translate-y-1/2 right-0">
-                <PixelBattery energyPct={energyPct} isCharging={state.cpuRunning} />
-              </div>
-
-              {/* Pixel HP bar */}
-              <PixelHPBar health={state.machineHealth} onClick={() => setRepairOpen(true)} />
-
-              {/* Repair button if stopped */}
-              {machineStopped && (
-                <button onClick={() => setRepairOpen(true)}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 active:scale-95 transition-transform w-fit"
-                  style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)" }}>
-                  <Wrench className="w-3 h-3 text-red-400" />
-                  <span className="text-red-400 text-[9px] font-bold">Repair Now</span>
-                </button>
-              )}
-
-              {/* Terminal log — no box */}
-              <TerminalLog isMining={isMining} stopped={machineStopped} />
-            </div>
-          </div>
-
-          {/* Stats row — 3 columns */}
-          <div className="grid grid-cols-3" style={{ borderTop: `1px solid ${dim}` }}>
+          <div className="grid grid-cols-3">
 
             {/* Mining Speed */}
             <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
@@ -754,123 +645,153 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
           </div>
         </div>
 
-        {/* ── 3. COLLECT CARD ── */}
-        <div className="rounded-2xl py-1.5 px-3.5 flex items-center gap-3" style={card}>
-          <div className="relative flex-shrink-0" style={{ width: 76, height: 76 }}>
-            <motion.img
-              src="/piggy-bank-icon.png" alt="Collectable AXN"
-              style={{ width: 76, height: 76, objectFit: "contain" }}
-              animate={isMining ? { y: [0, -5, 0, -3, 0] } : { y: 0 }}
-              transition={isMining ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
-            />
-            {isMining && [0, 1, 2, 3].map((i) => (
-              <motion.div key={i}
-                style={{
-                  position: "absolute", top: 4,
-                  left: 28 + (i % 2 === 0 ? -6 : 6),
-                  width: 8, height: 8, borderRadius: "50%",
-                  background: "radial-gradient(circle at 35% 35%, #ffe066, #f59e0b, #b45309)",
-                  boxShadow: "0 0 4px rgba(245,158,11,0.8)", pointerEvents: "none",
-                }}
-                animate={{ y: [0, -38, -50], opacity: [0, 1, 0], scale: [0.6, 1, 0.7] }}
-                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3, ease: "easeOut" }}
-              />
-            ))}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white/40 text-[10px] font-semibold leading-none mb-0.5">Collectable</p>
+        {/* ── COLLECT + HEALTH / ENERGY ── */}
+        <div className="flex items-stretch gap-3 px-1 py-2">
+
+          {/* LEFT — vertical HEALTH bar */}
+          {(() => {
+            const hp = Math.max(0, Math.min(100, state.machineHealth));
+            const hc = hp <= 0 ? "#555" : "#dd2222";
+            return (
+              <div className="flex flex-col items-center gap-1" style={{ width: 44 }}>
+                <span style={{ fontFamily: "'Courier New',monospace", fontSize: 8, fontWeight: 900, color: "#cc1111", letterSpacing: 1, textShadow: "0 0 4px #cc1111" }}>HEALTH</span>
+                <div className="flex-1 relative rounded-2xl overflow-hidden" style={{ width: 26, background: "#1a1a1a", border: "1.5px solid #333", minHeight: 110 }}>
+                  <motion.div
+                    className="absolute bottom-0 left-0 right-0"
+                    animate={{ height: `${hp}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    style={{ background: hp > 50 ? "#cc1111" : hp > 20 ? "#990000" : "#550000", boxShadow: "inset 0 2px 0 rgba(255,100,100,0.3)" }}
+                  />
+                  {Array.from({ length: 9 }).map((_, i) => (
+                    <div key={i} style={{ position: "absolute", left: 0, right: 0, bottom: `${(i + 1) * 10}%`, height: 1, background: "rgba(0,0,0,0.4)" }} />
+                  ))}
+                </div>
+                <button onClick={() => setRepairOpen(true)} className="active:opacity-70">
+                  <svg width="20" height="18" viewBox="0 0 11 10" style={{ imageRendering: "pixelated" }}>
+                    <rect x="1" y="0" width="3" height="1" fill={hc}/>
+                    <rect x="6" y="0" width="3" height="1" fill={hc}/>
+                    <rect x="0" y="1" width="11" height="4" fill={hc}/>
+                    <rect x="1" y="5" width="9" height="1" fill={hc}/>
+                    <rect x="2" y="6" width="7" height="1" fill={hc}/>
+                    <rect x="3" y="7" width="5" height="1" fill={hc}/>
+                    <rect x="4" y="8" width="3" height="1" fill={hc}/>
+                    <rect x="5" y="9" width="1" height="1" fill={hc}/>
+                  </svg>
+                </button>
+                <span style={{ fontSize: 7, color: "rgba(255,255,255,0.3)", fontFamily: "monospace" }}>{state.machineHealth}/100</span>
+              </div>
+            );
+          })()}
+
+          {/* CENTER — Piggy + Collectable + Claim */}
+          <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
+            <p className="text-white/40 text-[10px] font-semibold leading-none">Collectable</p>
             <div className="flex items-baseline gap-1">
               <span className="text-white font-black text-xl tabular-nums leading-tight">{localMined.toFixed(2)}</span>
               <span className="font-black text-sm leading-tight" style={{ color: "#3B82F6" }}>AXN</span>
             </div>
-            <p className="text-white/25 text-[10px] leading-none mt-0.5">≈ ${minedUsd} USD</p>
+            <p className="text-white/25 text-[9px] leading-none">≈ ${minedUsd} USD</p>
+            <div className="relative flex items-center justify-center" style={{ width: 96, height: 96 }}>
+              {/* Glow behind piggy */}
+              <motion.div
+                animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1.05, 0.9] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                  position: "absolute", inset: -10,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(236,72,153,0.45) 0%, rgba(245,158,11,0.2) 50%, transparent 75%)",
+                  filter: "blur(10px)",
+                  pointerEvents: "none",
+                }}
+              />
+              <motion.img
+                src="/piggy-bank-icon.png" alt="Collectable AXN"
+                style={{ width: 96, height: 96, objectFit: "contain", position: "relative" }}
+                animate={isMining ? { y: [0, -5, 0, -3, 0] } : { y: 0 }}
+                transition={isMining ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
+              />
+              {isMining && [0, 1, 2, 3].map((i) => (
+                <motion.div key={i}
+                  style={{
+                    position: "absolute", top: 4,
+                    left: 36 + (i % 2 === 0 ? -6 : 6),
+                    width: 8, height: 8, borderRadius: "50%",
+                    background: "radial-gradient(circle at 35% 35%, #ffe066, #f59e0b, #b45309)",
+                    boxShadow: "0 0 4px rgba(245,158,11,0.8)", pointerEvents: "none",
+                  }}
+                  animate={{ y: [0, -42, -55], opacity: [0, 1, 0], scale: [0.6, 1, 0.7] }}
+                  transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3, ease: "easeOut" }}
+                />
+              ))}
+            </div>
+            <button
+              onClick={handleCollect}
+              disabled={!canClaim || claimMutation.isPending}
+              className="h-9 px-4 rounded-xl font-black text-xs tracking-widest uppercase transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5"
+              style={canClaim
+                ? { background: "linear-gradient(135deg,#3B82F6,#2563EB)", color: "#fff", boxShadow: "0 4px 14px rgba(59,130,246,0.4)", minWidth: 88 }
+                : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.25)", border: "1px solid rgba(255,255,255,0.08)", minWidth: 88 }}>
+              {claimMutation.isPending
+                ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                : <><Gift className="w-3.5 h-3.5" /><span>CLAIM</span></>}
+            </button>
           </div>
-          <button
-            onClick={handleCollect}
-            disabled={!canClaim || claimMutation.isPending}
-            className="h-10 px-3.5 rounded-xl font-black text-xs tracking-widest uppercase transition-all active:scale-95 disabled:opacity-40 flex-shrink-0 flex items-center justify-center gap-1.5"
-            style={canClaim
-              ? { background: "linear-gradient(135deg,#3B82F6,#2563EB)", color: "#fff", boxShadow: "0 4px 14px rgba(59,130,246,0.4)", minWidth: 80 }
-              : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.25)", border: "1px solid rgba(255,255,255,0.08)", minWidth: 80 }}>
-            {claimMutation.isPending
-              ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              : <><Gift className="w-3.5 h-3.5" /><span>CLAIM</span></>}
-          </button>
+
+          {/* RIGHT — vertical ENERGY bar */}
+          <div className="flex flex-col items-center gap-1" style={{ width: 44 }}>
+            <span style={{ fontFamily: "'Courier New',monospace", fontSize: 8, fontWeight: 900, color: "#F5C542", letterSpacing: 1, textShadow: "0 0 4px #F5C542" }}>ENERGY</span>
+            <div className="flex-1 relative rounded-2xl overflow-hidden" style={{ width: 26, background: "#1a1a1a", border: "1.5px solid #333", minHeight: 110 }}>
+              <motion.div
+                className="absolute bottom-0 left-0 right-0"
+                animate={{ height: `${energyPct}%` }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                style={{ background: energyPct > 50 ? "#1a6fcc" : energyPct > 20 ? "#c47d00" : "#cc1111", boxShadow: "inset 0 2px 0 rgba(255,255,255,0.15)" }}
+              />
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} style={{ position: "absolute", left: 0, right: 0, bottom: `${(i + 1) * 10}%`, height: 1, background: "rgba(0,0,0,0.4)" }} />
+              ))}
+            </div>
+            <svg width="20" height="20" viewBox="0 0 14 14" style={{ imageRendering: "pixelated" }}>
+              <rect x="7" y="1" width="3" height="1" fill={energyPct <= 0 ? "#555" : energyPct <= 25 ? "#cc1111" : "#facc15"}/>
+              <rect x="6" y="2" width="3" height="1" fill={energyPct <= 0 ? "#555" : energyPct <= 25 ? "#cc1111" : "#facc15"}/>
+              <rect x="5" y="3" width="3" height="1" fill={energyPct <= 0 ? "#555" : energyPct <= 25 ? "#cc1111" : "#facc15"}/>
+              <rect x="4" y="4" width="3" height="1" fill={energyPct <= 0 ? "#555" : energyPct <= 25 ? "#cc1111" : "#facc15"}/>
+              <rect x="4" y="5" width="5" height="1" fill={energyPct <= 0 ? "#555" : energyPct <= 25 ? "#cc1111" : "#facc15"}/>
+              <rect x="3" y="6" width="5" height="1" fill={energyPct <= 0 ? "#555" : energyPct <= 25 ? "#cc1111" : "#facc15"}/>
+              <rect x="3" y="7" width="4" height="1" fill={energyPct <= 0 ? "#555" : energyPct <= 25 ? "#cc1111" : "#facc15"}/>
+              <rect x="4" y="8" width="3" height="1" fill={energyPct <= 0 ? "#555" : energyPct <= 25 ? "#cc1111" : "#facc15"}/>
+              <rect x="4" y="9" width="2" height="1" fill={energyPct <= 0 ? "#555" : energyPct <= 25 ? "#cc1111" : "#facc15"}/>
+              <rect x="4" y="10" width="1" height="1" fill={energyPct <= 0 ? "#555" : energyPct <= 25 ? "#cc1111" : "#facc15"}/>
+              <rect x="8" y="1" width="1" height="1" fill="#fef08a" opacity="0.6"/>
+            </svg>
+            <span style={{ fontSize: 7, color: "rgba(255,255,255,0.3)", fontFamily: "monospace" }}>{energyPct}%</span>
+          </div>
+
         </div>
 
-        {/* ── 4. ENERGY SECTION ── */}
-        <div className="rounded-2xl px-3.5 py-3" style={card}>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 flex flex-col gap-1">
-              {/* Energy pixel HP-style bar */}
-              <div className="flex flex-col gap-0.5">
-                <span style={{
-                  fontFamily: "'Courier New', monospace",
-                  fontSize: 9, fontWeight: 900, color: "#F5C542",
-                  letterSpacing: 1, lineHeight: 1,
-                  textShadow: "0 0 4px #F5C542",
-                  imageRendering: "pixelated",
-                }}>ENERGY</span>
-                <div style={{
-                  width: "100%", height: 10,
-                  background: "#1a1a1a",
-                  border: "1.5px solid #333",
-                  imageRendering: "pixelated",
-                  position: "relative",
-                  overflow: "hidden",
-                }}>
-                  <motion.div
-                    animate={{ width: `${energyPct}%` }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                    style={{
-                      position: "absolute", top: 0, left: 0,
-                      height: "100%",
-                      background: energyPct > 50 ? "#1a6fcc" : energyPct > 20 ? "#c47d00" : "#cc1111",
-                      boxShadow: `inset 0 2px 0 rgba(255,255,255,0.2), inset 0 -2px 0 rgba(0,0,0,0.4)`,
-                    }}
-                  />
-                  {Array.from({ length: 9 }).map((_, i) => (
-                    <div key={i} style={{
-                      position: "absolute", top: 0, bottom: 0,
-                      left: `${(i + 1) * 10}%`, width: 1,
-                      background: "rgba(0,0,0,0.35)",
-                    }} />
-                  ))}
-                  <div style={{
-                    position: "absolute", top: 0, right: 0,
-                    height: "100%", width: `${100 - energyPct}%`,
-                    background: "rgba(80,80,80,0.25)",
-                  }} />
-                </div>
-                <span style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", fontFamily: "monospace", lineHeight: 1 }}>
-                  {energyPct}%
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 mt-2.5 pt-2.5" style={{ borderTop: `1px solid ${dim}` }}>
-            <img
-              src="/virus-icon.png"
-              alt="virus"
-              style={{
-                width: 26, height: 26, flexShrink: 0,
-                imageRendering: "pixelated",
-                filter: state.antivirusActive
-                  ? "hue-rotate(90deg) brightness(1.2) drop-shadow(0 0 4px #4ade80)"
-                  : "brightness(1.0) drop-shadow(0 0 4px #f87171)",
-                opacity: state.antivirusActive ? 1 : 0.9,
-              }}
-            />
-            {state.antivirusActive ? (
-              <span className="text-green-400 text-[10px] font-medium">
-                Antivirus active{avSecondsLeft > 0 && <span className="text-green-400/50 ml-1">({formatTime(avSecondsLeft)})</span>}
-              </span>
-            ) : (
-              <button onClick={() => setAntivirusOpen(true)} className="text-red-400 text-[10px] font-medium active:opacity-70">
-                No antivirus — tap to protect
-              </button>
-            )}
-          </div>
+        {/* ── ANTIVIRUS STATUS ── */}
+        <div className="rounded-2xl px-3.5 py-2.5 flex items-center gap-1.5" style={card}>
+          <img
+            src="/virus-icon.png"
+            alt="virus"
+            style={{
+              width: 26, height: 26, flexShrink: 0,
+              imageRendering: "pixelated",
+              filter: state.antivirusActive
+                ? "hue-rotate(90deg) brightness(1.2) drop-shadow(0 0 4px #4ade80)"
+                : "brightness(1.0) drop-shadow(0 0 4px #f87171)",
+              opacity: state.antivirusActive ? 1 : 0.9,
+            }}
+          />
+          {state.antivirusActive ? (
+            <span className="text-green-400 text-[10px] font-medium">
+              Antivirus active{avSecondsLeft > 0 && <span className="text-green-400/50 ml-1">({formatTime(avSecondsLeft)})</span>}
+            </span>
+          ) : (
+            <button onClick={() => setAntivirusOpen(true)} className="text-red-400 text-[10px] font-medium active:opacity-70">
+              No antivirus — tap to protect
+            </button>
+          )}
         </div>
 
         {/* ── 5. UPGRADE MACHINE ── */}
