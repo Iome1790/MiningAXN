@@ -140,16 +140,16 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
           {/* Header: icon left + title right */}
           <div className="flex items-center gap-4 px-5 pt-5 pb-4">
             <motion.div
-              className="w-[72px] h-[72px] rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: bgColor, border: `2px solid ${borderColor}` }}
+              className="flex items-center justify-center flex-shrink-0"
               initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.06 }}
             >
-              <img src="/antivirus-icon.png" alt="Antivirus" className="w-16 h-16 object-contain" style={{ imageRendering: "pixelated" }} />
+              <img src="/antivirus-icon.png" alt="Antivirus" className="w-24 h-24 object-contain" style={{ imageRendering: "pixelated" }} />
             </motion.div>
             <div className="flex-1 min-w-0">
               <p className="text-white font-black text-[22px] uppercase leading-none tracking-wide">ANTIVIRUS</p>
-              <div className="flex items-center gap-1.5 mt-1.5">
+              <p className="text-white/40 text-[10px] mt-0.5 leading-tight">Block virus attacks & protect mining</p>
+              <div className="flex items-center gap-1.5 mt-1">
                 <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: accentColor }} />
                 <span className="font-black text-sm" style={{ color: accentColor }}>
                   {antivirusActive ? "Active" : "Inactive"}

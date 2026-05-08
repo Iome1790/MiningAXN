@@ -129,16 +129,16 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
           {/* Header: icon left + title right */}
           <div className="flex items-center gap-4 px-5 pt-5 pb-4">
             <motion.div
-              className="w-[72px] h-[72px] rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(250,204,21,0.12)', border: '2px solid rgba(250,204,21,0.38)' }}
+              className="flex items-center justify-center flex-shrink-0"
               initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.06 }}
             >
-              <img src="/energy-icon.png" alt="Energy" className="w-16 h-16 object-contain" style={{ imageRendering: "pixelated" }} />
+              <img src="/energy-icon.png" alt="Energy" className="w-24 h-24 object-contain" style={{ imageRendering: "pixelated" }} />
             </motion.div>
             <div className="flex-1 min-w-0">
               <p className="text-white font-black text-[22px] uppercase leading-none tracking-wide">ENERGY</p>
               <p className="text-yellow-400 font-black text-base leading-none mt-0.5">RECHARGE</p>
+              <p className="text-white/40 text-[10px] mt-0.5 leading-tight">Refill CPU energy to start mining</p>
               <div className="flex items-center gap-1.5 mt-2">
                 <BsLightningChargeFill style={{ color: '#f87171', width: 13, height: 13 }} />
                 <span className="text-red-400 font-black text-sm">Empty</span>

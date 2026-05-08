@@ -126,16 +126,16 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
           {/* Header: icon left + title right */}
           <div className="flex items-center gap-4 px-5 pt-5 pb-4">
             <motion.div
-              className="w-[72px] h-[72px] rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(251,146,60,0.15)', border: '2px solid rgba(251,146,60,0.4)' }}
+              className="flex items-center justify-center flex-shrink-0"
               initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.06 }}
             >
-              <img src="/repair-icon.png" alt="Repair" className="w-16 h-16 object-contain" style={{ imageRendering: "pixelated" }} />
+              <img src="/repair-icon.png" alt="Repair" className="w-24 h-24 object-contain" style={{ imageRendering: "pixelated" }} />
             </motion.div>
             <div className="flex-1 min-w-0">
               <p className="text-white font-black text-[22px] uppercase leading-none tracking-wide">REPAIR</p>
               <p className="text-orange-400 font-black text-base leading-none mt-0.5">MACHINE</p>
+              <p className="text-white/40 text-[10px] mt-1 leading-tight">Restore machine health to 100%</p>
               <div className="flex items-center gap-2 mt-2">
                 <FaHeartbeat style={{ color: healthColor, width: 13, height: 13 }} />
                 <span className="text-white/40 text-xs">Health:</span>

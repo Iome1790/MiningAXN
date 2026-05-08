@@ -698,9 +698,10 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                 style={{
                   position: "absolute",
-                  width: 150, height: 110,
+                  width: 150, height: 80,
+                  top: "5%",
                   borderRadius: "50%",
-                  background: "radial-gradient(circle at 50% 60%, rgba(59,130,246,0.5) 0%, rgba(139,92,246,0.18) 55%, transparent 80%)",
+                  background: "radial-gradient(circle at 50% 40%, rgba(59,130,246,0.55) 0%, rgba(59,130,246,0.15) 55%, transparent 80%)",
                   filter: "blur(18px)", pointerEvents: "none",
                 }}
               />
@@ -717,8 +718,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                   position: "relative",
                   filter: "drop-shadow(0 0 24px rgba(59,130,246,0.7))",
                 }}
-                animate={isMining ? { y: [0, -6, 0, -3, 0] } : { y: 0 }}
-                transition={isMining ? { duration: 1.3, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
+                animate={{ y: 0 }}
+                transition={{ duration: 0.3 }}
               />
               {isMining && [0, 1, 2, 3].map((i) => (
                 <motion.div key={i}
@@ -726,8 +727,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                     position: "absolute", top: "10%",
                     left: `${35 + (i % 2 === 0 ? -14 : 14)}%`,
                     width: 9, height: 9, borderRadius: "50%",
-                    background: "radial-gradient(circle at 35% 35%, #ffe066, #f59e0b, #b45309)",
-                    boxShadow: "0 0 6px rgba(245,158,11,0.9)", pointerEvents: "none",
+                    background: "radial-gradient(circle at 35% 35%, #93c5fd, #3b82f6, #1d4ed8)",
+                    boxShadow: "0 0 8px rgba(59,130,246,0.95)", pointerEvents: "none",
                   }}
                   animate={{ y: [0, -45, -58], opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
                   transition={{ duration: 1.3, repeat: Infinity, delay: i * 0.32, ease: "easeOut" }}
@@ -878,7 +879,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 onClick={() => setUpgradeType("mining")}
                 disabled={state.miningLevel >= 25}
                 className="flex-shrink-0 rounded-xl h-11 px-4 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#3B82F6,#1d4ed8)", border: "1px solid rgba(59,130,246,0.4)", minWidth: 72 }}>
+                style={{ background: "linear-gradient(135deg,#1d4ed8,#1e40af)", border: "1px solid rgba(59,130,246,0.4)", minWidth: 72 }}>
                 <span className="text-white font-black text-[10px] uppercase tracking-wide">{state.miningLevel >= 25 ? "MAX" : "UPGRADE"}</span>
               </button>
             </div>
@@ -932,7 +933,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 onClick={() => setUpgradeType("capacity")}
                 disabled={state.capacityLevel >= 25}
                 className="flex-shrink-0 rounded-xl h-11 px-4 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#3B82F6,#1d4ed8)", border: "1px solid rgba(59,130,246,0.4)", minWidth: 72 }}>
+                style={{ background: "linear-gradient(135deg,#1d4ed8,#1e40af)", border: "1px solid rgba(59,130,246,0.4)", minWidth: 72 }}>
                 <span className="text-white font-black text-[10px] uppercase tracking-wide">{state.capacityLevel >= 25 ? "MAX" : "UPGRADE"}</span>
               </button>
             </div>
@@ -954,8 +955,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
             {/* Repair */}
             <button onClick={() => setRepairOpen(true)}
-              className="flex-1 flex flex-col items-center gap-1 py-1 relative active:scale-95 transition-transform">
-              <img src="/repair-icon.png" alt="Repair" className="w-7 h-7 object-contain" style={{ imageRendering: "pixelated" }} />
+              className="flex-1 flex flex-col items-center gap-0.5 py-1 relative active:scale-95 transition-transform">
+              <img src="/repair-icon.png" alt="Repair" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated" }} />
               <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Repair</span>
               {state.machineHealth < 100 && (
                 <span className="absolute -top-0.5 right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[6px] text-white"
@@ -965,8 +966,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
             {/* Antivirus */}
             <button onClick={() => setAntivirusOpen(true)}
-              className="flex-1 flex flex-col items-center gap-1 py-1 relative active:scale-95 transition-transform">
-              <img src="/antivirus-icon.png" alt="Antivirus" className="w-7 h-7 object-contain" style={{ imageRendering: "pixelated", filter: state.antivirusActive ? "none" : "grayscale(0.4) brightness(0.85)" }} />
+              className="flex-1 flex flex-col items-center gap-0.5 py-1 relative active:scale-95 transition-transform">
+              <img src="/virus-icon.png" alt="Antivirus" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated", filter: state.antivirusActive ? "none" : "grayscale(0.4) brightness(0.85)" }} />
               <span className="font-bold text-[9px] uppercase tracking-wide"
                 style={{ color: state.antivirusActive ? "#4ade80" : "rgba(255,255,255,0.45)" }}>
                 {state.antivirusActive ? "Active" : "Antivirus"}
@@ -980,15 +981,16 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             {/* START — big center button */}
             <button
               onClick={() => {
-                if (!state.hasEnergy && !state.cpuRunning && state.machineHealth > 0) { setEnergyOpen(true); return; }
+                if (state.machineHealth <= 0) { setRepairOpen(true); showNotification("Machine needs repair before mining!", "error"); return; }
+                if (!state.hasEnergy && !state.cpuRunning) { setEnergyOpen(true); showNotification("Refill energy to start mining!", "warning"); return; }
                 handleStartMining();
               }}
-              disabled={startCpuMutation.isPending || state.cpuRunning || state.machineHealth <= 0}
+              disabled={startCpuMutation.isPending || state.cpuRunning}
               className="mx-2 flex-shrink-0 w-[62px] h-[62px] rounded-full flex items-center justify-center transition-all active:scale-[0.93] disabled:opacity-50"
               style={state.cpuRunning
                 ? { background: "rgba(34,197,94,0.15)", border: "2px solid rgba(34,197,94,0.5)", boxShadow: "0 0 18px rgba(34,197,94,0.25)" }
                 : state.machineHealth <= 0
-                ? { background: "rgba(255,255,255,0.05)", border: "2px solid rgba(255,255,255,0.1)" }
+                ? { background: "rgba(239,68,68,0.12)", border: "2px solid rgba(239,68,68,0.35)" }
                 : { background: "linear-gradient(145deg,#3B82F6,#1d4ed8)", boxShadow: "0 0 22px rgba(59,130,246,0.55)", border: "2px solid rgba(99,155,255,0.4)" }}>
               {startCpuMutation.isPending ? (
                 <span className="w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin" />
@@ -1002,6 +1004,20 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                   <rect x="12" y="6" width="2" height="1" fill="#22c55e"/><rect x="12" y="9" width="2" height="1" fill="#22c55e"/>
                   <rect x="6" y="2" width="1" height="2" fill="#22c55e"/><rect x="9" y="2" width="1" height="2" fill="#22c55e"/>
                   <rect x="6" y="12" width="1" height="2" fill="#22c55e"/><rect x="9" y="12" width="1" height="2" fill="#22c55e"/>
+                </svg>
+              ) : state.machineHealth <= 0 ? (
+                /* wrench icon for broken machine */
+                <svg viewBox="0 0 16 16" width="28" height="28" style={{ imageRendering: "pixelated" }}>
+                  <rect x="9" y="1" width="2" height="2" fill="#ef4444"/>
+                  <rect x="8" y="2" width="4" height="2" fill="#ef4444"/>
+                  <rect x="7" y="4" width="3" height="2" fill="#ef4444"/>
+                  <rect x="6" y="5" width="3" height="2" fill="#ef4444"/>
+                  <rect x="5" y="6" width="3" height="2" fill="#ef4444"/>
+                  <rect x="4" y="7" width="3" height="2" fill="#ef4444"/>
+                  <rect x="3" y="8" width="3" height="2" fill="#ef4444"/>
+                  <rect x="2" y="9" width="3" height="2" fill="#ef4444"/>
+                  <rect x="2" y="11" width="3" height="2" fill="#ef4444"/>
+                  <rect x="1" y="12" width="4" height="2" fill="#ef4444"/>
                 </svg>
               ) : (
                 /* pixel art play triangle */
@@ -1017,15 +1033,15 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
             {/* Recharge */}
             <button onClick={() => setEnergyOpen(true)}
-              className="flex-1 flex flex-col items-center gap-1 py-1 active:scale-95 transition-transform">
-              <img src="/energy-icon.png" alt="Energy" className="w-7 h-7 object-contain" style={{ imageRendering: "pixelated" }} />
+              className="flex-1 flex flex-col items-center gap-0.5 py-1 active:scale-95 transition-transform">
+              <img src="/mining-speed-pixel-nobg.png" alt="Energy" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated" }} />
               <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Recharge</span>
             </button>
 
             {/* Withdraw */}
             <button onClick={onWalletOpen}
-              className="flex-1 flex flex-col items-center gap-1 py-1 active:scale-95 transition-transform">
-              <img src="/money-icon.jpg" alt="Withdraw" className="w-7 h-7 object-contain rounded-sm" style={{ imageRendering: "pixelated" }} />
+              className="flex-1 flex flex-col items-center gap-0.5 py-1 active:scale-95 transition-transform">
+              <img src="/money-icon-nobg.png" alt="Withdraw" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated" }} />
               <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Withdraw</span>
             </button>
 

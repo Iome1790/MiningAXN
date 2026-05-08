@@ -92,8 +92,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
                 {/* Main header */}
                 <div className="flex items-center gap-4 px-5 pt-5 pb-4">
                   <motion.div
-                    className="w-[72px] h-[72px] rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'rgba(139,92,246,0.15)', border: '2px solid rgba(139,92,246,0.38)' }}
+                    className="flex items-center justify-center flex-shrink-0"
                     initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                     transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.06 }}
                   >
@@ -312,8 +311,7 @@ function UpgradeDetail({
       {/* Header: icon left + title right */}
       <div className="flex items-center gap-4 px-5 pt-5 pb-4">
         <motion.div
-          className="w-[72px] h-[72px] rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: iconBg, border: `2px solid ${iconBorder}` }}
+          className="flex items-center justify-center flex-shrink-0"
           initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.06 }}
         >
