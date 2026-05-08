@@ -878,7 +878,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 onClick={() => setUpgradeType("mining")}
                 disabled={state.miningLevel >= 25}
                 className="flex-shrink-0 rounded-xl h-11 px-4 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#7c3aed,#5b21b6)", border: "1px solid rgba(139,92,246,0.4)", minWidth: 72 }}>
+                style={{ background: "linear-gradient(135deg,#3B82F6,#1d4ed8)", border: "1px solid rgba(59,130,246,0.4)", minWidth: 72 }}>
                 <span className="text-white font-black text-[10px] uppercase tracking-wide">{state.miningLevel >= 25 ? "MAX" : "UPGRADE"}</span>
               </button>
             </div>
@@ -932,50 +932,11 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 onClick={() => setUpgradeType("capacity")}
                 disabled={state.capacityLevel >= 25}
                 className="flex-shrink-0 rounded-xl h-11 px-4 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#b45309,#92400e)", border: "1px solid rgba(245,158,11,0.4)", minWidth: 72 }}>
+                style={{ background: "linear-gradient(135deg,#3B82F6,#1d4ed8)", border: "1px solid rgba(59,130,246,0.4)", minWidth: 72 }}>
                 <span className="text-white font-black text-[10px] uppercase tracking-wide">{state.capacityLevel >= 25 ? "MAX" : "UPGRADE"}</span>
               </button>
             </div>
 
-            {/* Antivirus */}
-            <div className="rounded-lg px-2.5 py-2 flex items-center gap-2" style={card}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={state.antivirusActive
-                  ? { background: "rgba(34,197,94,0.18)", border: "1px solid rgba(34,197,94,0.3)" }
-                  : { background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}>
-                {state.antivirusActive
-                  ? <ShieldCheck className="w-4 h-4 text-green-400" />
-                  : <ShieldOff className="w-4 h-4 text-red-400" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 mb-0.5">
-                  <span className="text-white font-black text-[10px] tracking-wide">ANTIVIRUS</span>
-                  <span className={`text-[7px] font-bold px-1 py-0.5 rounded ${state.antivirusActive ? "text-green-300 bg-green-500/15" : "text-red-300 bg-red-500/12"}`}>
-                    {state.antivirusActive ? "Active" : "Inactive"}
-                  </span>
-                </div>
-                <p className="text-white/35 text-[7px]">Protects your miner from malware and boosts security.</p>
-                {state.antivirusActive && avSecondsLeft > 0 && (
-                  <p className="text-green-400/50 text-[7px] mt-0.5">{formatTime(avSecondsLeft)} remaining</p>
-                )}
-              </div>
-              <button
-                onClick={() => setAntivirusOpen(true)}
-                className="flex-shrink-0 rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 active:scale-95 transition-transform min-w-[56px]"
-                style={state.antivirusActive
-                  ? { background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.35)" }
-                  : { background: "linear-gradient(135deg,#16a34a,#15803d)", border: "1px solid rgba(34,197,94,0.4)" }}>
-                <span className={`font-black text-[8px] uppercase tracking-wide ${state.antivirusActive ? "text-green-400" : "text-white"}`}>
-                  {state.antivirusActive ? "MANAGE" : "ACTIVATE"}
-                </span>
-                {!state.antivirusActive && (
-                  <div className="flex items-center gap-0.5">
-                    <img src="/axn-logo.svg" className="w-2 h-2" alt="" />
-                    <span className="text-white/90 text-[8px] font-bold">{state.antivirusCost}</span>
-                  </div>
-                )}
-              </button>
-            </div>
           </div>
         </div>
 
@@ -994,7 +955,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             {/* Repair */}
             <button onClick={() => setRepairOpen(true)}
               className="flex-1 flex flex-col items-center gap-1 py-1 relative active:scale-95 transition-transform">
-              <RiToolsFill className="w-6 h-6 text-white/60" />
+              <img src="/repair-icon.png" alt="Repair" className="w-7 h-7 object-contain" style={{ imageRendering: "pixelated" }} />
               <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Repair</span>
               {state.machineHealth < 100 && (
                 <span className="absolute -top-0.5 right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[6px] text-white"
@@ -1005,7 +966,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             {/* Antivirus */}
             <button onClick={() => setAntivirusOpen(true)}
               className="flex-1 flex flex-col items-center gap-1 py-1 relative active:scale-95 transition-transform">
-              <FaBug className="w-6 h-6" style={{ color: state.antivirusActive ? "#4ade80" : "rgba(255,255,255,0.6)" }} />
+              <img src="/antivirus-icon.png" alt="Antivirus" className="w-7 h-7 object-contain" style={{ imageRendering: "pixelated", filter: state.antivirusActive ? "none" : "grayscale(0.4) brightness(0.85)" }} />
               <span className="font-bold text-[9px] uppercase tracking-wide"
                 style={{ color: state.antivirusActive ? "#4ade80" : "rgba(255,255,255,0.45)" }}>
                 {state.antivirusActive ? "Active" : "Antivirus"}
@@ -1057,14 +1018,14 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             {/* Recharge */}
             <button onClick={() => setEnergyOpen(true)}
               className="flex-1 flex flex-col items-center gap-1 py-1 active:scale-95 transition-transform">
-              <BsLightningChargeFill className="w-6 h-6 text-yellow-400" />
+              <img src="/energy-icon.png" alt="Energy" className="w-7 h-7 object-contain" style={{ imageRendering: "pixelated" }} />
               <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Recharge</span>
             </button>
 
             {/* Withdraw */}
             <button onClick={onWalletOpen}
               className="flex-1 flex flex-col items-center gap-1 py-1 active:scale-95 transition-transform">
-              <Wallet className="w-6 h-6 text-white/60" />
+              <img src="/money-icon.jpg" alt="Withdraw" className="w-7 h-7 object-contain rounded-sm" style={{ imageRendering: "pixelated" }} />
               <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Withdraw</span>
             </button>
 

@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { forwardRef } from "react";
 import { FaUserFriends } from "react-icons/fa";
-import { RiExchangeFill } from "react-icons/ri";
 import { AXNIcon } from "@/components/AXNIcon";
 
 interface HeaderProps {
@@ -75,22 +74,15 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
             <span className="text-white/40 text-xs font-bold uppercase tracking-wide">AXN</span>
           </button>
 
-          {/* Right — icon pill */}
-          <div className="flex items-center gap-0 bg-[#1c1c1e] rounded-full h-10 overflow-hidden flex-shrink-0">
-            <button
-              onClick={onInviteOpen}
-              className="w-12 h-10 flex items-center justify-center active:bg-white/10 transition-colors"
-            >
-              <FaUserFriends style={{ width: 22, height: 22, color: "#60a5fa" }} />
-            </button>
-            <div className="w-px h-5 bg-white/10" />
-            <button
-              onClick={onWithdrawOpen}
-              className="w-12 h-10 flex items-center justify-center active:bg-white/10 transition-colors"
-            >
-              <RiExchangeFill style={{ width: 22, height: 22, color: "#facc15" }} />
-            </button>
-          </div>
+          {/* Right — Invite button */}
+          <button
+            onClick={onInviteOpen}
+            className="flex items-center gap-2 h-10 rounded-full px-3 active:scale-95 transition-transform flex-shrink-0"
+            style={{ background: "#1c1c1e" }}
+          >
+            <FaUserFriends style={{ width: 20, height: 20, color: "#60a5fa" }} />
+            <span className="text-blue-400 font-black text-xs uppercase tracking-wide">Invite</span>
+          </button>
 
         </div>
       </div>
