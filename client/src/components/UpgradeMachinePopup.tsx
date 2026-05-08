@@ -63,9 +63,9 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
   const nextCpuMin = state.cpuDurationSec / 60 + 30;
 
   const subViewIcon =
-    subView === "mining" ? <Activity className="w-5 h-5 text-[#F5C542] flex-shrink-0" />
-    : subView === "capacity" ? <HardDrive className="w-5 h-5 text-blue-400 flex-shrink-0" />
-    : subView === "cpu" ? <Cpu className="w-5 h-5 text-purple-400 flex-shrink-0" />
+    subView === "mining" ? <img src="/mining-speed-icon.png" alt="Speed" className="w-7 h-7 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
+    : subView === "capacity" ? <img src="/capacity-icon.png" alt="Capacity" className="w-7 h-7 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
+    : subView === "cpu" ? <img src="/cpu-time-icon.png" alt="CPU" className="w-7 h-7 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
     : null;
 
   const subViewTitle =
@@ -135,7 +135,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
                 className="px-5 py-4 space-y-2.5"
               >
                 <UpgradeRow
-                  icon={<Activity className="w-5 h-5 text-[#F5C542]" />}
+                  icon={<img src="/mining-speed-icon.png" alt="Speed" className="w-7 h-7 object-contain" style={{ imageRendering: "pixelated" }} />}
                   label="Mining Speed"
                   sublabel="Earn more AXN per second"
                   level={state.miningLevel}
@@ -144,7 +144,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
                   onClick={() => setSubView("mining")}
                 />
                 <UpgradeRow
-                  icon={<HardDrive className="w-5 h-5 text-blue-400" />}
+                  icon={<img src="/capacity-icon.png" alt="Capacity" className="w-7 h-7 object-contain" style={{ imageRendering: "pixelated" }} />}
                   label="Capacity"
                   sublabel="Store more AXN before collecting"
                   level={state.capacityLevel}
@@ -153,7 +153,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
                   onClick={() => setSubView("capacity")}
                 />
                 <UpgradeRow
-                  icon={<Cpu className="w-5 h-5 text-purple-400" />}
+                  icon={<img src="/cpu-time-icon.png" alt="CPU" className="w-7 h-7 object-contain" style={{ imageRendering: "pixelated" }} />}
                   label="CPU Duration"
                   sublabel="Mine longer each session"
                   level={state.cpuLevel}
@@ -175,7 +175,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
             {subView === "mining" && (
               <UpgradeDetail
                 key="mining"
-                icon={<Activity className="w-6 h-6 text-[#F5C542]" />}
+                icon={<img src="/mining-speed-icon.png" alt="Speed" className="w-8 h-8 object-contain" style={{ imageRendering: "pixelated" }} />}
                 description="Increase mining speed to earn more AXN per second."
                 currentLevel={state.miningLevel}
                 nextLevel={state.miningLevel + 1}
@@ -195,7 +195,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
             {subView === "capacity" && (
               <UpgradeDetail
                 key="capacity"
-                icon={<HardDrive className="w-6 h-6 text-blue-400" />}
+                icon={<img src="/capacity-icon.png" alt="Capacity" className="w-8 h-8 object-contain" style={{ imageRendering: "pixelated" }} />}
                 description="Increase coin storage to hold more AXN before collecting."
                 currentLevel={state.capacityLevel}
                 nextLevel={state.capacityLevel + 1}
@@ -215,7 +215,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
             {subView === "cpu" && (
               <UpgradeDetail
                 key="cpu"
-                icon={<Cpu className="w-6 h-6 text-purple-400" />}
+                icon={<img src="/cpu-time-icon.png" alt="CPU" className="w-8 h-8 object-contain" style={{ imageRendering: "pixelated" }} />}
                 description="Increase mining duration for longer continuous sessions."
                 currentLevel={state.cpuLevel}
                 nextLevel={state.cpuLevel + 1}

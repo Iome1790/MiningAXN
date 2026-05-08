@@ -602,20 +602,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
             {/* Mining Speed */}
             <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
-              {/* Lightning bolt pixel icon */}
-              <svg width="28" height="28" viewBox="0 0 14 14" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
-                <rect x="7" y="1" width="3" height="1" fill="#facc15"/>
-                <rect x="6" y="2" width="3" height="1" fill="#facc15"/>
-                <rect x="5" y="3" width="3" height="1" fill="#facc15"/>
-                <rect x="4" y="4" width="3" height="1" fill="#facc15"/>
-                <rect x="4" y="5" width="5" height="1" fill="#facc15"/>
-                <rect x="3" y="6" width="5" height="1" fill="#facc15"/>
-                <rect x="3" y="7" width="4" height="1" fill="#facc15"/>
-                <rect x="4" y="8" width="3" height="1" fill="#facc15"/>
-                <rect x="4" y="9" width="2" height="1" fill="#facc15"/>
-                <rect x="4" y="10" width="1" height="1" fill="#facc15"/>
-                <rect x="8" y="1" width="1" height="1" fill="#fef08a" opacity="0.6"/>
-              </svg>
+              <img src="/mining-speed-icon.png" alt="Speed" width="28" height="28" style={{ imageRendering: "pixelated", flexShrink: 0, objectFit: "contain" }} />
               <div className="min-w-0">
                 <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Speed</span>
                 <span className="text-white font-black text-[11px] tabular-nums block leading-none">
@@ -626,27 +613,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
             {/* CPU */}
             <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
-              {/* CPU chip pixel icon */}
-              <svg width="28" height="28" viewBox="0 0 14 14" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
-                {/* chip body */}
-                <rect x="3" y="3" width="8" height="8" fill="#475569"/>
-                <rect x="4" y="4" width="6" height="6" fill="#60a5fa"/>
-                {/* inner core */}
-                <rect x="5" y="5" width="4" height="4" fill="#1e40af"/>
-                <rect x="6" y="6" width="2" height="2" fill="#93c5fd"/>
-                {/* pins left */}
-                <rect x="1" y="5" width="2" height="1" fill="#94a3b8"/>
-                <rect x="1" y="7" width="2" height="1" fill="#94a3b8"/>
-                {/* pins right */}
-                <rect x="11" y="5" width="2" height="1" fill="#94a3b8"/>
-                <rect x="11" y="7" width="2" height="1" fill="#94a3b8"/>
-                {/* pins top */}
-                <rect x="5" y="1" width="1" height="2" fill="#94a3b8"/>
-                <rect x="7" y="1" width="1" height="2" fill="#94a3b8"/>
-                {/* pins bottom */}
-                <rect x="5" y="11" width="1" height="2" fill="#94a3b8"/>
-                <rect x="7" y="11" width="1" height="2" fill="#94a3b8"/>
-              </svg>
+              <img src="/cpu-time-icon.png" alt="CPU" width="28" height="28" style={{ imageRendering: "pixelated", flexShrink: 0, objectFit: "contain" }} />
               <div className="min-w-0">
                 <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">CPU</span>
                 <span className="font-black text-[11px] tabular-nums block leading-none"
@@ -658,24 +625,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
             {/* Capacity */}
             <div className="px-2 py-2 flex items-center gap-1.5">
-              {/* Server/database pixel icon */}
-              <svg width="28" height="28" viewBox="0 0 14 14" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
-                {/* top server block */}
-                <rect x="2" y="2" width="10" height="3" fill="#334155"/>
-                <rect x="2" y="2" width="10" height="1" fill="#475569"/>
-                <rect x="10" y="3" width="1" height="1" fill="#22c55e"/>
-                <rect x="8"  y="3" width="1" height="1" fill="#3b82f6"/>
-                {/* middle server block */}
-                <rect x="2" y="6" width="10" height="3" fill="#334155"/>
-                <rect x="2" y="6" width="10" height="1" fill="#475569"/>
-                <rect x="10" y="7" width="1" height="1" fill="#22c55e"/>
-                <rect x="8"  y="7" width="1" height="1" fill="#f59e0b"/>
-                {/* bottom server block */}
-                <rect x="2" y="10" width="10" height="3" fill="#334155"/>
-                <rect x="2" y="10" width="10" height="1" fill="#475569"/>
-                <rect x="10" y="11" width="1" height="1" fill="#ef4444"/>
-                <rect x="8"  y="11" width="1" height="1" fill="#94a3b8"/>
-              </svg>
+              <img src="/capacity-icon.png" alt="Cap" width="28" height="28" style={{ imageRendering: "pixelated", flexShrink: 0, objectFit: "contain" }} />
               <div className="min-w-0 flex-1">
                 <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Cap</span>
                 <span className="text-white font-black text-[10px] tabular-nums block leading-none">
@@ -692,7 +642,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
         </div>
 
         {/* ── COLLECT + HEALTH / ENERGY ── */}
-        <div className="rounded-2xl flex items-stretch gap-2 px-2 pt-1 pb-1" style={{ ...card, height: 200 }}>
+        <div className="flex items-stretch gap-2 px-2 pt-1 pb-1">
 
           {/* LEFT — vertical HEALTH bar */}
           {(() => {
@@ -729,28 +679,28 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             );
           })()}
 
-          {/* CENTER — Machine + Collectable + Claim */}
+          {/* CENTER — Collectable label + amount + Machine + Claim */}
           <div className="flex-1 flex flex-col items-center" style={{ minWidth: 0 }}>
             {/* Top: label + amount */}
-            <div className="flex flex-col items-center gap-0">
+            <div className="flex flex-col items-center" style={{ gap: 0 }}>
               <p className="text-white/50 text-[8px] font-semibold uppercase tracking-widest leading-none">Collectable</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-white font-black text-lg tabular-nums leading-tight">{localMined.toFixed(2)}</span>
                 <span className="font-black text-xs leading-tight" style={{ color: "#3B82F6" }}>AXN</span>
               </div>
-              <p className="text-white/25 text-[7px] leading-none">≈ ${minedUsd} USD</p>
+              <p className="text-white/25 text-[7px]" style={{ marginTop: 3, lineHeight: 1 }}>≈ ${minedUsd} USD</p>
             </div>
 
-            {/* Machine image — fixed height, scaled to fill */}
-            <div className="relative w-full flex items-center justify-center" style={{ height: 128 }}>
+            {/* Machine image — tighter, sits closer to claim button */}
+            <div className="relative w-full flex items-center justify-center" style={{ height: 108, marginTop: 4 }}>
               <motion.div
                 animate={{ opacity: [0.3, 0.85, 0.3], scale: [0.88, 1.1, 0.88] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                 style={{
                   position: "absolute",
-                  width: 170, height: 130,
+                  width: 150, height: 110,
                   borderRadius: "50%",
-                  background: "radial-gradient(circle at 50% 55%, rgba(59,130,246,0.5) 0%, rgba(139,92,246,0.18) 55%, transparent 80%)",
+                  background: "radial-gradient(circle at 50% 60%, rgba(59,130,246,0.5) 0%, rgba(139,92,246,0.18) 55%, transparent 80%)",
                   filter: "blur(18px)", pointerEvents: "none",
                 }}
               />
@@ -763,7 +713,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                   width: "100%",
                   height: "100%",
                   objectFit: "contain",
-                  objectPosition: "50% 50%",
+                  objectPosition: "50% 60%",
                   position: "relative",
                   filter: "drop-shadow(0 0 24px rgba(59,130,246,0.7))",
                 }}
@@ -786,7 +736,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             </div>
 
             {/* Claim button + subtitle */}
-            <div className="w-full flex flex-col items-center gap-0.5" style={{ paddingTop: 2 }}>
+            <div className="flex flex-col items-center gap-0.5" style={{ paddingTop: 4, width: "75%" }}>
               <button
                 onClick={handleCollect}
                 disabled={!canClaim || claimMutation.isPending}
@@ -838,58 +788,61 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
           })()}
         </div>
 
-        {/* ── SYSTEM STATS ROW ── */}
-        <div className="grid grid-cols-4 gap-1">
-          {/* Network */}
-          {(() => {
-            const netColor = networkQuality === "Excellent" ? "#22c55e" : networkQuality === "Stable" ? "#60a5fa" : "#f59e0b";
-            return (
-              <div className="rounded-lg px-1 py-1 flex items-center gap-1" style={card}>
-                <Wifi className="w-3.5 h-3.5 flex-shrink-0" style={{ color: netColor }} />
-                <div className="min-w-0">
-                  <p className="text-white/40 text-[5px] uppercase tracking-wide font-bold leading-none mb-0.5">Network</p>
-                  <p className="font-black text-[8px] leading-none truncate" style={{ color: netColor }}>{networkQuality}</p>
-                </div>
-              </div>
-            );
-          })()}
+        {/* ── SYSTEM STATS ROW — same style as Speed/CPU/Cap row above ── */}
+        <div className="rounded-2xl overflow-hidden" style={card}>
+          <div className="grid grid-cols-4">
 
-          {/* Temperature */}
-          {(() => {
-            const tempColor = temperature >= 50 ? "#ef4444" : temperature >= 44 ? "#f59e0b" : "#60a5fa";
-            return (
-              <div className="rounded-lg px-1 py-1 flex items-center gap-1" style={card}>
-                <Thermometer className="w-3.5 h-3.5 flex-shrink-0" style={{ color: tempColor }} />
-                <div className="min-w-0">
-                  <p className="text-white/40 text-[5px] uppercase tracking-wide font-bold leading-none mb-0.5">Temp</p>
-                  <p className="font-black text-[8px] leading-none" style={{ color: tempColor }}>{temperature}°C</p>
+            {/* Network */}
+            {(() => {
+              const netColor = networkQuality === "Excellent" ? "#22c55e" : networkQuality === "Stable" ? "#60a5fa" : "#f59e0b";
+              return (
+                <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
+                  <Wifi className="w-3.5 h-3.5 flex-shrink-0" style={{ color: netColor }} />
+                  <div className="min-w-0">
+                    <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Network</span>
+                    <span className="font-black text-[10px] block leading-none truncate" style={{ color: netColor }}>{networkQuality}</span>
+                  </div>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
-          {/* Uptime */}
-          <div className="rounded-lg px-1 py-1 flex items-center gap-1" style={card}>
-            <Clock className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
-            <div className="min-w-0">
-              <p className="text-white/40 text-[5px] uppercase tracking-wide font-bold leading-none mb-0.5">Uptime</p>
-              <p className="font-black text-[8px] leading-none text-purple-300">{uptimeDisplay}</p>
+            {/* Temperature */}
+            {(() => {
+              const tempColor = temperature >= 50 ? "#ef4444" : temperature >= 44 ? "#f59e0b" : "#60a5fa";
+              return (
+                <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
+                  <Thermometer className="w-3.5 h-3.5 flex-shrink-0" style={{ color: tempColor }} />
+                  <div className="min-w-0">
+                    <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Temp</span>
+                    <span className="font-black text-[10px] block leading-none" style={{ color: tempColor }}>{temperature}°C</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Uptime */}
+            <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
+              <Clock className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
+              <div className="min-w-0">
+                <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Uptime</span>
+                <span className="font-black text-[10px] block leading-none text-purple-300">{uptimeDisplay}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Efficiency */}
-          {(() => {
-            const effColor = efficiencyPct >= 80 ? "#22c55e" : efficiencyPct >= 55 ? "#f59e0b" : "#ef4444";
-            return (
-              <div className="rounded-lg px-1 py-1 flex items-center gap-1" style={card}>
-                <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" style={{ color: effColor }} />
-                <div className="min-w-0">
-                  <p className="text-white/40 text-[5px] uppercase tracking-wide font-bold leading-none mb-0.5">Effic.</p>
-                  <p className="font-black text-[8px] leading-none" style={{ color: effColor }}>{efficiencyPct}%</p>
+            {/* Efficiency */}
+            {(() => {
+              const effColor = efficiencyPct >= 80 ? "#22c55e" : efficiencyPct >= 55 ? "#f59e0b" : "#ef4444";
+              return (
+                <div className="px-2 py-2 flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" style={{ color: effColor }} />
+                  <div className="min-w-0">
+                    <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Effic.</span>
+                    <span className="font-black text-[10px] block leading-none" style={{ color: effColor }}>{efficiencyPct}%</span>
+                  </div>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
+          </div>
         </div>
 
         {/* ── UPGRADE MACHINE ── */}
@@ -904,106 +857,92 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
           <div className="space-y-1">
             {/* Mining Speed */}
-            <div className="rounded-lg px-2.5 py-2 flex items-center gap-2" style={card}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(139,92,246,0.18)", border: "1px solid rgba(139,92,246,0.3)" }}>
-                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none">
-                  <polyline points="22,12 18,12 15,21 9,3 6,12 2,12" stroke="#a78bfa" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+            <div className="rounded-xl px-3 py-4 flex items-center gap-3" style={card}>
+              {/* Icon */}
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+                style={{ border: "1px solid rgba(139,92,246,0.3)" }}>
+                <img src="/mining-speed-icon.png" alt="Mining Speed" className="w-full h-full object-contain" style={{ imageRendering: "pixelated" }} />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 mb-0.5">
-                  <span className="text-white font-black text-[10px] tracking-wide">MINING SPEED</span>
-                  <span className="text-purple-300 text-[7px] font-bold bg-purple-500/15 px-1 py-0.5 rounded">Lv. {state.miningLevel}</span>
-                </div>
-                <div className="flex items-center justify-between mb-0.5">
-                  <p className="text-white/35 text-[7px] tabular-nums">{state.miningRate} → {nextMiningRate} AXN/s</p>
-                  <span className="text-white/40 text-[7px] font-bold tabular-nums">{state.miningLevel * 2} / 50</span>
-                </div>
-                <div className="h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
-                  <div className="h-full rounded-full" style={{ width: `${(state.miningLevel / 25) * 100}%`, background: "linear-gradient(90deg,#7c3aed,#a78bfa)" }} />
+              {/* Info: title + lv + value */}
+              <div className="flex flex-col justify-center gap-1" style={{ minWidth: 0, width: 118 }}>
+                <span className="text-white font-black text-[11px] tracking-wide leading-none">MINING SPEED</span>
+                <span className="text-purple-300 text-[9px] font-bold leading-none">Lv. {state.miningLevel}</span>
+                <span className="text-white/45 text-[9px] tabular-nums leading-none">{state.miningRate} → {nextMiningRate} AXN/s</span>
+              </div>
+              {/* Progress: counter + bar */}
+              <div className="flex flex-col justify-center flex-1 min-w-0 gap-1.5">
+                <span className="text-white/55 text-[9px] font-bold tabular-nums leading-none">{state.miningLevel} / 25</span>
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                  <div className="h-full rounded-full transition-all" style={{ width: `${(state.miningLevel / 25) * 100}%`, background: "linear-gradient(90deg,#7c3aed,#a78bfa)" }} />
                 </div>
               </div>
+              {/* Upgrade button */}
               <button
                 onClick={() => setUpgradeType("mining")}
                 disabled={state.miningLevel >= 25}
-                className="flex-shrink-0 rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 active:scale-95 transition-transform disabled:opacity-40 min-w-[56px]"
-                style={{ background: "linear-gradient(135deg,#7c3aed,#5b21b6)", border: "1px solid rgba(139,92,246,0.4)" }}>
-                <span className="text-white font-black text-[8px] uppercase tracking-wide">{state.miningLevel >= 25 ? "MAX" : "UPGRADE"}</span>
-                {state.miningLevel < 25 && (
-                  <div className="flex items-center gap-0.5">
-                    <img src="/axn-logo.svg" className="w-2 h-2" alt="" />
-                    <span className="text-white/90 text-[8px] font-bold">{state.upgMining}</span>
-                  </div>
-                )}
+                className="flex-shrink-0 rounded-xl h-11 px-4 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg,#7c3aed,#5b21b6)", border: "1px solid rgba(139,92,246,0.4)", minWidth: 72 }}>
+                <span className="text-white font-black text-[10px] uppercase tracking-wide">{state.miningLevel >= 25 ? "MAX" : "UPGRADE"}</span>
               </button>
             </div>
 
             {/* CPU Time */}
-            <div className="rounded-lg px-2.5 py-2 flex items-center gap-2" style={card}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(59,130,246,0.18)", border: "1px solid rgba(59,130,246,0.3)" }}>
-                <RiCpuFill style={{ color: "#60a5fa", width: 16, height: 16 }} />
+            <div className="rounded-xl px-3 py-4 flex items-center gap-3" style={card}>
+              {/* Icon */}
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+                style={{ border: "1px solid rgba(59,130,246,0.3)" }}>
+                <img src="/cpu-time-icon.png" alt="CPU Time" className="w-full h-full object-contain" style={{ imageRendering: "pixelated" }} />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 mb-0.5">
-                  <span className="text-white font-black text-[10px] tracking-wide">CPU TIME</span>
-                  <span className="text-blue-300 text-[7px] font-bold bg-blue-500/15 px-1 py-0.5 rounded">Lv. {state.cpuLevel}</span>
-                </div>
-                <div className="flex items-center justify-between mb-0.5">
-                  <p className="text-white/35 text-[7px] tabular-nums">{formatTime(state.cpuDurationSec)} → {formatTime(nextCpuSec)}</p>
-                  <span className="text-white/40 text-[7px] font-bold tabular-nums">{state.cpuLevel * 2} / 50</span>
-                </div>
-                <div className="h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
-                  <div className="h-full rounded-full" style={{ width: `${(state.cpuLevel / 25) * 100}%`, background: "linear-gradient(90deg,#1d4ed8,#60a5fa)" }} />
+              {/* Info: title + lv + value */}
+              <div className="flex flex-col justify-center gap-1" style={{ minWidth: 0, width: 118 }}>
+                <span className="text-white font-black text-[11px] tracking-wide leading-none">CPU TIME</span>
+                <span className="text-blue-300 text-[9px] font-bold leading-none">Lv. {state.cpuLevel}</span>
+                <span className="text-white/45 text-[9px] tabular-nums leading-none">{formatTime(state.cpuDurationSec)} → {formatTime(nextCpuSec)}</span>
+              </div>
+              {/* Progress: counter + bar */}
+              <div className="flex flex-col justify-center flex-1 min-w-0 gap-1.5">
+                <span className="text-white/55 text-[9px] font-bold tabular-nums leading-none">{state.cpuLevel} / 25</span>
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                  <div className="h-full rounded-full transition-all" style={{ width: `${(state.cpuLevel / 25) * 100}%`, background: "linear-gradient(90deg,#1d4ed8,#60a5fa)" }} />
                 </div>
               </div>
+              {/* Upgrade button */}
               <button
                 onClick={() => setUpgradeType("cpu")}
                 disabled={state.cpuLevel >= 25}
-                className="flex-shrink-0 rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 active:scale-95 transition-transform disabled:opacity-40 min-w-[56px]"
-                style={{ background: "linear-gradient(135deg,#1d4ed8,#1e40af)", border: "1px solid rgba(59,130,246,0.4)" }}>
-                <span className="text-white font-black text-[8px] uppercase tracking-wide">{state.cpuLevel >= 25 ? "MAX" : "UPGRADE"}</span>
-                {state.cpuLevel < 25 && (
-                  <div className="flex items-center gap-0.5">
-                    <img src="/axn-logo.svg" className="w-2 h-2" alt="" />
-                    <span className="text-white/90 text-[8px] font-bold">{state.upgCpu}</span>
-                  </div>
-                )}
+                className="flex-shrink-0 rounded-xl h-11 px-4 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg,#1d4ed8,#1e40af)", border: "1px solid rgba(59,130,246,0.4)", minWidth: 72 }}>
+                <span className="text-white font-black text-[10px] uppercase tracking-wide">{state.cpuLevel >= 25 ? "MAX" : "UPGRADE"}</span>
               </button>
             </div>
 
             {/* Capacity */}
-            <div className="rounded-lg px-2.5 py-2 flex items-center gap-2" style={card}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(245,158,11,0.18)", border: "1px solid rgba(245,158,11,0.3)" }}>
-                <RiDatabase2Fill style={{ color: "#fbbf24", width: 16, height: 16 }} />
+            <div className="rounded-xl px-3 py-4 flex items-center gap-3" style={card}>
+              {/* Icon */}
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+                style={{ border: "1px solid rgba(245,158,11,0.3)" }}>
+                <img src="/capacity-icon.png" alt="Capacity" className="w-full h-full object-contain" style={{ imageRendering: "pixelated" }} />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 mb-0.5">
-                  <span className="text-white font-black text-[10px] tracking-wide">CAPACITY</span>
-                  <span className="text-amber-300 text-[7px] font-bold bg-amber-500/15 px-1 py-0.5 rounded">Lv. {state.capacityLevel}</span>
-                </div>
-                <div className="flex items-center justify-between mb-0.5">
-                  <p className="text-white/35 text-[7px] tabular-nums">{state.capacity} → {nextCapacity} AXN</p>
-                  <span className="text-white/40 text-[7px] font-bold tabular-nums">{state.capacityLevel * 2} / 50</span>
-                </div>
-                <div className="h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
-                  <div className="h-full rounded-full" style={{ width: `${(state.capacityLevel / 25) * 100}%`, background: "linear-gradient(90deg,#b45309,#fbbf24)" }} />
+              {/* Info: title + lv + value */}
+              <div className="flex flex-col justify-center gap-1" style={{ minWidth: 0, width: 118 }}>
+                <span className="text-white font-black text-[11px] tracking-wide leading-none">CAPACITY</span>
+                <span className="text-amber-300 text-[9px] font-bold leading-none">Lv. {state.capacityLevel}</span>
+                <span className="text-white/45 text-[9px] tabular-nums leading-none">{state.capacity} → {nextCapacity} AXN</span>
+              </div>
+              {/* Progress: counter + bar */}
+              <div className="flex flex-col justify-center flex-1 min-w-0 gap-1.5">
+                <span className="text-white/55 text-[9px] font-bold tabular-nums leading-none">{state.capacityLevel} / 25</span>
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                  <div className="h-full rounded-full transition-all" style={{ width: `${(state.capacityLevel / 25) * 100}%`, background: "linear-gradient(90deg,#b45309,#fbbf24)" }} />
                 </div>
               </div>
+              {/* Upgrade button */}
               <button
                 onClick={() => setUpgradeType("capacity")}
                 disabled={state.capacityLevel >= 25}
-                className="flex-shrink-0 rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 active:scale-95 transition-transform disabled:opacity-40 min-w-[56px]"
-                style={{ background: "linear-gradient(135deg,#b45309,#92400e)", border: "1px solid rgba(245,158,11,0.4)" }}>
-                <span className="text-white font-black text-[8px] uppercase tracking-wide">{state.capacityLevel >= 25 ? "MAX" : "UPGRADE"}</span>
-                {state.capacityLevel < 25 && (
-                  <div className="flex items-center gap-0.5">
-                    <img src="/axn-logo.svg" className="w-2 h-2" alt="" />
-                    <span className="text-white/90 text-[8px] font-bold">{state.upgCapacity}</span>
-                  </div>
-                )}
+                className="flex-shrink-0 rounded-xl h-11 px-4 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg,#b45309,#92400e)", border: "1px solid rgba(245,158,11,0.4)", minWidth: 72 }}>
+                <span className="text-white font-black text-[10px] uppercase tracking-wide">{state.capacityLevel >= 25 ? "MAX" : "UPGRADE"}</span>
               </button>
             </div>
 
