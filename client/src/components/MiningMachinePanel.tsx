@@ -594,7 +594,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
   return (
     <>
-      <div className="w-full px-3 space-y-3 pb-24">
+      <div className="w-full px-3 space-y-2 pb-24">
 
         {/* ── STATS ROW ── */}
         <div className="rounded-2xl overflow-hidden" style={card}>
@@ -692,7 +692,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
         </div>
 
         {/* ── COLLECT + HEALTH / ENERGY ── */}
-        <div className="rounded-2xl flex items-stretch gap-2 px-3 pt-3 pb-3" style={{ ...card, height: 320 }}>
+        <div className="rounded-2xl flex items-stretch gap-2 px-3 pt-2 pb-2" style={{ ...card, height: 258 }}>
 
           {/* LEFT — vertical HEALTH bar */}
           {(() => {
@@ -701,7 +701,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             return (
               <div className="flex flex-col items-center gap-1.5" style={{ width: 38 }}>
                 <span style={{ fontFamily: "'Courier New',monospace", fontSize: 8, fontWeight: 900, color: "#cc1111", letterSpacing: 1, textShadow: "0 0 4px #cc1111" }}>HEALTH</span>
-                <div className="flex-1 relative rounded-2xl overflow-hidden" style={{ width: 24, background: "#1a1a1a", border: "1.5px solid #333", minHeight: 185 }}>
+                <div className="flex-1 relative rounded-2xl overflow-hidden" style={{ width: 24, background: "#1a1a1a", border: "1.5px solid #333", minHeight: 148 }}>
                   <motion.div
                     className="absolute bottom-0 left-0 right-0"
                     animate={{ height: `${hp}%` }}
@@ -732,7 +732,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
           {/* CENTER — Machine + Collectable + Claim */}
           <div className="flex-1 flex flex-col items-center" style={{ minWidth: 0 }}>
             {/* Top: label + amount */}
-            <div className="flex flex-col items-center gap-0.5 pt-1 pb-1">
+            <div className="flex flex-col items-center gap-0.5 pt-0.5 pb-0">
               <p className="text-white/50 text-[10px] font-semibold uppercase tracking-widest leading-none">Collectable</p>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-white font-black text-2xl tabular-nums leading-tight">{localMined.toFixed(2)}</span>
@@ -742,13 +742,13 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             </div>
 
             {/* Machine image — fixed height, scaled to fill */}
-            <div className="relative w-full flex items-center justify-center" style={{ height: 178 }}>
+            <div className="relative w-full flex items-center justify-center" style={{ height: 148 }}>
               <motion.div
                 animate={{ opacity: [0.3, 0.85, 0.3], scale: [0.88, 1.1, 0.88] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                 style={{
                   position: "absolute",
-                  width: 210, height: 160,
+                  width: 170, height: 130,
                   borderRadius: "50%",
                   background: "radial-gradient(circle at 50% 55%, rgba(59,130,246,0.5) 0%, rgba(139,92,246,0.18) 55%, transparent 80%)",
                   filter: "blur(18px)", pointerEvents: "none",
@@ -762,12 +762,12 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 style={{
                   width: "100%",
                   height: "100%",
-                  objectFit: "cover",
-                  objectPosition: "50% 48%",
+                  objectFit: "contain",
+                  objectPosition: "50% 50%",
                   position: "relative",
                   filter: "drop-shadow(0 0 24px rgba(59,130,246,0.7))",
                 }}
-                animate={isMining ? { y: [0, -7, 0, -4, 0] } : { y: 0 }}
+                animate={isMining ? { y: [0, -6, 0, -3, 0] } : { y: 0 }}
                 transition={isMining ? { duration: 1.3, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
               />
               {isMining && [0, 1, 2, 3].map((i) => (
@@ -779,14 +779,14 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                     background: "radial-gradient(circle at 35% 35%, #ffe066, #f59e0b, #b45309)",
                     boxShadow: "0 0 6px rgba(245,158,11,0.9)", pointerEvents: "none",
                   }}
-                  animate={{ y: [0, -50, -65], opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
+                  animate={{ y: [0, -45, -58], opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
                   transition={{ duration: 1.3, repeat: Infinity, delay: i * 0.32, ease: "easeOut" }}
                 />
               ))}
             </div>
 
             {/* Claim button + subtitle */}
-            <div className="w-full flex flex-col items-center gap-1 pt-2 pb-1">
+            <div className="w-full flex flex-col items-center gap-0.5 pt-1 pb-0">
               <button
                 onClick={handleCollect}
                 disabled={!canClaim || claimMutation.isPending}
@@ -808,7 +808,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             return (
               <div className="flex flex-col items-center gap-1.5" style={{ width: 38 }}>
                 <span style={{ fontFamily: "'Courier New',monospace", fontSize: 8, fontWeight: 900, color: "#F5C542", letterSpacing: 1, textShadow: "0 0 4px #F5C542" }}>ENERGY</span>
-                <div className="flex-1 relative rounded-2xl overflow-hidden" style={{ width: 24, background: "#1a1a1a", border: "1.5px solid #333", minHeight: 185 }}>
+                <div className="flex-1 relative rounded-2xl overflow-hidden" style={{ width: 24, background: "#1a1a1a", border: "1.5px solid #333", minHeight: 148 }}>
                   <motion.div
                     className="absolute bottom-0 left-0 right-0"
                     animate={{ height: `${energyPct}%` }}
