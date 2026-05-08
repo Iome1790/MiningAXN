@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ChevronRight, Wrench, Gift, Wifi, Thermometer, Clock, TrendingUp, ShieldCheck, ShieldOff } from "lucide-react";
+import { ChevronRight, Wrench, Gift, Wifi, Thermometer, Clock, TrendingUp, ShieldCheck, ShieldOff, Wallet } from "lucide-react";
 import { useAdFlow } from "@/hooks/useAdFlow";
 import { RiPlayFill, RiToolsFill, RiCpuFill, RiDatabase2Fill } from "react-icons/ri";
 import { BsLightningChargeFill } from "react-icons/bs";
@@ -859,10 +859,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             {/* Mining Speed */}
             <div className="rounded-xl px-3 py-4 flex items-center gap-3" style={card}>
               {/* Icon */}
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
-                style={{ border: "1px solid rgba(139,92,246,0.3)" }}>
-                <img src="/mining-speed-icon.png" alt="Mining Speed" className="w-full h-full object-contain" style={{ imageRendering: "pixelated" }} />
-              </div>
+              <img src="/mining-speed-icon.png" alt="Mining Speed" className="w-14 h-14 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
               {/* Info: title + lv + value */}
               <div className="flex flex-col justify-center gap-1" style={{ minWidth: 0, width: 118 }}>
                 <span className="text-white font-black text-[11px] tracking-wide leading-none">MINING SPEED</span>
@@ -889,10 +886,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             {/* CPU Time */}
             <div className="rounded-xl px-3 py-4 flex items-center gap-3" style={card}>
               {/* Icon */}
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
-                style={{ border: "1px solid rgba(59,130,246,0.3)" }}>
-                <img src="/cpu-time-icon.png" alt="CPU Time" className="w-full h-full object-contain" style={{ imageRendering: "pixelated" }} />
-              </div>
+              <img src="/cpu-time-icon.png" alt="CPU Time" className="w-14 h-14 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
               {/* Info: title + lv + value */}
               <div className="flex flex-col justify-center gap-1" style={{ minWidth: 0, width: 118 }}>
                 <span className="text-white font-black text-[11px] tracking-wide leading-none">CPU TIME</span>
@@ -919,10 +913,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             {/* Capacity */}
             <div className="rounded-xl px-3 py-4 flex items-center gap-3" style={card}>
               {/* Icon */}
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
-                style={{ border: "1px solid rgba(245,158,11,0.3)" }}>
-                <img src="/capacity-icon.png" alt="Capacity" className="w-full h-full object-contain" style={{ imageRendering: "pixelated" }} />
-              </div>
+              <img src="/capacity-icon.png" alt="Capacity" className="w-14 h-14 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
               {/* Info: title + lv + value */}
               <div className="flex flex-col justify-center gap-1" style={{ minWidth: 0, width: 118 }}>
                 <span className="text-white font-black text-[11px] tracking-wide leading-none">CAPACITY</span>
@@ -993,60 +984,91 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
       {/* ── FIXED BOTTOM ACTION BAR ── */}
       <div className="fixed bottom-0 left-0 right-0 z-30"
         style={{
-          background: "linear-gradient(to top, #0B0B0D 75%, transparent)",
-          paddingBottom: "max(env(safe-area-inset-bottom), 6px)",
+          background: "linear-gradient(to top, #080808 80%, transparent)",
+          paddingBottom: "max(env(safe-area-inset-bottom), 10px)",
         }}>
-        <div className="max-w-md mx-auto px-3 pt-1 pb-0 flex gap-1.5">
+        <div className="max-w-md mx-auto px-3 pt-2 pb-1">
+          <div className="flex items-center rounded-full px-4 py-2 gap-1"
+            style={{ background: "rgba(18,18,22,0.98)", border: "1px solid rgba(255,255,255,0.08)", minHeight: 68 }}>
 
-          <button
-            onClick={() => {
-              if (!state.hasEnergy && !state.cpuRunning && state.machineHealth > 0) { setEnergyOpen(true); return; }
-              handleStartMining();
-            }}
-            disabled={startCpuMutation.isPending || state.cpuRunning || state.machineHealth <= 0}
-            className="h-[38px] rounded-lg flex items-center justify-center gap-1 transition-all active:scale-[0.97] disabled:opacity-40 flex-[1.5]"
-            style={!state.cpuRunning && state.machineHealth > 0
-              ? { background: "linear-gradient(135deg,#3B82F6,#1d4ed8)", boxShadow: "0 2px 10px rgba(59,130,246,0.45)" }
-              : { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)" }}>
-            {startCpuMutation.isPending
-              ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              : state.cpuRunning ? <RiCpuFill className="w-3 h-3 text-white/50" />
-              : noEnergy ? <BsLightningChargeFill className="w-3 h-3 text-white" />
-              : <RiPlayFill className="w-3.5 h-3.5 text-white" />}
-            <span className="font-black text-[9px] uppercase tracking-widest text-white whitespace-nowrap">
-              {state.cpuRunning ? "Running" : noEnergy ? "Recharge" : "Start Mining"}
-            </span>
-          </button>
+            {/* Repair */}
+            <button onClick={() => setRepairOpen(true)}
+              className="flex-1 flex flex-col items-center gap-1 py-1 relative active:scale-95 transition-transform">
+              <RiToolsFill className="w-6 h-6 text-white/60" />
+              <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Repair</span>
+              {state.machineHealth < 100 && (
+                <span className="absolute -top-0.5 right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[6px] text-white"
+                  style={{ background: "linear-gradient(135deg,#8B5CF6,#6d28d9)" }}>{state.machineHealth}</span>
+              )}
+            </button>
 
-          <button onClick={() => setAntivirusOpen(true)}
-            className="h-[38px] rounded-lg flex items-center justify-center gap-1 relative transition-all active:scale-[0.97] flex-1"
-            style={state.antivirusActive
-              ? { background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.35)" }
-              : { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)" }}>
-            <FaBug className="w-[11px] h-[11px]" style={{ color: state.antivirusActive ? "#4ade80" : "rgba(255,255,255,0.45)" }} />
-            <span className="font-black text-[9px] uppercase tracking-widest whitespace-nowrap"
-              style={{ color: state.antivirusActive ? "#4ade80" : "rgba(255,255,255,0.7)" }}>
-              {state.antivirusActive ? "Active" : "Antivirus"}
-            </span>
-            {!state.antivirusActive && (
-              <span className="absolute -top-1.5 -right-0.5 min-w-[16px] h-[16px] px-0.5 rounded-full flex items-center justify-center font-black text-[7px] text-white"
-                style={{ background: "linear-gradient(135deg,#ef4444,#b91c1c)" }}>OFF</span>
-            )}
-          </button>
-
-          <button onClick={() => setRepairOpen(true)}
-            className="h-[38px] rounded-lg flex items-center justify-center gap-1 relative transition-all active:scale-[0.97] flex-1"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)" }}>
-            <RiToolsFill className="w-[11px] h-[11px] text-white/55" />
-            <span className="font-black text-[9px] uppercase tracking-widest text-white/70">Repair</span>
-            {state.machineHealth < 100 && (
-              <span className="absolute -top-1.5 -right-0.5 min-w-[16px] h-[16px] px-0.5 rounded-full flex items-center justify-center font-black text-[7px] text-white"
-                style={{ background: "linear-gradient(135deg,#8B5CF6,#6d28d9)" }}>
-                {state.machineHealth}
+            {/* Antivirus */}
+            <button onClick={() => setAntivirusOpen(true)}
+              className="flex-1 flex flex-col items-center gap-1 py-1 relative active:scale-95 transition-transform">
+              <FaBug className="w-6 h-6" style={{ color: state.antivirusActive ? "#4ade80" : "rgba(255,255,255,0.6)" }} />
+              <span className="font-bold text-[9px] uppercase tracking-wide"
+                style={{ color: state.antivirusActive ? "#4ade80" : "rgba(255,255,255,0.45)" }}>
+                {state.antivirusActive ? "Active" : "Antivirus"}
               </span>
-            )}
-          </button>
+              {!state.antivirusActive && (
+                <span className="absolute -top-0.5 right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[6px] text-white"
+                  style={{ background: "linear-gradient(135deg,#ef4444,#b91c1c)" }}>OFF</span>
+              )}
+            </button>
 
+            {/* START — big center button */}
+            <button
+              onClick={() => {
+                if (!state.hasEnergy && !state.cpuRunning && state.machineHealth > 0) { setEnergyOpen(true); return; }
+                handleStartMining();
+              }}
+              disabled={startCpuMutation.isPending || state.cpuRunning || state.machineHealth <= 0}
+              className="mx-2 flex-shrink-0 w-[62px] h-[62px] rounded-full flex items-center justify-center transition-all active:scale-[0.93] disabled:opacity-50"
+              style={state.cpuRunning
+                ? { background: "rgba(34,197,94,0.15)", border: "2px solid rgba(34,197,94,0.5)", boxShadow: "0 0 18px rgba(34,197,94,0.25)" }
+                : state.machineHealth <= 0
+                ? { background: "rgba(255,255,255,0.05)", border: "2px solid rgba(255,255,255,0.1)" }
+                : { background: "linear-gradient(145deg,#3B82F6,#1d4ed8)", boxShadow: "0 0 22px rgba(59,130,246,0.55)", border: "2px solid rgba(99,155,255,0.4)" }}>
+              {startCpuMutation.isPending ? (
+                <span className="w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin" />
+              ) : state.cpuRunning ? (
+                /* pixel art running CPU */
+                <svg viewBox="0 0 16 16" width="30" height="30" style={{ imageRendering: "pixelated" }}>
+                  <rect x="4" y="4" width="8" height="8" fill="#22c55e"/>
+                  <rect x="5" y="5" width="6" height="6" fill="#052e16"/>
+                  <rect x="6" y="6" width="4" height="4" fill="#4ade80"/>
+                  <rect x="2" y="6" width="2" height="1" fill="#22c55e"/><rect x="2" y="9" width="2" height="1" fill="#22c55e"/>
+                  <rect x="12" y="6" width="2" height="1" fill="#22c55e"/><rect x="12" y="9" width="2" height="1" fill="#22c55e"/>
+                  <rect x="6" y="2" width="1" height="2" fill="#22c55e"/><rect x="9" y="2" width="1" height="2" fill="#22c55e"/>
+                  <rect x="6" y="12" width="1" height="2" fill="#22c55e"/><rect x="9" y="12" width="1" height="2" fill="#22c55e"/>
+                </svg>
+              ) : (
+                /* pixel art play triangle */
+                <svg viewBox="0 0 14 14" width="30" height="30" style={{ imageRendering: "pixelated" }}>
+                  <rect x="3" y="2" width="2" height="10" fill="white"/>
+                  <rect x="5" y="3" width="2" height="8" fill="white"/>
+                  <rect x="7" y="4" width="2" height="6" fill="white"/>
+                  <rect x="9" y="5" width="2" height="4" fill="white"/>
+                  <rect x="11" y="6" width="2" height="2" fill="white"/>
+                </svg>
+              )}
+            </button>
+
+            {/* Recharge */}
+            <button onClick={() => setEnergyOpen(true)}
+              className="flex-1 flex flex-col items-center gap-1 py-1 active:scale-95 transition-transform">
+              <BsLightningChargeFill className="w-6 h-6 text-yellow-400" />
+              <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Recharge</span>
+            </button>
+
+            {/* Withdraw */}
+            <button onClick={onWalletOpen}
+              className="flex-1 flex flex-col items-center gap-1 py-1 active:scale-95 transition-transform">
+              <Wallet className="w-6 h-6 text-white/60" />
+              <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Withdraw</span>
+            </button>
+
+          </div>
         </div>
       </div>
 
