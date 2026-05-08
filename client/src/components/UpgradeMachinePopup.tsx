@@ -368,9 +368,9 @@ function UpgradeDetail({
             disabled={isPending || !canAfford}
             className="w-full h-12 rounded-xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             style={canAfford ? {
-              background: "linear-gradient(135deg,#f59e0b,#d97706)",
+              background: "linear-gradient(135deg,#1d4ed8,#1e40af)",
               color: "#fff",
-              boxShadow: "0 0 20px rgba(245,158,11,0.35)",
+              boxShadow: "0 0 20px rgba(29,78,216,0.45)",
             } : {
               background: "rgba(255,255,255,0.05)",
               border: "1px solid rgba(255,255,255,0.08)",

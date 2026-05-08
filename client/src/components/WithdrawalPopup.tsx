@@ -271,26 +271,38 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[200] flex items-center justify-center px-4"
+          className="fixed inset-0 z-[200] flex items-end justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => onOpenChange(false)}
           />
 
           <motion.div
-            className="relative w-full max-w-sm rounded-3xl overflow-hidden popup-glow-open"
-            style={{ background: 'rgba(8,14,32,0.72)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.10)' }}
-            initial={{ scale: 0.88, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.88, opacity: 0, y: 20 }}
-            transition={{ type: "spring", damping: 26, stiffness: 320 }}
+            className="relative w-full max-w-sm rounded-t-3xl overflow-hidden popup-glow-open flex flex-col"
+            style={{
+              background: 'rgba(8,14,32,0.97)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              borderBottom: 'none',
+              maxHeight: '92vh',
+            }}
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: "spring", damping: 28, stiffness: 300 }}
           >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-white/20" />
+            </div>
+
             {/* Header */}
-            <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
+            <div className="flex items-center gap-3 px-5 pt-2 pb-4 border-b border-white/[0.06] flex-shrink-0">
               <RiExchangeFill style={{ width: 22, height: 22, color: "#facc15", flexShrink: 0 }} />
               <div className="flex-1 min-w-0">
                 <p className="text-white font-black text-sm uppercase tracking-wider">Trade AXN for TON</p>
@@ -298,7 +310,7 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
               </div>
             </div>
 
-            <div className="px-5 py-4 space-y-3">
+            <div className="px-5 py-4 space-y-3 overflow-y-auto flex-1" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
               {/* TON Price Chart */}
               <div className="rounded-2xl px-4 py-3" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <TonPriceChart />

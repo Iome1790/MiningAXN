@@ -514,7 +514,9 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
     mutationFn: () => apiRequest("POST", "/api/axn-mining/start-cpu").then(r => r.json()),
     onSuccess: (d) => {
       showNotification(d.message, "success");
-      patchState({ cpuRunning: true, hasEnergy: false, cpuRemainingSeconds: state?.cpuDurationSec ?? 0 });
+      const duration = state?.cpuDurationSec ?? 0;
+      setCpuCountdown(duration);
+      patchState({ cpuRunning: true, hasEnergy: false, cpuRemainingSeconds: duration });
       invalidate();
     },
     onError: (e: any) => showNotification(e.message || "Failed", "error"),
@@ -957,7 +959,6 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             <button onClick={() => setRepairOpen(true)}
               className="flex-1 flex flex-col items-center gap-0.5 py-1 relative active:scale-95 transition-transform">
               <img src="/repair-icon.png" alt="Repair" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated" }} />
-              <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Repair</span>
               {state.machineHealth < 100 && (
                 <span className="absolute -top-0.5 right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[6px] text-white"
                   style={{ background: "linear-gradient(135deg,#8B5CF6,#6d28d9)" }}>{state.machineHealth}</span>
@@ -968,10 +969,6 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             <button onClick={() => setAntivirusOpen(true)}
               className="flex-1 flex flex-col items-center gap-0.5 py-1 relative active:scale-95 transition-transform">
               <img src="/virus-icon.png" alt="Antivirus" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated", filter: state.antivirusActive ? "none" : "grayscale(0.4) brightness(0.85)" }} />
-              <span className="font-bold text-[9px] uppercase tracking-wide"
-                style={{ color: state.antivirusActive ? "#4ade80" : "rgba(255,255,255,0.45)" }}>
-                {state.antivirusActive ? "Active" : "Antivirus"}
-              </span>
               {!state.antivirusActive && (
                 <span className="absolute -top-0.5 right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[6px] text-white"
                   style={{ background: "linear-gradient(135deg,#ef4444,#b91c1c)" }}>OFF</span>
@@ -1005,20 +1002,6 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                   <rect x="6" y="2" width="1" height="2" fill="#22c55e"/><rect x="9" y="2" width="1" height="2" fill="#22c55e"/>
                   <rect x="6" y="12" width="1" height="2" fill="#22c55e"/><rect x="9" y="12" width="1" height="2" fill="#22c55e"/>
                 </svg>
-              ) : state.machineHealth <= 0 ? (
-                /* wrench icon for broken machine */
-                <svg viewBox="0 0 16 16" width="28" height="28" style={{ imageRendering: "pixelated" }}>
-                  <rect x="9" y="1" width="2" height="2" fill="#ef4444"/>
-                  <rect x="8" y="2" width="4" height="2" fill="#ef4444"/>
-                  <rect x="7" y="4" width="3" height="2" fill="#ef4444"/>
-                  <rect x="6" y="5" width="3" height="2" fill="#ef4444"/>
-                  <rect x="5" y="6" width="3" height="2" fill="#ef4444"/>
-                  <rect x="4" y="7" width="3" height="2" fill="#ef4444"/>
-                  <rect x="3" y="8" width="3" height="2" fill="#ef4444"/>
-                  <rect x="2" y="9" width="3" height="2" fill="#ef4444"/>
-                  <rect x="2" y="11" width="3" height="2" fill="#ef4444"/>
-                  <rect x="1" y="12" width="4" height="2" fill="#ef4444"/>
-                </svg>
               ) : (
                 /* pixel art play triangle */
                 <svg viewBox="0 0 14 14" width="30" height="30" style={{ imageRendering: "pixelated" }}>
@@ -1035,14 +1018,12 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             <button onClick={() => setEnergyOpen(true)}
               className="flex-1 flex flex-col items-center gap-0.5 py-1 active:scale-95 transition-transform">
               <img src="/mining-speed-pixel-nobg.png" alt="Energy" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated" }} />
-              <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Recharge</span>
             </button>
 
             {/* Withdraw */}
             <button onClick={onWalletOpen}
               className="flex-1 flex flex-col items-center gap-0.5 py-1 active:scale-95 transition-transform">
               <img src="/money-icon-nobg.png" alt="Withdraw" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated" }} />
-              <span className="font-bold text-[9px] text-white/45 uppercase tracking-wide">Withdraw</span>
             </button>
 
           </div>
