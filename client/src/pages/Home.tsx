@@ -431,7 +431,7 @@ export default function Home() {
     return new Promise(async (resolve) => {
       if ((window as any).Adsgram) {
         try {
-          await (window as any).Adsgram.init({ blockId: "int-20373" }).show();
+          await (window as any).Adsgram.init({ blockId: "int-29765" }).show();
           resolve(true);
         } catch (error) {
           console.error('Adsgram ad error:', error);
@@ -738,7 +738,7 @@ export default function Home() {
         case 'adsgram':
           if ((window as any).Adsgram) {
             try {
-              await (window as any).Adsgram.init({ blockId: "int-18225" }).show();
+              await (window as any).Adsgram.init({ blockId: "int-29765" }).show();
               handleAdCompletion();
             } catch (error) {
               handleAdError(error);
