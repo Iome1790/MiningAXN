@@ -105,10 +105,6 @@ export const users = pgTable("users", {
   referralMiningBoost: decimal("referral_mining_boost", { precision: 20, scale: 8 }).default("0"),
   activePlanId: varchar("active_plan_id"),
   planExpiresAt: timestamp("plan_expires_at"),
-  turboRating: decimal("turbo_rating", { precision: 10, scale: 4 }).default("0.0000"),
-  turboAdsWatched: integer("turbo_ads_watched").default(0),
-  firstWithdrawDone: boolean("first_withdraw_done").default(false),
-  lastTurboAdAt: timestamp("last_turbo_ad_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
