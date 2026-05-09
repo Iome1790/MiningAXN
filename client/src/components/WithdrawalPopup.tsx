@@ -1,11 +1,14 @@
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useEffect } from "react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { showNotification } from "@/components/AppNotification";
-import { Loader2, HelpCircle } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown } from "lucide-react";
+import { RiExchangeFill } from "react-icons/ri";
 import { AXNIcon } from "@/components/AXNIcon";
-import { RiExchangeFill, RiWalletFill, RiSendPlaneFill, RiCheckboxCircleFill } from "react-icons/ri";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  AreaChart, Area, ResponsiveContainer, Tooltip, YAxis, XAxis,
+} from "recharts";
 
 interface WithdrawalPopupProps {
   open: boolean;
@@ -13,32 +16,201 @@ interface WithdrawalPopupProps {
   tonBalance: number;
 }
 
-const AXN_RATE = 0.000001;
+type ChartTab = "1D" | "7D" | "30D" | "90D";
 
-function calcTON(axn: number): number {
-  return axn * AXN_RATE;
-}
+const TAB_DAYS: Record<ChartTab, number> = {
+  "1D": 1,
+  "7D": 7,
+  "30D": 30,
+  "90D": 90,
+};
+
+interface PricePoint { t: number; p: number; }
+
+const AXN_TO_TON = 0.00001; // 100000 AXN = 1 TON
 
 function formatTON(n: number): string {
-  if (n === 0) return "0.00000000";
-  if (n < 0.001) return n.toFixed(8);
-  if (n < 1) return n.toFixed(6);
-  return n.toFixed(4);
+  if (n < 0.001) return n.toFixed(6);
+  if (n < 1) return n.toFixed(4);
+  return n.toFixed(3);
 }
 
-export default function WithdrawalPopup({ open, onOpenChange }: WithdrawalPopupProps) {
+function formatUSD(n: number): string {
+  if (n < 0.01) return `$${n.toFixed(4)}`;
+  return `$${n.toFixed(2)}`;
+}
+
+function formatTimeLabel(ts: number, days: number): string {
+  const d = new Date(ts);
+  if (days <= 1) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+const ChartTooltip = ({ active, payload, days }: any) => {
+  if (active && payload?.length) {
+    const val: number = payload[0].value;
+    const ts: number = payload[0].payload?.t;
+    return (
+      <div className="rounded-xl px-2.5 py-1.5 text-[10px] shadow-2xl" style={{ background: '#1c1c1e', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <p className="text-white font-black">{formatUSD(val)}</p>
+        {ts && <p className="text-white/40 mt-0.5">{formatTimeLabel(ts, days)}</p>}
+      </div>
+    );
+  }
+  return null;
+};
+
+function TonPriceChart() {
+  const [tab, setTab] = useState<ChartTab>("1D");
+  const [data, setData] = useState<PricePoint[]>([]);
+  const [price, setPrice] = useState<number | null>(null);
+  const [change, setChange] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const cacheRef = useRef<Partial<Record<ChartTab, { data: PricePoint[]; price: number; change: number }>>>({});
+
+  const loadData = async (selectedTab: ChartTab) => {
+    if (cacheRef.current[selectedTab]) {
+      const c = cacheRef.current[selectedTab]!;
+      setData(c.data);
+      setPrice(c.price);
+      setChange(c.change);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(false);
+    try {
+      const days = TAB_DAYS[selectedTab];
+      const url = `https://api.coingecko.com/api/v3/coins/the-open-network/market_chart?vs_currency=usd&days=${days}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("fetch failed");
+      const json = await res.json();
+      const prices: [number, number][] = json.prices;
+      if (!Array.isArray(prices)) throw new Error("invalid response");
+      const points: PricePoint[] = prices.map(([t, p]) => ({ t, p }));
+      const first = points[0]?.p ?? 0;
+      const last = points[points.length - 1]?.p ?? 0;
+      const pct = first ? ((last - first) / first) * 100 : 0;
+      const entry = { data: points, price: last, change: pct };
+      cacheRef.current[selectedTab] = entry;
+      setData(points);
+      setPrice(last);
+      setChange(pct);
+      setLoading(false);
+    } catch {
+      setError(true);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadData(tab); }, [tab]);
+
+  const isUp = change >= 0;
+  const gradId = "tonGrad";
+  const lineColor = isUp ? "#22c55e" : "#ef4444";
+
+  return (
+    <div className="space-y-2">
+      {/* Price Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          {loading ? (
+            <div className="h-5 w-20 bg-white/5 rounded animate-pulse" />
+          ) : error ? (
+            <span className="text-white/30 text-sm">—</span>
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <span className="text-white font-black text-lg tabular-nums">{price ? formatUSD(price) : "—"}</span>
+              <div className={`flex items-center gap-0.5 text-xs font-black ${isUp ? "text-green-400" : "text-red-400"}`}>
+                {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {Math.abs(change).toFixed(2)}%
+              </div>
+            </div>
+          )}
+          <p className="text-white/30 text-[10px] mt-0.5 font-bold uppercase tracking-wide">TON / USD</p>
+        </div>
+        {/* Tab switcher */}
+        <div className="flex gap-1 rounded-xl p-1" style={{ background: '#141414' }}>
+          {(["1D","7D","30D","90D"] as ChartTab[]).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-black transition-all"
+              style={tab === t
+                ? { background: '#1c1c1e', color: '#F5C542' }
+                : { color: 'rgba(255,255,255,0.3)' }
+              }
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div style={{ height: 100 }}>
+        {loading ? (
+          <div className="h-full rounded-xl bg-white/[0.02] animate-pulse flex items-center justify-center">
+            <Loader2 className="w-4 h-4 text-white/20 animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="h-full rounded-xl flex items-center justify-center">
+            <p className="text-white/20 text-xs">Chart unavailable</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={lineColor} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={lineColor} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <YAxis domain={["auto", "auto"]} hide />
+              <XAxis dataKey="t" hide />
+              <Tooltip content={<ChartTooltip days={TAB_DAYS[tab]} />} />
+              <Area
+                type="monotone"
+                dataKey="p"
+                stroke={lineColor}
+                strokeWidth={1.5}
+                fill={`url(#${gradId})`}
+                dot={false}
+                activeDot={{ r: 3, fill: lineColor }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: WithdrawalPopupProps) {
   const queryClient = useQueryClient();
   const [cwalletId, setCwalletId] = useState("");
   const [axnAmount, setAxnAmount] = useState("");
-  const [showHowItWorks, setShowHowItWorks] = useState(false);
 
-  const { data: appSettings } = useQuery<any>({ queryKey: ["/api/app-settings"], staleTime: 30000 });
-  const { data: user } = useQuery<any>({ queryKey: ["/api/auth/user"], staleTime: 0 });
+  const { data: appSettings } = useQuery<any>({
+    queryKey: ['/api/app-settings'],
+    staleTime: 30000,
+  });
 
-  const MIN_TRADE = appSettings?.minTradeAmount ?? 500;
+  const MIN_TRADE = appSettings?.minTradeAmount ?? 1000;
+
+  const { data: user } = useQuery<any>({
+    queryKey: ['/api/auth/user'],
+    staleTime: 0,
+  });
+
   const satBalance = Math.floor(parseFloat(user?.balance || "0"));
+
   const axnNum = parseFloat(axnAmount) || 0;
-  const estimatedTON = calcTON(axnNum);
+  const tonReceive = axnNum * AXN_TO_TON;
+  const buttonLabel = axnNum > 0 && cwalletId.trim()
+    ? `Trade ${axnNum.toLocaleString()} AXN for ${formatTON(tonReceive)} TON`
+    : "Trade AXN for TON";
 
   const tradeMutation = useMutation({
     mutationFn: async () => {
@@ -60,11 +232,15 @@ export default function WithdrawalPopup({ open, onOpenChange }: WithdrawalPopupP
     onError: (error: any) => {
       let message = "Trade failed";
       try {
-        const t = error.message?.trim();
-        if (t?.startsWith("{")) {
-          const p = JSON.parse(t);
-          if (p.message) message = p.message;
-        } else message = error.message || message;
+        if (typeof error.message === "string") {
+          const t = error.message.trim();
+          if (t.startsWith("{") || t.startsWith("[")) {
+            const p = JSON.parse(t);
+            if (p.message) message = p.message;
+          } else {
+            message = error.message;
+          }
+        }
       } catch {}
       showNotification(message, "error");
     },
@@ -72,169 +248,151 @@ export default function WithdrawalPopup({ open, onOpenChange }: WithdrawalPopupP
 
   const handleTrade = () => {
     const amount = parseFloat(axnAmount);
-    if (isNaN(amount) || amount <= 0) { showNotification("Enter a valid AXN amount", "error"); return; }
-    if (amount < MIN_TRADE) { showNotification(`Minimum trade is ${MIN_TRADE.toLocaleString()} AXN`, "error"); return; }
-    if (amount > satBalance) { showNotification("Insufficient balance", "error"); return; }
-    if (!cwalletId.trim()) { showNotification("Enter your Cwallet ID", "error"); return; }
+    if (isNaN(amount) || amount <= 0) {
+      showNotification("Please enter a valid AXN amount", "error");
+      return;
+    }
+    if (amount < MIN_TRADE) {
+      showNotification(`Minimum trade is ${MIN_TRADE.toLocaleString()} AXN`, "error");
+      return;
+    }
+    if (amount > satBalance) {
+      showNotification(`Insufficient balance. Available: ${satBalance.toLocaleString()} AXN`, "error");
+      return;
+    }
+    if (!cwalletId.trim()) {
+      showNotification("Please enter your Cwallet ID", "error");
+      return;
+    }
     tradeMutation.mutate();
   };
-
-  const howItWorksSteps = [
-    {
-      icon: <AXNIcon size={16} />,
-      title: "Enter AXN Amount",
-      desc: "Choose how much AXN you want to trade. Minimum is 500 AXN.",
-    },
-    {
-      icon: <RiWalletFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-400" />,
-      title: "Enter Cwallet ID",
-      desc: "Provide your Cwallet wallet address to receive TON.",
-    },
-    {
-      icon: <RiSendPlaneFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-yellow-400" />,
-      title: "Submit Trade Request",
-      desc: "Your request is sent to admin for review. 100,000 AXN = 1 TON.",
-    },
-    {
-      icon: <RiCheckboxCircleFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-400" />,
-      title: "Receive TON",
-      desc: "Once approved, TON is sent directly to your Cwallet address.",
-    },
-  ];
 
   return (
     <AnimatePresence>
       {open && (
         <motion.div
           className="fixed inset-0 z-[200] flex items-end justify-center"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
         >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => onOpenChange(false)} />
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => onOpenChange(false)}
+          />
 
           <motion.div
-            className="relative w-full max-w-sm rounded-t-[28px] flex flex-col overflow-hidden"
+            className="relative w-full max-w-sm rounded-t-3xl overflow-hidden popup-glow-open flex flex-col"
             style={{
-              background: "linear-gradient(180deg,#0c0f1e 0%,#060912 100%)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderBottom: "none",
+              background: 'rgba(8,14,32,0.97)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              borderBottom: 'none',
+              maxHeight: '92vh',
             }}
-            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 320 }}
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: "spring", damping: 28, stiffness: 300 }}
           >
             {/* Drag handle */}
-            <div className="flex justify-center pt-3 pb-0">
-              <div className="w-9 h-[3px] rounded-full bg-white/15" />
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-white/20" />
             </div>
 
-            <div className="px-5 pt-4 space-y-4"
-              style={{ paddingBottom: "max(env(safe-area-inset-bottom), 24px)" }}>
-
-              {/* Header */}
-              <div className="flex items-center gap-3">
-                <motion.img
-                  src="/money-icon-nobg.png"
-                  alt="Withdraw"
-                  className="w-16 h-16 object-contain flex-shrink-0"
-                  style={{ imageRendering: "pixelated" }}
-                  initial={{ scale: 0.7, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.05 }}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-black text-xl uppercase tracking-wide leading-none">WITHDRAW</p>
-                  <p className="text-blue-400 font-black text-sm leading-none mt-0.5">TRADE AXN</p>
-                  <p className="text-white/35 text-[11px] mt-1">100,000 AXN = 1 TON</p>
-                </div>
+            {/* Header */}
+            <div className="flex items-center gap-3 px-5 pt-2 pb-4 border-b border-white/[0.06] flex-shrink-0">
+              <RiExchangeFill style={{ width: 22, height: 22, color: "#facc15", flexShrink: 0 }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-black text-sm uppercase tracking-wider">Trade AXN for TON</p>
+                <p className="text-white/35 text-[11px] mt-0.5">100,000 AXN = 1 TON</p>
               </div>
+            </div>
 
-              <div className="h-px bg-white/[0.06]" />
+            <div className="px-5 py-4 space-y-3 overflow-y-auto flex-1" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
+              {/* TON Price Chart */}
+              <div className="rounded-2xl px-4 py-3" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <TonPriceChart />
+              </div>
 
               {/* Balance */}
-              <div className="rounded-2xl px-4 py-3.5 flex items-center justify-between"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="rounded-2xl px-4 py-3 flex justify-between items-center" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <span className="text-white/40 text-xs font-semibold">Available Balance</span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <AXNIcon size={16} />
-                  <span className="text-white font-black text-base tabular-nums">{satBalance.toLocaleString()}</span>
-                  <span className="text-white/35 text-xs font-bold">AXN</span>
+                  <span className="text-white font-black text-sm tabular-nums">
+                    {satBalance.toLocaleString()}
+                  </span>
+                  <span className="text-white/40 text-xs font-bold uppercase tracking-wide">AXN</span>
                 </div>
               </div>
 
-              {/* AXN Amount */}
+              {/* AXN Amount Input */}
               <div className="space-y-1.5">
-                <label className="text-white/35 text-[10px] font-black uppercase tracking-widest pl-1">AXN Amount</label>
+                <label className="text-white/40 text-[10px] font-black uppercase tracking-widest">AXN Amount</label>
                 <div className="relative">
                   <input
                     type="number"
-                    placeholder="Enter amount"
+                    placeholder="0"
                     value={axnAmount}
-                    onChange={e => setAxnAmount(e.target.value)}
-                    className="w-full h-12 rounded-xl px-4 pr-20 text-white font-bold text-sm outline-none"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                    onChange={(e) => setAxnAmount(e.target.value)}
+                    className="w-full h-11 rounded-xl px-4 pr-20 text-white font-bold text-sm outline-none transition-all"
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                    }}
                   />
-                  <button
-                    onClick={() => setAxnAmount(satBalance.toString())}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider active:scale-95 transition-transform"
-                    style={{ background: "linear-gradient(135deg,#1d4ed8,#7c3aed)", color: "#fff" }}
-                  >MAX</button>
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                    <button
+                      onClick={() => setAxnAmount(satBalance.toString())}
+                      className="h-7 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
+                      style={{ background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', color: '#fff' }}
+                    >
+                      MAX
+                    </button>
+                  </div>
                 </div>
-                {axnNum > 0 && (
-                  <p className="text-white/35 text-[11px] pl-1">
-                    ≈ <span className="text-blue-400 font-bold">{formatTON(estimatedTON)} TON</span>
-                  </p>
-                )}
               </div>
 
-              {/* Cwallet ID */}
+              {/* Cwallet ID Input */}
               <div className="space-y-1.5">
-                <label className="text-white/35 text-[10px] font-black uppercase tracking-widest pl-1 block">Cwallet ID</label>
+                <label className="text-white/40 text-[10px] font-black uppercase tracking-widest block">Cwallet ID</label>
                 <input
                   type="text"
                   placeholder="Enter your Cwallet ID"
                   value={cwalletId}
-                  onChange={e => setCwalletId(e.target.value)}
-                  className="w-full h-12 rounded-xl px-4 text-white font-medium text-sm outline-none"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  onChange={(e) => setCwalletId(e.target.value)}
+                  className="w-full h-11 rounded-xl px-4 text-white font-medium text-sm outline-none transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}
                 />
               </div>
 
-              {/* Trade button */}
+              {/* Trade Button */}
               <button
                 onClick={handleTrade}
                 disabled={tradeMutation.isPending}
-                className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 style={{
-                  background: "linear-gradient(135deg,#1d4ed8,#1e40af)",
-                  color: "#fff",
-                  boxShadow: "0 0 22px rgba(29,78,216,0.3)",
+                  background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                  color: '#fff',
+                  boxShadow: '0 0 20px rgba(59,130,246,0.25)',
                 }}
               >
                 {tradeMutation.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
-                ) : axnNum > 0 && cwalletId.trim() ? (
-                  `Trade ${axnNum.toLocaleString()} AXN → ${formatTON(estimatedTON)} TON`
                 ) : (
-                  <>
-                    <RiExchangeFill className="w-4 h-4" />
-                    Trade AXN for TON
-                  </>
+                  buttonLabel
                 )}
               </button>
 
-              {/* How it works link */}
-              <button
-                onClick={() => setShowHowItWorks(true)}
-                className="w-full flex items-center justify-center gap-1.5 text-white/25 text-xs py-1 active:text-white/40 transition-colors"
-              >
-                <HelpCircle className="w-3.5 h-3.5" />
-                How does it work?
-              </button>
-
-              {/* Close */}
               <button
                 onClick={() => onOpenChange(false)}
-                className="w-full h-11 rounded-2xl font-bold text-xs text-white/30 active:scale-[0.97] transition-transform"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+                className="w-full h-11 rounded-2xl font-bold text-sm text-white/40 active:scale-[0.97] transition-transform"
+                style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}
               >
                 Close
               </button>
@@ -242,65 +400,6 @@ export default function WithdrawalPopup({ open, onOpenChange }: WithdrawalPopupP
           </motion.div>
         </motion.div>
       )}
-
-      {/* How It Works Modal — same style as InvitePopup */}
-      <AnimatePresence>
-        {showHowItWorks && (
-          <motion.div
-            className="fixed inset-0 z-[400] flex items-center justify-center px-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => setShowHowItWorks(false)}
-            />
-            <motion.div
-              className="relative w-full max-w-sm rounded-3xl overflow-hidden"
-              style={{
-                background: "rgba(8,14,32,0.72)",
-                backdropFilter: "blur(24px)",
-                WebkitBackdropFilter: "blur(24px)",
-                border: "1px solid rgba(255,255,255,0.10)",
-              }}
-              initial={{ scale: 0.88, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.88, opacity: 0, y: 20 }}
-              transition={{ type: "spring", damping: 26, stiffness: 320 }}
-            >
-              <div className="px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
-                <p className="text-white font-black text-sm uppercase tracking-wider">How Withdraw Works</p>
-              </div>
-
-              <div className="px-5 py-4 space-y-2.5">
-                {howItWorksSteps.map((item, i) => (
-                  <div
-                    key={i}
-                    className="bg-white/[0.06] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3"
-                  >
-                    {item.icon}
-                    <div>
-                      <p className="text-white text-xs font-bold">{item.title}</p>
-                      <p className="text-white/40 text-xs mt-0.5 leading-relaxed">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="px-5 pb-5">
-                <button
-                  onClick={() => setShowHowItWorks(false)}
-                  className="w-full h-11 rounded-2xl font-bold text-sm text-white/40 transition-transform active:scale-[0.97]"
-                  style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.05)" }}
-                >
-                  Got it
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </AnimatePresence>
   );
 }
