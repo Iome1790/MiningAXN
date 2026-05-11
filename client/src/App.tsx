@@ -109,6 +109,7 @@ function Router() {
     <Suspense fallback={<LoadingFallback />}>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/landing" component={Landing} />
         <Route path="/admin" component={Admin} />
         <Route path="/admin/country-controls" component={CountryControls} />
         <Route component={NotFound} />
@@ -426,6 +427,17 @@ function App() {
       setIsAuthenticating(false);
     }
   }, [isDevMode, isCheckingCountry, isCountryBlocked]);
+
+  // Public route — bypass all Telegram auth checks
+  if (typeof window !== "undefined" && window.location.pathname === "/landing") {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Suspense fallback={<LoadingFallback />}>
+          <Landing />
+        </Suspense>
+      </QueryClientProvider>
+    );
+  }
 
   if (isBanned) {
     return <BanScreen reason={banReason} banType={banType} adminBanReason={adminBanReason} />;
