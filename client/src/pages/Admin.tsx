@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Crown, ArrowLeft, Users, Pickaxe, Eye, TrendingUp, DollarSign,
   UserCheck, GitBranch, Search, ChevronLeft, ChevronRight,
-  RefreshCw, Settings, Shield, LogOut, Globe, Ban, CheckCircle,
+  RefreshCw, Settings, Shield, LogOut, Globe, Ban, CheckCircle, ExternalLink,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -159,9 +159,21 @@ export default function AdminPage() {
               <span className="font-bold text-sm">Admin Panel</span>
             </div>
           </div>
-          <Button size="sm" variant="ghost" onClick={() => { queryClient.invalidateQueries(); toast({ title: "Refreshed" }); }} className="h-8 w-8 p-0">
-            <RefreshCw className="w-3.5 h-3.5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <a
+              href="/landing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-8 px-3 flex items-center gap-1.5 rounded-md text-xs font-bold text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all"
+              title="Open Landing Page"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Landing
+            </a>
+            <Button size="sm" variant="ghost" onClick={() => { queryClient.invalidateQueries(); toast({ title: "Refreshed" }); }} className="h-8 w-8 p-0">
+              <RefreshCw className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
 
         {/* Tab Navigation */}
