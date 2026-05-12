@@ -589,6 +589,20 @@ function WithdrawSection({ payoutData, pendingData }: { payoutData: any; pending
     }
   };
 
+  const handleSendStats = async (id: string) => {
+    try {
+      const r = await apiRequest("POST", `/api/admin/withdrawals/${id}/send-stats`, {});
+      const d = await r.json();
+      if (d.success) {
+        toast({ title: "Stats sent to Telegram" });
+      } else {
+        toast({ title: d.message || "Failed to send stats", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error sending stats", variant: "destructive" });
+    }
+  };
+
   const statusBadge = (status: string) => {
     if (["success", "paid", "Approved", "approved", "completed"].includes(status))
       return <span className="text-[10px] bg-green-600/20 text-green-400 px-1.5 py-0.5 rounded-full border border-green-600/30">Approved</span>;
@@ -681,12 +695,17 @@ function WithdrawSection({ payoutData, pendingData }: { payoutData: any; pending
                 )}
 
                 {w.status === "pending" && (
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" onClick={() => handleApprove(w.id)} className="flex-1 h-7 text-xs bg-green-700 hover:bg-green-600">
-                      Approve
-                    </Button>
-                    <Button size="sm" onClick={() => handleReject(w.id)} className="flex-1 h-7 text-xs bg-red-700 hover:bg-red-600">
-                      Reject
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => handleApprove(w.id)} className="flex-1 h-7 text-xs bg-green-700 hover:bg-green-600">
+                        Approve
+                      </Button>
+                      <Button size="sm" onClick={() => handleReject(w.id)} className="flex-1 h-7 text-xs bg-red-700 hover:bg-red-600">
+                        Reject
+                      </Button>
+                    </div>
+                    <Button size="sm" onClick={() => handleSendStats(w.id)} className="w-full h-7 text-xs bg-blue-800 hover:bg-blue-700 text-blue-100">
+                      📊 Send Stats to Telegram
                     </Button>
                   </div>
                 )}
