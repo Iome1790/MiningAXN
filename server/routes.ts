@@ -5967,6 +5967,77 @@ ${walletAddress}
     }
   });
 
+  // Send stats analysis to Telegram for a specific withdrawal (admin only)
+  app.post('/api/admin/withdrawals/:id/send-stats', authenticateAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+      const TELEGRAM_ADMIN_ID = process.env.TELEGRAM_ADMIN_ID;
+
+      if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_ADMIN_ID) {
+        return res.status(503).json({ success: false, message: 'Telegram not configured' });
+      }
+
+      const [wd] = await db.select().from(withdrawals).where(eq(withdrawals.id, id)).limit(1);
+      if (!wd) return res.status(404).json({ success: false, message: 'Withdrawal not found' });
+
+      const user = await storage.getUser(wd.userId);
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+      const { getUserStatsAnalysis, formatStatsBlock } = await import('./statsAnalysis');
+      const stats = await getUserStatsAnalysis(wd.userId);
+
+      const userName = user.firstName || user.username || 'Unknown';
+      const telegramId = user.telegram_id || wd.userId;
+      const walletAddr = (wd.details as any)?.paymentDetails || (wd.details as any)?.walletAddress || 'N/A';
+      const netAmt = parseFloat(wd.amount);
+      const feeAmt = parseFloat((wd.details as any)?.fee || '0');
+      const feePct = (wd.details as any)?.feePercent || '0';
+
+      const riskEmoji = stats.riskScore === 0 ? '🟢' : stats.riskScore < 30 ? '🟡' : stats.riskScore < 60 ? '🟠' : '🔴';
+
+      const msg = `📊 <b>Stats Analysis — Withdrawal Request</b>\n\n` +
+        `👤 ${userName} · <code>${telegramId}</code>\n` +
+        `🌐 Address: <code>${walletAddr}</code>\n` +
+        `💸 Amount: ${netAmt.toFixed(2)} AXN  🛂 Fee: ${feeAmt.toFixed(2)} (${feePct}%)\n\n` +
+        formatStatsBlock(stats) + `\n\n` +
+        `⛏ Mining Level   : <b>Lv ${stats.currentMiningLevel}</b>\n` +
+        `❤️ Machine Health : <b>${stats.machineHealth}%</b>\n` +
+        `📈 Avg Speed      : <b>${stats.avgMiningSpeedPerSec.toFixed(2)} AXN/s</b>\n` +
+        `🔋 Energy Used    : <b>${stats.energyUsed}x</b>\n` +
+        `📦 Sessions       : <b>${stats.sessionCount}</b>\n` +
+        `🎁 Claims         : <b>${stats.totalClaims}</b>\n` +
+        `💰 Total Earned   : <b>${stats.totalEarned.toFixed(2)} AXN</b>\n\n` +
+        `${riskEmoji} <b>Risk Score: ${stats.riskScore}/100</b>`;
+
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_ADMIN_ID,
+          text: msg,
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "✅ Approve", callback_data: `withdraw_paid_${id}` },
+                { text: "❌ Reject", callback_data: `withdraw_reject_${id}` }
+              ],
+              [
+                { text: "🚨 Flag User", callback_data: `flg_${wd.userId}` }
+              ]
+            ]
+          }
+        })
+      });
+
+      res.json({ success: true, message: 'Stats sent to Telegram' });
+    } catch (error) {
+      console.error('❌ Error sending stats:', error);
+      res.status(500).json({ success: false, message: 'Failed to send stats' });
+    }
+  });
+
   // Get processed withdrawals (approved/rejected) - admin only
   app.get('/api/admin/withdrawals/processed', authenticateAdmin, async (req: any, res) => {
     try {

@@ -48,7 +48,7 @@ interface MachineSnapshot {
   miningLevel: number;
   capacityLevel: number;
   cpuLevel: number;
-  miningRatePerHour: number;
+  miningRatePerSec: number;
   capacity: number;
   cpuDurationMin: number;
   cpuRunning: boolean;
@@ -128,7 +128,7 @@ async function getMachineSnapshot(userId: string): Promise<MachineSnapshot | nul
       miningLevel: machineRow.miningLevel,
       capacityLevel: machineRow.capacityLevel,
       cpuLevel: machineRow.cpuLevel,
-      miningRatePerHour: miningRate * 3600,
+      miningRatePerSec: miningRate,
       capacity,
       cpuDurationMin: cpuLvl.cpuMin,
       cpuRunning,

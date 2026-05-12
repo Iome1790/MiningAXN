@@ -3,7 +3,7 @@
 
 import { db } from './db';
 import { miningSessions, earnings, users, userMachines } from '../shared/schema';
-import { eq, desc, and, isNotNull } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { getMiningLevel } from '../shared/miningLevels';
 
 export interface StatsAnalysis {
@@ -13,8 +13,7 @@ export interface StatsAnalysis {
   totalAxnMined: number;
   totalClaims: number;
   totalEarned: number;
-  avgMiningSpeedPerHour: number;
-  theoreticalMaxSpeedPerHour: number;
+  avgMiningSpeedPerSec: number;
   energyUsed: number;
   lastActive: Date | null;
 
@@ -99,23 +98,21 @@ export async function getUserStatsAnalysis(userId: string): Promise<StatsAnalysi
 
   const totalClaims = sessions.filter(s => s.claimedAt !== null).length;
 
-  // Total earned from all sources
+  // Total earned from all sources (earnings table)
   const totalEarned = axnEarnings.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
 
-  // Current mining level theoretical max speed
+  // Current mining level
   const currentMiningLevel = machine?.miningLevel ?? 1;
   const mLvl = getMiningLevel(currentMiningLevel);
-  const theoreticalMaxSpeedPerHour = mLvl.rate * 3600;
 
-  // Average mining speed across all completed sessions
+  // Average mining speed per second across all completed sessions
   const claimedSessions = sessions.filter(s => s.claimedAt && parseFloat(s.axnMined || '0') > 0);
-  let avgMiningSpeedPerHour = 0;
+  let avgMiningSpeedPerSec = 0;
   if (claimedSessions.length > 0) {
     const speeds = claimedSessions.map(s => {
-      const rate = parseFloat(s.axnMined || '0') / (s.expectedDurationSec || 1);
-      return rate * 3600;
+      return parseFloat(s.axnMined || '0') / (s.expectedDurationSec || 1);
     });
-    avgMiningSpeedPerHour = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+    avgMiningSpeedPerSec = speeds.reduce((a, b) => a + b, 0) / speeds.length;
   }
 
   // Storage info from current machine state
@@ -123,7 +120,6 @@ export async function getUserStatsAnalysis(userId: string): Promise<StatsAnalysi
   const storageCapacity = cLvl.capacity;
   const accumulatedAxn = parseFloat(machine?.accumulatedAxn || '0');
   let storedAxn = accumulatedAxn;
-  // Try to estimate current mined (live run)
   if (machine?.machineHealth && machine.machineHealth > 0 && machine.cpuStartTime && machine.lastClaimTime) {
     const mineFrom = machine.lastClaimTime > machine.cpuStartTime
       ? machine.lastClaimTime : machine.cpuStartTime;
@@ -153,7 +149,10 @@ export async function getUserStatsAnalysis(userId: string): Promise<StatsAnalysi
   const flags: string[] = [];
   let riskScore = 0;
 
-  // 1. Speed check — compare claimed axn vs theoretical max for that level
+  // Theoretical max speed per second for this level
+  const theoreticalMaxSpeedPerSec = mLvl.rate;
+
+  // 1. Speed check — compare claimed axn vs theoretical max for that session
   for (const s of claimedSessions) {
     const sessionMaxAxn = parseFloat(s.theoreticalMaxAxn || '0');
     const sessionMined = parseFloat(s.axnMined || '0');
@@ -164,9 +163,9 @@ export async function getUserStatsAnalysis(userId: string): Promise<StatsAnalysi
     }
   }
 
-  // 2. Avg speed vs theoretical max
-  if (avgMiningSpeedPerHour > theoreticalMaxSpeedPerHour * 1.05) {
-    flags.push(`Average speed ${avgMiningSpeedPerHour.toFixed(2)} AXN/h exceeds max ${theoreticalMaxSpeedPerHour.toFixed(2)} AXN/h`);
+  // 2. Avg speed vs theoretical max per second
+  if (avgMiningSpeedPerSec > theoreticalMaxSpeedPerSec * 1.05) {
+    flags.push(`Average speed ${avgMiningSpeedPerSec.toFixed(4)} AXN/s exceeds hardware max ${theoreticalMaxSpeedPerSec.toFixed(4)} AXN/s`);
     riskScore += 35;
   }
 
@@ -177,7 +176,7 @@ export async function getUserStatsAnalysis(userId: string): Promise<StatsAnalysi
     .sort((a, b) => a - b);
 
   for (let i = 1; i < claimTimes.length; i++) {
-    if (claimTimes[i] - claimTimes[i - 1] < 60 * 1000) { // < 60 seconds between claims
+    if (claimTimes[i] - claimTimes[i - 1] < 60 * 1000) {
       flags.push('Claim frequency abnormally fast (< 60s between claims)');
       riskScore += 30;
       break;
@@ -186,24 +185,24 @@ export async function getUserStatsAnalysis(userId: string): Promise<StatsAnalysi
 
   // 4. Balance integrity — current balance vs total legitimate mining earnings
   const currentBalance = parseFloat(user?.balance || '0');
-  const maxLegitimateBalance = totalEarned + 10000; // allow some margin for referrals/bonuses
+  const maxLegitimateBalance = totalEarned + 10000;
   if (sessionCount >= 3 && currentBalance > maxLegitimateBalance * 2) {
     flags.push(`Balance (${currentBalance.toFixed(2)} AXN) far exceeds recorded earnings (${totalEarned.toFixed(2)} AXN)`);
     riskScore += 45;
   }
 
-  // 5. Zero sessions but high balance
-  if (sessionCount === 0 && currentBalance > 100) {
-    flags.push('High balance with no recorded mining sessions');
+  // 5. Zero sessions but very high balance
+  if (sessionCount === 0 && currentBalance > 500) {
+    flags.push('Very high balance with no recorded mining sessions');
     riskScore += 25;
   }
 
-  // 6. Session duration anomaly — sessions far shorter than expected
+  // 6. Session duration anomaly — sessions claimed far faster than expected
   const suspiciouslyShortSessions = claimedSessions.filter(s => {
     if (!s.claimedAt) return false;
     const actualMs = s.claimedAt.getTime() - s.cpuStartTime.getTime();
     const expectedMs = s.expectedDurationSec * 1000;
-    return actualMs < expectedMs * 0.1; // claimed in < 10% of expected time
+    return actualMs < expectedMs * 0.1;
   });
   if (suspiciouslyShortSessions.length >= 2) {
     flags.push(`${suspiciouslyShortSessions.length} sessions claimed far faster than CPU timer allows`);
@@ -219,8 +218,7 @@ export async function getUserStatsAnalysis(userId: string): Promise<StatsAnalysi
     totalAxnMined: totalAxnMinedFromSessions,
     totalClaims,
     totalEarned,
-    avgMiningSpeedPerHour,
-    theoreticalMaxSpeedPerHour,
+    avgMiningSpeedPerSec,
     energyUsed: sessionCount,
     lastActive,
     currentMiningLevel,
@@ -245,11 +243,12 @@ function miniBar(pct: number, len = 8): string {
 export function formatStatsBlock(stats: StatsAnalysis): string {
   const sessionTime = formatDuration(stats.totalSessionTimeSec);
   const lastActiveStr = stats.lastActive ? timeAgo(stats.lastActive) : 'Never';
-  const speedStr = `${stats.avgMiningSpeedPerHour.toFixed(4)} AXN/h`;
-  const maxSpeedStr = `${stats.theoreticalMaxSpeedPerHour.toFixed(4)} AXN/h`;
-  const speedLine = stats.avgMiningSpeedPerHour > stats.theoreticalMaxSpeedPerHour * 1.05
-    ? `<b>⚠️ ${speedStr}</b> (limit: ${maxSpeedStr})`
-    : `${speedStr} (limit: ${maxSpeedStr})`;
+
+  // Speed as AXN/s with 2 decimal places
+  const speedVal = stats.avgMiningSpeedPerSec.toFixed(2);
+  const speedLine = stats.isSuspicious && stats.suspicionFlags.some(f => f.includes('speed'))
+    ? `<b>⚠️ ${speedVal} AXN/s</b>`
+    : `${speedVal} AXN/s`;
 
   const avStatus = stats.antivirusActive ? '🟢 Active' : '🔴 Offline';
   const healthStr = stats.machineHealth >= 75 ? `🟢 ${stats.machineHealth}%`
@@ -267,17 +266,17 @@ export function formatStatsBlock(stats: StatsAnalysis): string {
   let block =
 `╭━━ 📊 STATISTICS ANALYSIS ━━╮
 │
-├ ⏰ Session Time: <b>${sessionTime}</b> (${stats.sessionCount} sessions)
-├ 📅 Last Active: <b>${lastActiveStr}</b>
-├ ⛏ Total Mine: <b>${stats.totalAxnMined.toFixed(4)} AXN</b>
-├ 🎁 Total Claim: <b>${stats.totalClaims}x</b>
-├ 💰 Total Earn: <b>${stats.totalEarned.toFixed(4)} AXN</b>
-├ ⚡ Mining Speed: ${speedLine}
-├ 🔋 Energy Used: <b>${stats.energyUsed}x</b>
-├ 🛡 Antivirus: ${avStatus}
-├ ❤️ Health: ${healthStr}
-├ 📦 Storage: ${storageStr}
-├ 🎯 Risk Score: ${riskLabel} (${stats.riskScore}/100)
+├ ⏰ Session Time : <b>${sessionTime}</b> (${stats.sessionCount} sessions)
+├ 📅 Last Active  : <b>${lastActiveStr}</b>
+├ ⛏ Total Mined  : <b>${stats.totalAxnMined.toFixed(2)} AXN</b>
+├ 🎁 Claims Made  : <b>${stats.totalClaims}x</b>
+├ 💰 Total Earned : <b>${stats.totalEarned.toFixed(2)} AXN</b>
+├ ⚡ Mining Speed : ${speedLine}
+├ 🔋 Energy Used  : <b>${stats.energyUsed}x</b>
+├ 🛡 Antivirus   : ${avStatus}
+├ ❤️ Health       : ${healthStr}
+├ 📦 Storage      : ${storageStr}
+├ 🎯 Risk Score   : ${riskLabel} (${stats.riskScore}/100)
 │
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯`;
 
