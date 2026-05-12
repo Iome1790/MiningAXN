@@ -452,6 +452,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
     refetchInterval: 15000,
     staleTime: 14000,
     retry: false,
+    placeholderData: (prev) => prev,
   });
 
   useEffect(() => {
