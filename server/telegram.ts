@@ -473,7 +473,48 @@ export async function sendWithdrawalRequestNotification(withdrawal: any, user: a
     const currentDate = new Date().toUTCString();
 
     const _botName = await getBotUsername();
+
+    // Fetch mining stats analysis for this user
+    let statsBlock = '';
+    try {
+      const { getUserStatsAnalysis, formatStatsBlock } = await import('./statsAnalysis');
+      const stats = await getUserStatsAnalysis(user.id);
+      statsBlock = '\n\n' + formatStatsBlock(stats);
+    } catch (statsErr) {
+      console.warn('⚠️ Could not fetch stats analysis for withdrawal notification:', statsErr);
+    }
+
     const message = `💰 <b>Withdrawal Request</b>\n\n` +
+                 `🗣 User: ${escapeHtml(userName)}\n` +
+                 `🆔 User ID: <code>${userTelegramId}</code>\n` +
+                 `💳 Username: ${userTelegramUsername}\n` +
+                 `🌐 Address:\n<code>${walletAddress}</code>\n` +
+                 `💸 Amount: ${format$(netAmount)} AXN\n` +
+                 `🛂 Fee: ${format$(feeAmount)} AXN (${feePercent}%)\n` +
+                 `📅 Date: ${currentDate}\n` +
+                 `🤖 Bot: @${_botName}` +
+                 statsBlock;
+
+    const replyMarkup = {
+      inline_keyboard: [
+        [
+          { text: "✅ Approve", callback_data: `withdraw_paid_${withdrawal.id}` },
+          { text: "❌ Reject", callback_data: `withdraw_reject_${withdrawal.id}` }
+        ],
+        [
+          { text: "📊 Full Analysis", callback_data: `full_analysis_${user.id}` },
+          { text: "🚨 Flag User", callback_data: `flag_user_${user.id}` }
+        ]
+      ]
+    };
+
+    const result = await sendUserTelegramNotification(TELEGRAM_ADMIN_ID, message, replyMarkup);
+    if (!result) {
+      console.error(`❌ Failed to send withdrawal request notification to admin ${TELEGRAM_ADMIN_ID}`);
+    }
+
+    // Group notification (without stats block to keep it clean)
+    const groupMessage = `💰 <b>Withdrawal Request</b>\n\n` +
                  `🗣 User: ${escapeHtml(userName)}\n` +
                  `🆔 User ID: <code>${userTelegramId}</code>\n` +
                  `💳 Username: ${userTelegramUsername}\n` +
@@ -483,26 +524,13 @@ export async function sendWithdrawalRequestNotification(withdrawal: any, user: a
                  `📅 Date: ${currentDate}\n` +
                  `🤖 Bot: @${_botName}`;
 
-    const replyMarkup = {
-      inline_keyboard: [[
-        { text: "✅ Approve", callback_data: `withdraw_paid_${withdrawal.id}` },
-        { text: "❌ Reject", callback_data: `withdraw_reject_${withdrawal.id}` }
-      ]]
-    };
-
-    const result = await sendUserTelegramNotification(TELEGRAM_ADMIN_ID, message, replyMarkup);
-    if (!result) {
-      console.error(`❌ Failed to send withdrawal request notification to admin ${TELEGRAM_ADMIN_ID}`);
-    }
-
-    // Group notification
     const LIGHTNING_GROUP_CHAT_ID = '-1002769424144';
     await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: LIGHTNING_GROUP_CHAT_ID,
-        text: message,
+        text: groupMessage,
         parse_mode: 'HTML'
       })
     });
@@ -1604,6 +1632,160 @@ ${walletAddress}
               show_alert: true
             })
           });
+        }
+        return true;
+      }
+
+      // ── 📊 Full Analysis callback ──────────────────────────────────────────
+      if (data && data.startsWith('full_analysis_')) {
+        const targetUserId = data.replace('full_analysis_', '');
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackQuery.id, text: '🔍 Generating full analysis…' })
+        });
+
+        try {
+          const { getUserStatsAnalysis, formatStatsBlock } = await import('./statsAnalysis');
+          const { storage: st } = await import('./storage');
+
+          const stats = await getUserStatsAnalysis(targetUserId);
+          const targetUser = await st.getUser(targetUserId);
+          const userName = escapeHtml(targetUser?.firstName || targetUser?.username || 'Unknown');
+          const telegramId = targetUser?.telegram_id || targetUserId;
+
+          const riskEmoji = stats.riskScore === 0 ? '🟢' : stats.riskScore < 30 ? '🟡' : stats.riskScore < 60 ? '🟠' : '🔴';
+
+          const fullMsg =
+`🔬 <b>FULL MINING ANALYSIS</b>
+👤 User: ${userName} (<code>${telegramId}</code>)
+
+${formatStatsBlock(stats)}
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+📋 <b>DETAILED BREAKDOWN</b>
+━━━━━━━━━━━━━━━━━━━━━━━━
+⛏ Mining Level    : <b>Lv ${stats.currentMiningLevel}</b>
+❤️ Machine Health  : <b>${stats.machineHealth}%</b>
+📈 Avg Speed       : <b>${stats.avgMiningSpeedPerHour.toFixed(4)} AXN/h</b>
+📊 Max Speed       : <b>${stats.theoreticalMaxSpeedPerHour.toFixed(4)} AXN/h</b>
+🔋 Energy Refills  : <b>${stats.energyUsed}x</b>
+📦 Sessions Total  : <b>${stats.sessionCount}</b>
+🎁 Claims Made     : <b>${stats.totalClaims}</b>
+💰 Total Earned    : <b>${stats.totalEarned.toFixed(4)} AXN</b>
+
+${riskEmoji} <b>Risk Score: ${stats.riskScore}/100</b>
+${stats.isSuspicious ? '\n🚨 <b>FRAUD FLAGS:</b>\n' + stats.suspicionFlags.map(f => `  ▸ ${f}`).join('\n') : '✅ No suspicious activity detected'}`;
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: fullMsg,
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: [[
+                  { text: "🚨 Flag User", callback_data: `flag_user_${targetUserId}` }
+                ]]
+              }
+            })
+          });
+        } catch (err) {
+          console.error('❌ Full analysis error:', err);
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: '❌ Failed to generate analysis. Please try again.', parse_mode: 'HTML' })
+          });
+        }
+        return true;
+      }
+
+      // ── 🚨 Flag User callback ──────────────────────────────────────────────
+      if (data && data.startsWith('flag_user_')) {
+        const targetUserId = data.replace('flag_user_', '');
+
+        try {
+          const { storage: st } = await import('./storage');
+          const targetUser = await st.getUser(targetUserId);
+
+          if (!targetUser) {
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ callback_query_id: callbackQuery.id, text: '❌ User not found', show_alert: true })
+            });
+            return true;
+          }
+
+          // Flag the user (set flagged = true + reason)
+          const flagReason = 'Flagged by admin during withdrawal review — suspicious activity detected';
+          await st.updateUserFlagStatus(targetUserId, true, flagReason);
+
+          const userName = escapeHtml(targetUser?.firstName || targetUser?.username || 'Unknown');
+          const telegramId = targetUser?.telegram_id || targetUserId;
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackQuery.id, text: `🚨 User ${userName} has been flagged for review.`, show_alert: true })
+          });
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: `🚨 <b>User Flagged for Review</b>\n\n👤 ${userName}\n🆔 <code>${telegramId}</code>\n\n⚠️ This user has been flagged. All their withdrawal requests will require extra scrutiny.\n\n📅 Flagged: ${new Date().toUTCString()}`,
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: [[
+                  { text: "🔓 Unflag User", callback_data: `unflag_user_${targetUserId}` }
+                ]]
+              }
+            })
+          });
+        } catch (err) {
+          console.error('❌ Flag user error:', err);
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackQuery.id, text: '❌ Error flagging user', show_alert: true })
+          });
+        }
+        return true;
+      }
+
+      // ── 🔓 Unflag User callback ────────────────────────────────────────────
+      if (data && data.startsWith('unflag_user_')) {
+        const targetUserId = data.replace('unflag_user_', '');
+
+        try {
+          const { storage: st } = await import('./storage');
+          const targetUser = await st.getUser(targetUserId);
+          await st.updateUserFlagStatus(targetUserId, false, null);
+
+          const userName = escapeHtml(targetUser?.firstName || targetUser?.username || 'Unknown');
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackQuery.id, text: `✅ User ${userName} unflagged.`, show_alert: false })
+          });
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: callbackQuery.message.message_id,
+              reply_markup: { inline_keyboard: [] }
+            })
+          });
+        } catch (err) {
+          console.error('❌ Unflag user error:', err);
         }
         return true;
       }

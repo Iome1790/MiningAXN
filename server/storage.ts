@@ -8,6 +8,7 @@ import {
   adminSettings,
   banLogs,
   userMachines,
+  miningSessions,
   type User,
   type UpsertUser,
   type InsertEarning,
@@ -113,6 +114,7 @@ export interface IStorage {
   // Admin operations
   getAllUsers(): Promise<User[]>;
   updateUserBanStatus(userId: string, banned: boolean, reason?: string, adminId?: string, banType?: string, adminBanReason?: string): Promise<void>;
+  updateUserFlagStatus(userId: string, flagged: boolean, reason: string | null): Promise<void>;
   
   // Telegram user operations
   getUserByTelegramId(telegramId: string): Promise<User | undefined>;
@@ -730,6 +732,30 @@ export class DatabaseStorage implements IStorage {
       updatedAt: now,
     }).where(eq(userMachines.userId, userId));
 
+    // Log mining session for analytics & fraud detection
+    try {
+      const mLvlForSession = getMiningLevel(machine.miningLevel);
+      const cLvlForSession = getMiningLevel(machine.capacityLevel);
+      const theoreticalMaxAxn = Math.min(
+        cLvlForSession.capacity,
+        mLvlForSession.rate * cpuLvl.cpuMin * 60
+      );
+      await db.insert(miningSessions).values({
+        userId,
+        miningLevel: machine.miningLevel,
+        capacityLevel: machine.capacityLevel,
+        cpuLevel: machine.cpuLevel,
+        cpuStartTime: now,
+        cpuExpectedEndTime: cpuEndTime,
+        expectedDurationSec: cpuLvl.cpuMin * 60,
+        theoreticalMaxAxn: theoreticalMaxAxn.toFixed(8),
+        axnMined: '0',
+      });
+    } catch (sessionErr) {
+      // Non-critical — don't fail the CPU start if session logging fails
+      console.error('⚠️ Failed to log mining session:', sessionErr);
+    }
+
     return { success: true, message: 'CPU started! Mining is now active.' };
   }
 
@@ -763,6 +789,25 @@ export class DatabaseStorage implements IStorage {
         description: `AXN Mining claim - Level ${machine.miningLevel}`,
       });
     });
+
+    // Update the most recent unclaimed mining session with actual AXN mined
+    try {
+      const [latestSession] = await db
+        .select()
+        .from(miningSessions)
+        .where(and(eq(miningSessions.userId, userId), sql`claimed_at IS NULL`))
+        .orderBy(desc(miningSessions.createdAt))
+        .limit(1);
+
+      if (latestSession) {
+        await db.update(miningSessions).set({
+          axnMined: amount.toFixed(8),
+          claimedAt: now,
+        }).where(eq(miningSessions.id, latestSession.id));
+      }
+    } catch (sessionErr) {
+      console.error('⚠️ Failed to update mining session claim:', sessionErr);
+    }
 
     return { success: true, amount, message: `Claimed ${amount.toFixed(4)} AXN` };
   }
@@ -1894,6 +1939,17 @@ export class DatabaseStorage implements IStorage {
     } catch (e) {
       console.warn("Could not log ban action to device tracking:", e);
     }
+  }
+
+  async updateUserFlagStatus(userId: string, flagged: boolean, reason: string | null): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        flagged,
+        flagReason: flagged ? (reason || 'Flagged by admin') : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
   }
 
   async usePromoCode(_code: string, _userId: string): Promise<{ success: boolean; message: string; reward?: string; errorType?: string }> {

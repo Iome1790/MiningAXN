@@ -635,6 +635,26 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_referrals_referee_id ON referrals(referee_id)`);
 
+    // Mining sessions table — per-CPU-cycle analytics & fraud detection
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS mining_sessions (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id VARCHAR NOT NULL REFERENCES users(id),
+        mining_level INTEGER NOT NULL,
+        capacity_level INTEGER NOT NULL,
+        cpu_level INTEGER NOT NULL,
+        cpu_start_time TIMESTAMP NOT NULL,
+        cpu_expected_end_time TIMESTAMP NOT NULL,
+        expected_duration_sec INTEGER NOT NULL,
+        theoretical_max_axn NUMERIC(20, 8) NOT NULL,
+        axn_mined NUMERIC(20, 8) DEFAULT 0,
+        claimed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_mining_sessions_user_id ON mining_sessions(user_id)`);
+    console.log('✅ [MIGRATION] mining_sessions table ensured');
+
     console.log('✅ [MIGRATION] All tables and indexes created successfully');
     
   } catch (error) {
