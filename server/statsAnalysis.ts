@@ -58,15 +58,23 @@ function timeAgo(date: Date): string {
 export async function getUserStatsAnalysis(userId: string): Promise<StatsAnalysis> {
   const now = new Date();
 
-  // Fetch all mining sessions for this user
+  // Fetch all mining sessions (new tracking — may be sparse for older users)
   const sessions = await db
     .select()
     .from(miningSessions)
     .where(eq(miningSessions.userId, userId))
     .orderBy(desc(miningSessions.createdAt));
 
-  // Fetch all AXN mining earnings
-  const axnEarnings = await db
+  // Fetch ALL AXN mining earnings — this is the authoritative historical record
+  // Each claim creates one row with source='axn_mining'
+  const axnMiningEarnings = await db
+    .select()
+    .from(earnings)
+    .where(and(eq(earnings.userId, userId), eq(earnings.source, 'axn_mining')))
+    .orderBy(earnings.createdAt);
+
+  // Fetch ALL earnings (including referrals, bonuses, etc.) for total earned
+  const allEarnings = await db
     .select()
     .from(earnings)
     .where(eq(earnings.userId, userId));
@@ -78,42 +86,70 @@ export async function getUserStatsAnalysis(userId: string): Promise<StatsAnalysi
     .where(eq(userMachines.userId, userId))
     .limit(1);
 
-  // User row for last login
+  // User row
   const [user] = await db
     .select({ lastLoginAt: users.lastLoginAt, registeredAt: users.registeredAt, balance: users.balance })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
 
-  // ── Aggregate session metrics ──────────────────────────────────────────────
+  // ── Aggregate from earnings table (historical truth) ──────────────────────
+  // Each axn_mining earning = one claim cycle
 
-  const sessionCount = sessions.length;
+  const totalClaims = axnMiningEarnings.length;
+  const totalAxnMinedFromEarnings = axnMiningEarnings.reduce(
+    (sum, e) => sum + parseFloat(e.amount || '0'), 0
+  );
+
+  // Use earnings-based session count as proxy (more reliable than new sessions table)
+  // If the new sessions table has more data, use the max
+  const sessionCountFromSessions = sessions.length;
+  const sessionCount = Math.max(totalClaims, sessionCountFromSessions);
+
+  // Total session time: prefer sessions table, otherwise estimate from earnings timespan
   let totalSessionTimeSec = 0;
-  let totalAxnMinedFromSessions = 0;
-
-  for (const s of sessions) {
-    totalSessionTimeSec += s.expectedDurationSec;
-    totalAxnMinedFromSessions += parseFloat(s.axnMined || '0');
+  if (sessionCountFromSessions > 0) {
+    for (const s of sessions) {
+      totalSessionTimeSec += s.expectedDurationSec;
+    }
   }
 
-  const totalClaims = sessions.filter(s => s.claimedAt !== null).length;
-
-  // Total earned from all sources (earnings table)
-  const totalEarned = axnEarnings.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
+  // Total earned from all sources
+  const totalEarned = allEarnings.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
 
   // Current mining level
   const currentMiningLevel = machine?.miningLevel ?? 1;
   const mLvl = getMiningLevel(currentMiningLevel);
 
-  // Average mining speed per second across all completed sessions
+  // ── Average speed calculation ──────────────────────────────────────────────
+  // Primary: use new sessions table if we have claimed sessions
   const claimedSessions = sessions.filter(s => s.claimedAt && parseFloat(s.axnMined || '0') > 0);
   let avgMiningSpeedPerSec = 0;
+
   if (claimedSessions.length > 0) {
-    const speeds = claimedSessions.map(s => {
-      return parseFloat(s.axnMined || '0') / (s.expectedDurationSec || 1);
-    });
+    // Use actual session data
+    const speeds = claimedSessions.map(s =>
+      parseFloat(s.axnMined || '0') / (s.expectedDurationSec || 1)
+    );
     avgMiningSpeedPerSec = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+  } else if (axnMiningEarnings.length >= 2) {
+    // Fallback: estimate from earnings history timespan
+    const firstEarning = axnMiningEarnings[0];
+    const lastEarning = axnMiningEarnings[axnMiningEarnings.length - 1];
+    const spanSec = (new Date(lastEarning.createdAt!).getTime() - new Date(firstEarning.createdAt!).getTime()) / 1000;
+    if (spanSec > 0) {
+      // average = total mined / total time from first to last earning
+      avgMiningSpeedPerSec = totalAxnMinedFromEarnings / spanSec;
+    }
+  } else if (axnMiningEarnings.length === 1) {
+    // Single earning: use the actual mining level rate as best estimate
+    avgMiningSpeedPerSec = mLvl.rate;
   }
+
+  // Total mined = prefer earnings table sum (most accurate historical data)
+  const totalAxnMined = totalAxnMinedFromEarnings > 0
+    ? totalAxnMinedFromEarnings
+    : sessions.reduce((s, r) => s + parseFloat(r.axnMined || '0'), 0);
 
   // Storage info from current machine state
   const cLvl = getMiningLevel(machine?.capacityLevel ?? 1);
@@ -169,19 +205,7 @@ export async function getUserStatsAnalysis(userId: string): Promise<StatsAnalysi
     riskScore += 35;
   }
 
-  // 3. Claim frequency — detect abnormally fast consecutive claims
-  const claimTimes = sessions
-    .filter(s => s.claimedAt)
-    .map(s => s.claimedAt!.getTime())
-    .sort((a, b) => a - b);
-
-  for (let i = 1; i < claimTimes.length; i++) {
-    if (claimTimes[i] - claimTimes[i - 1] < 60 * 1000) {
-      flags.push('Claim frequency abnormally fast (< 60s between claims)');
-      riskScore += 30;
-      break;
-    }
-  }
+  // 3. (claim frequency now handled via earnings timestamps below)
 
   // 4. Balance integrity — current balance vs total legitimate mining earnings
   const currentBalance = parseFloat(user?.balance || '0');
@@ -212,15 +236,38 @@ export async function getUserStatsAnalysis(userId: string): Promise<StatsAnalysi
   riskScore = Math.min(100, riskScore);
   const isSuspicious = flags.length > 0;
 
+  // Claim frequency check — use earnings timestamps (more accurate than sessions)
+  if (axnMiningEarnings.length >= 2) {
+    const earningTimes = axnMiningEarnings
+      .map(e => new Date(e.createdAt!).getTime())
+      .sort((a, b) => a - b);
+    for (let i = 1; i < earningTimes.length; i++) {
+      if (earningTimes[i] - earningTimes[i - 1] < 60 * 1000) {
+        if (!flags.some(f => f.includes('Claim frequency'))) {
+          flags.push('Claim frequency abnormally fast (< 60s between claims)');
+          riskScore += 30;
+        }
+        break;
+      }
+    }
+  }
+
+  // Last active — use most recent earning or machine state
+  const lastEarningDate = axnMiningEarnings.length > 0
+    ? new Date(axnMiningEarnings[axnMiningEarnings.length - 1].createdAt!)
+    : null;
+  const lastActiveResolved: Date | null =
+    machine?.lastClaimTime ?? lastEarningDate ?? user?.lastLoginAt ?? user?.registeredAt ?? null;
+
   return {
     sessionCount,
     totalSessionTimeSec,
-    totalAxnMined: totalAxnMinedFromSessions,
+    totalAxnMined,
     totalClaims,
     totalEarned,
     avgMiningSpeedPerSec,
-    energyUsed: sessionCount,
-    lastActive,
+    energyUsed: totalClaims > 0 ? totalClaims : sessionCount,
+    lastActive: lastActiveResolved,
     currentMiningLevel,
     antivirusActive,
     machineHealth: machine?.machineHealth ?? 100,

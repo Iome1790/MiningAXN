@@ -1878,6 +1878,134 @@ ${stats.isSuspicious ? '\n🚨 <b>FRAUD FLAGS:</b>\n' + stats.suspicionFlags.map
         return true;
       }
       
+      // ── 🔄 Machine Refresh callback — re-sends current machine status ─────────
+      if (data && data.startsWith('machine_refresh_')) {
+        const targetTelegramId = data.replace('machine_refresh_', '');
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackQuery.id, text: '🔄 Refreshing status…' })
+        });
+
+        try {
+          const { db: _db } = await import('./db');
+          const { userMachines: umTable, users: usersTable } = await import('../shared/schema');
+          const { eq: _eq } = await import('drizzle-orm');
+          const { getMiningLevel: gml } = await import('../shared/miningLevels');
+
+          const [userRow] = await _db.select({ id: usersTable.id })
+            .from(usersTable).where(_eq(usersTable.telegram_id, targetTelegramId)).limit(1);
+
+          if (!userRow) {
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ callback_query_id: callbackQuery.id, text: '❌ User not found', show_alert: true })
+            });
+            return true;
+          }
+
+          const [machineRow] = await _db.select().from(umTable)
+            .where(_eq(umTable.userId, userRow.id)).limit(1);
+
+          if (!machineRow) {
+            await sendUserTelegramNotification(targetTelegramId, '⚙️ No machine found. Open the app to initialize your miner.');
+            return true;
+          }
+
+          const now = new Date();
+          const mLvl2 = gml(machineRow.miningLevel);
+          const cLvl2 = gml(machineRow.capacityLevel);
+          const capacity2 = cLvl2.capacity;
+          const cpuRunning2 = !!(machineRow.cpuEndTime && machineRow.cpuEndTime > now);
+          const cpuRemainingSeconds2 = cpuRunning2
+            ? Math.max(0, Math.floor((machineRow.cpuEndTime!.getTime() - now.getTime()) / 1000))
+            : 0;
+          const accAxn = parseFloat(machineRow.accumulatedAxn || '0');
+          let minedAxn2 = accAxn;
+          if (machineRow.machineHealth > 0 && machineRow.cpuStartTime && machineRow.lastClaimTime) {
+            const from2 = machineRow.lastClaimTime > machineRow.cpuStartTime ? machineRow.lastClaimTime : machineRow.cpuStartTime;
+            const until2 = machineRow.cpuEndTime && machineRow.cpuEndTime < now ? machineRow.cpuEndTime : now;
+            if (until2 > from2) {
+              const secs2 = Math.floor((until2.getTime() - from2.getTime()) / 1000);
+              minedAxn2 = Math.min(capacity2, accAxn + secs2 * mLvl2.rate);
+            }
+          }
+          const avDurMs2 = (machineRow.miningLevel * 10 + 10) * 60 * 1000;
+          let avActive2 = machineRow.antivirusActive;
+          let avSecsLeft2 = 0;
+          if (avActive2 && machineRow.antivirusActivatedAt) {
+            const rem2 = avDurMs2 - (now.getTime() - machineRow.antivirusActivatedAt.getTime());
+            if (rem2 <= 0) avActive2 = false;
+            else avSecsLeft2 = Math.ceil(rem2 / 1000);
+          }
+          const storagePct3 = capacity2 > 0 ? (minedAxn2 / capacity2) * 100 : 0;
+
+          function seg5r(pct: number): string {
+            const f = Math.min(5, Math.round((pct / 100) * 5));
+            return '▰'.repeat(f) + '▱'.repeat(5 - f);
+          }
+          function fmtS(s: number): string {
+            if (s <= 0) return '—';
+            const hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss2 = s % 60;
+            if (hh > 0) return `${hh}h ${mm}m`;
+            if (mm > 0) return `${mm}m ${ss2}s`;
+            return `${ss2}s`;
+          }
+
+          const energyIcon2 = machineRow.hasEnergy ? '🟢 CHARGED' : '🔴 DEPLETED';
+          const cpuStatus2 = cpuRunning2 ? `🟢 RUNNING [${fmtS(cpuRemainingSeconds2)} left]` : '🔴 OFFLINE';
+          const avStatus2 = avActive2 ? `🟢 ACTIVE  [${fmtS(avSecsLeft2)} remaining]` : '🔴 OFFLINE';
+          const hp = machineRow.machineHealth;
+          const hpEmoji = hp >= 75 ? '🟢' : hp >= 40 ? '🟡' : hp > 0 ? '🔴' : '💀';
+
+          const refreshMsg =
+`⚙️ <b>AXIONET MINING MACHINE</b>
+<i>📡 LIVE STATUS REFRESH</i>
+
+⚙️ <b>DIAGNOSTICS</b>
+↳⛏ Mining Lv   : <b>${machineRow.miningLevel}</b>
+↳📦 Capacity Lv : <b>${machineRow.capacityLevel}</b>
+↳🖥️ CPU Lv      : <b>${machineRow.cpuLevel}</b>
+↳⚡ Speed       : <b>${mLvl2.rate.toFixed(4)} AXN/s</b>
+
+👨‍💻 <b>SYSTEM STATUS</b>
+↳⚡ Energy    : ${energyIcon2}
+↳🖥️ CPU       : ${cpuStatus2}
+↳🦠 Antivirus : ${avStatus2}
+
+💟 <b>HEALTH</b>
+↳${seg5r(hp)} ${hp}% ${hpEmoji}
+
+💾 <b>STORAGE</b>
+↳${seg5r(storagePct3)} ${minedAxn2.toFixed(2)} / ${capacity2} AXN
+
+🔔 Open AXIONET MINER to take action.`;
+
+          const botUser2 = await getBotUsername();
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: callbackQuery.message.message_id,
+              text: refreshMsg,
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: [[
+                  { text: '🚀 Open App', url: `https://t.me/${botUser2}/MyWAdz` },
+                  { text: '🔄 Refresh', callback_data: `machine_refresh_${targetTelegramId}` }
+                ]]
+              }
+            })
+          });
+        } catch (err) {
+          console.error('❌ Machine refresh error:', err);
+        }
+        return true;
+      }
+
       // Handle transaction view callback - opens tonscan URL for the user's withdrawal address
       if (data && data.startsWith('tx_view_')) {
         const withdrawalId = data.replace('tx_view_', '');
@@ -2384,13 +2512,32 @@ ${stats.isSuspicious ? '\n🚨 <b>FRAUD FLAGS:</b>\n' + stats.suspicionFlags.map
 
       const referralCode = parameter;
 
-      // Send welcome message IMMEDIATELY for fast response, then process referral in background
-      console.log('📤 Sending welcome message immediately to:', chatId);
-      sendWelcomeMessage(chatId).then(sent => {
-        console.log('📧 Welcome message sent:', sent);
-      }).catch(err => {
-        console.error('❌ Welcome message error:', err);
-      });
+      // New users → full welcome message; existing users → "welcome back" with App + Refresh buttons
+      if (isNewUser) {
+        console.log('📤 New user — sending full welcome message to:', chatId);
+        sendWelcomeMessage(chatId).then(sent => {
+          console.log('📧 Welcome message sent:', sent);
+        }).catch(err => {
+          console.error('❌ Welcome message error:', err);
+        });
+      } else {
+        console.log('📤 Returning user — sending welcome back message to:', chatId);
+        (async () => {
+          try {
+            const botUser = await getBotUsername();
+            const firstName = escapeHtml(user?.first_name || dbUser.firstName || 'Miner');
+            const wbMsg = `👋 <b>Welcome back, ${firstName}!</b>\n\n⚙️ Your mining machine is waiting for you.\n\n<a href="https://t.me/LightningSatoshi">📢 Channel</a> | <a href="https://t.me/Axionetchat">💬 Chat</a> | <a href="https://t.me/szxzyz">📞 Support</a>`;
+            await sendUserTelegramNotification(chatId, wbMsg, {
+              inline_keyboard: [[
+                { text: '🚀 Open App', url: `https://t.me/${botUser}/MyWAdz` },
+                { text: '🔄 Refresh', callback_data: `machine_refresh_${chatId}` }
+              ]]
+            }, 'HTML');
+          } catch (err) {
+            console.error('❌ Welcome back message error:', err);
+          }
+        })();
+      }
 
       // Process referral in background (non-blocking)
       if (referralCode && referralCode !== chatId) {
@@ -2724,36 +2871,46 @@ export async function sendMachineAlertNotification(
   // Alert bullets
   const bulletLines = alerts.map(a => `  ▸ ${alertBadge(a)}`).join('\n');
 
+  // ▰▰ style progress bars (5 segments)
+  function seg5(pct: number): string {
+    const filled = Math.min(5, Math.round((pct / 100) * 5));
+    return '▰'.repeat(filled) + '▱'.repeat(5 - filled);
+  }
+
   const speedStr = `${snap.miningRatePerSec.toFixed(4)} AXN/s`;
+  const healthPct = snap.machineHealth;
+  const storagePct2 = snap.storagePct;
+  const healthBar5 = seg5(healthPct);
+  const storageBar5 = seg5(storagePct2);
+  const healthEmoji = healthPct >= 75 ? '🟢' : healthPct >= 40 ? '🟡' : healthPct > 0 ? '🔴' : '💀';
 
   const message =
 `⚙️ <b>AXIONET MINING MACHINE</b>
-📡 <b>REMOTE STATUS REPORT</b>
+<i>📡 REMOTE STATUS REPORT</i>
 
 <b>${header}</b>
 
-▸ ACTIVE ALERTS
+🚨 <b>ACTIVE ALERTS</b>
 ${bulletLines}
 
-▸ DIAGNOSTICS
-⛏ Mining Lv   : <b>${snap.miningLevel}</b>
-📦 Capacity Lv : <b>${snap.capacityLevel}</b>
-🖥️ CPU Lv      : <b>${snap.cpuLevel}</b>
-⚡ Speed       : <b>${speedStr}</b>
+⚙️ <b>DIAGNOSTICS</b>
+↳⛏ Mining Lv   : <b>${snap.miningLevel}</b>
+↳📦 Capacity Lv : <b>${snap.capacityLevel}</b>
+↳🖥️ CPU Lv      : <b>${snap.cpuLevel}</b>
+↳⚡ Speed       : <b>${speedStr}</b>
 
-▸ SYSTEM STATUS
-⚡ Energy  : ${energyIcon}
-🖥️ CPU     : ${cpuStatus}
-🦠 Antivirus: ${avStatus}
+👨‍💻 <b>SYSTEM STATUS</b>
+↳⚡ Energy    : ${energyIcon}
+↳🖥️ CPU       : ${cpuStatus}
+↳🦠 Antivirus : ${avStatus}
 
-▸ HEALTH
-${healthBar} ${snap.machineHealth}% — ${healthStatus}
+💟 <b>HEALTH</b>
+↳${healthBar5} ${healthPct}% ${healthEmoji}
 
-▸ STORAGE
-${storageBar} ${snap.minedAxn.toFixed(2)} / ${snap.capacity} AXN
-${snap.storagePct >= 99.5 ? '⚠️ FULL — Claim now!' : snap.storagePct >= 75 ? '⚠️ Nearly full' : '✅ Available'}
+💾 <b>STORAGE</b>
+↳${storageBar5} ${snap.minedAxn.toFixed(2)} / ${snap.capacity} AXN${snap.storagePct >= 99.5 ? '\n↳⚠️ FULL — Claim now!' : ''}
 
-<i>🔔 Open AXIONET MINER to take action.</i>`;
+🔔 Open AXIONET MINER to take action.`;
 
   try {
     const response = await fetch(
@@ -2765,6 +2922,12 @@ ${snap.storagePct >= 99.5 ? '⚠️ FULL — Claim now!' : snap.storagePct >= 75
           chat_id: telegramId,
           text: message,
           parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '🚀 Open App', url: `https://t.me/${await getBotUsername()}/MyWAdz` },
+              { text: '🔄 Refresh', callback_data: `machine_refresh_${telegramId}` }
+            ]]
+          }
         }),
       },
     );

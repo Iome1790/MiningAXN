@@ -233,11 +233,13 @@ let monitorTimer: ReturnType<typeof setInterval> | null = null;
 export function startMachineMonitor(): void {
   if (monitorTimer) return; // already running
 
-  console.log('🤖 [MachineMonitor] Starting — interval: 60s');
+  console.log('🤖 [MachineMonitor] Starting — interval: 60s (first cycle in 2 min)');
 
-  // Run immediately on first start, then on schedule
-  runMonitorCycle();
-  monitorTimer = setInterval(runMonitorCycle, MONITOR_INTERVAL_MS);
+  // Delay first run by 2 minutes to let WebSocket connections re-establish after restart
+  setTimeout(() => {
+    runMonitorCycle();
+    monitorTimer = setInterval(runMonitorCycle, MONITOR_INTERVAL_MS);
+  }, 2 * 60 * 1000);
 }
 
 export function stopMachineMonitor(): void {
