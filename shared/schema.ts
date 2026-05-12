@@ -253,6 +253,22 @@ export const userMachines = pgTable("user_machines", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Mining sessions table — tracks every CPU start/claim cycle for analytics & fraud detection
+export const miningSessions = pgTable("mining_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  miningLevel: integer("mining_level").notNull(),
+  capacityLevel: integer("capacity_level").notNull(),
+  cpuLevel: integer("cpu_level").notNull(),
+  cpuStartTime: timestamp("cpu_start_time").notNull(),
+  cpuExpectedEndTime: timestamp("cpu_expected_end_time").notNull(),
+  expectedDurationSec: integer("expected_duration_sec").notNull(),
+  theoreticalMaxAxn: decimal("theoretical_max_axn", { precision: 20, scale: 8 }).notNull(),
+  axnMined: decimal("axn_mined", { precision: 20, scale: 8 }).default("0"),
+  claimedAt: timestamp("claimed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertEarningSchema = createInsertSchema(earnings).omit({ createdAt: true });
