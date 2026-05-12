@@ -2363,3 +2363,154 @@ export async function setupTelegramWebhook(webhookUrl: string, retries = 3): Pro
   console.error('❌ Failed to set up webhook after all retries');
   return false;
 }
+
+// ─── Cyberpunk Machine Alert Notification ────────────────────────────────────
+
+type AlertType = 'energy_depleted' | 'health_critical' | 'antivirus_expired' | 'storage_full' | 'cpu_stopped';
+
+interface MachineSnapshotForAlert {
+  miningLevel: number;
+  capacityLevel: number;
+  cpuLevel: number;
+  miningRatePerHour: number;
+  capacity: number;
+  cpuDurationMin: number;
+  cpuRunning: boolean;
+  cpuRemainingSeconds: number;
+  hasEnergy: boolean;
+  antivirusActive: boolean;
+  avSecondsLeft: number;
+  machineHealth: number;
+  minedAxn: number;
+  storagePct: number;
+}
+
+function bar(value: number, max: number, len = 12): string {
+  const filled = Math.min(len, Math.round((value / Math.max(max, 1)) * len));
+  return '█'.repeat(filled) + '░'.repeat(len - filled);
+}
+
+function formatSeconds(secs: number): string {
+  if (secs <= 0) return '—';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function alertHeader(alerts: AlertType[]): string {
+  if (alerts.includes('health_critical')) {
+    return '🔴 CRITICAL SYSTEM FAILURE';
+  }
+  if (alerts.includes('energy_depleted') || alerts.includes('cpu_stopped')) {
+    return '⚡ MINING HALTED';
+  }
+  if (alerts.includes('storage_full')) {
+    return '💾 STORAGE CAPACITY REACHED';
+  }
+  if (alerts.includes('antivirus_expired')) {
+    return '🛡️ SECURITY BREACH DETECTED';
+  }
+  return '⚠️ MACHINE STATUS ALERT';
+}
+
+function alertBadge(type: AlertType): string {
+  const badges: Record<AlertType, string> = {
+    energy_depleted: '⚡ ENERGY CELL DEPLETED — CPU offline',
+    health_critical: '💀 MACHINE HEALTH AT ZERO — Immediate repair required',
+    antivirus_expired: '🦠 ANTIVIRUS SHIELD DOWN — Virus attacks active',
+    storage_full: '💾 STORAGE FULL — Claim AXN now to resume mining',
+    cpu_stopped: '🛑 CPU CYCLE COMPLETE — Ready to restart',
+  };
+  return badges[type] || '⚠️ Unknown alert';
+}
+
+export async function sendMachineAlertNotification(
+  telegramId: string,
+  snap: MachineSnapshotForAlert,
+  alerts: AlertType[],
+): Promise<boolean> {
+  if (!TELEGRAM_BOT_TOKEN) return false;
+  if (!telegramId) return false;
+
+  const header = alertHeader(alerts);
+
+  const healthBar   = bar(snap.machineHealth, 100);
+  const storageBar  = bar(snap.minedAxn, snap.capacity);
+  const avStatus    = snap.antivirusActive
+    ? `🟢 ACTIVE  [${formatSeconds(snap.avSecondsLeft)} remaining]`
+    : '🔴 OFFLINE';
+  const energyIcon  = snap.hasEnergy ? '🟢 CHARGED' : '🔴 DEPLETED';
+  const cpuStatus   = snap.cpuRunning
+    ? `🟢 RUNNING [${formatSeconds(snap.cpuRemainingSeconds)} left]`
+    : '🔴 OFFLINE';
+  const healthStatus = snap.machineHealth >= 75 ? '🟢 OPTIMAL'
+    : snap.machineHealth >= 40 ? '🟡 DEGRADED'
+    : snap.machineHealth > 0  ? '🔴 CRITICAL'
+    : '💀 DESTROYED';
+
+  // Alert bullets
+  const bulletLines = alerts.map(a => `  ▸ ${alertBadge(a)}`).join('\n');
+
+  const message =
+`╔══════════════════════════════╗
+  ⚙️  <b>AXIONET MINING MACHINE</b>
+  📡  REMOTE STATUS REPORT
+╚══════════════════════════════╝
+
+<b>${header}</b>
+
+┌─ ACTIVE ALERTS ──────────────
+${bulletLines}
+└──────────────────────────────
+
+┌─ MACHINE DIAGNOSTICS ────────
+│ 🔩 Mining Lv  : <b>${snap.miningLevel}</b>   │ Capacity Lv : <b>${snap.capacityLevel}</b>
+│ 🖥️ CPU Lv     : <b>${snap.cpuLevel}</b>   │ Speed       : <b>${snap.miningRatePerHour.toFixed(2)} AXN/h</b>
+└──────────────────────────────
+
+┌─ SYSTEM STATUS ──────────────
+│ ⚡ Energy     : ${energyIcon}
+│ 🖥️ CPU Timer  : ${cpuStatus}
+│ 🦠 Antivirus  : ${avStatus}
+└──────────────────────────────
+
+┌─ HEALTH ─────────────────────
+│ ${healthBar} ${snap.machineHealth}%  ${healthStatus}
+└──────────────────────────────
+
+┌─ STORAGE ────────────────────
+│ ${storageBar} ${snap.minedAxn.toFixed(2)} / ${snap.capacity} AXN
+│ ${snap.storagePct >= 99.5 ? '⚠️  FULL — Claim now!' : snap.storagePct >= 75 ? '⚠️  Nearly full' : '✅ Available'}
+└──────────────────────────────
+
+<i>🔔 Open AXIONET MINER to take action.</i>`;
+
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: telegramId,
+          text: message,
+          parse_mode: 'HTML',
+        }),
+      },
+    );
+
+    if (response.ok) {
+      console.log(`✅ [MachineAlert] Sent to ${telegramId}`);
+      return true;
+    }
+    const err = await response.text();
+    console.error(`❌ [MachineAlert] Failed for ${telegramId}:`, err);
+    return false;
+  } catch (error) {
+    console.error(`❌ [MachineAlert] Error for ${telegramId}:`, error);
+    return false;
+  }
+}

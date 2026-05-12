@@ -209,6 +209,15 @@ app.use((req, res, next) => {
         console.error('❌ Error in daily reset check:', error);
       }
     }, 5 * 60 * 1000); // Every 5 minutes
+
+    // Start the machine monitor (Telegram alerts for offline users)
+    try {
+      const { startMachineMonitor } = await import('./machineMonitor');
+      startMachineMonitor();
+      log('✅ Machine monitor started — will alert offline users on critical events');
+    } catch (error) {
+      log('⚠️ Machine monitor failed to start: ' + String(error));
+    }
     
     // Auto-setup Telegram webhook on server start with retry logic
     if (process.env.TELEGRAM_BOT_TOKEN) {

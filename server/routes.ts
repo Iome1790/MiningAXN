@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { WebSocketServer, WebSocket } from 'ws';
+import { markUserOnline, markUserOffline, getOnlineUserIds } from './userPresence';
 import { 
   insertEarningSchema, 
   users, 
@@ -255,6 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const testUserId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
               sessionId = `session_${Date.now()}_${Math.random()}`;
               connectedUsers.set(sessionId, { socket: ws, userId: testUserId });
+              markUserOnline(testUserId);
               console.log(`👤 Test user connected via WebSocket: ${testUserId}`);
               
               ws.send(JSON.stringify({
@@ -279,6 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Session verified successfully - establish WebSocket connection
             sessionId = `session_${Date.now()}_${Math.random()}`;
             connectedUsers.set(sessionId, { socket: ws, userId });
+            markUserOnline(userId);
             console.log(`👤 User ${userId} connected via WebSocket (verified session)`);
             
             ws.send(JSON.stringify({
@@ -318,8 +321,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (sessionId) {
         const connection = connectedUsers.get(sessionId);
         if (connection) {
+          const { userId } = connection;
           connectedUsers.delete(sessionId);
-          console.log(`👋 User ${connection.userId} disconnected from WebSocket`);
+          console.log(`👋 User ${userId} disconnected from WebSocket`);
+          // Mark offline only if no other sessions remain for this user
+          const hasOtherSessions = Array.from(connectedUsers.values()).some(
+            c => c.userId === userId && c.socket.readyState === WebSocket.OPEN
+          );
+          if (!hasOtherSessions) {
+            markUserOffline(userId);
+          }
         }
       }
     });
