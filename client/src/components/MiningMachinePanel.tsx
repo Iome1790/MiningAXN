@@ -599,51 +599,6 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
     <>
       <div className="w-full px-3 space-y-2 pb-24">
 
-        {/* ── STATS ROW ── */}
-        <div className="rounded-2xl overflow-hidden" style={card}>
-          <div className="grid grid-cols-3">
-
-            {/* Mining Speed */}
-            <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
-              <img src="/mining-speed-icon.png" alt="Speed" width="28" height="28" style={{ imageRendering: "pixelated", flexShrink: 0, objectFit: "contain" }} />
-              <div className="min-w-0">
-                <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Speed</span>
-                <span className="text-white font-black text-[11px] tabular-nums block leading-none">
-                  {state.miningRate}<span className="text-white/30 text-[8px] font-normal">/s</span>
-                </span>
-              </div>
-            </div>
-
-            {/* CPU */}
-            <div className="px-2 py-2 flex items-center gap-1.5" style={{ borderRight: `1px solid ${dim}` }}>
-              <img src="/cpu-time-icon.png" alt="CPU" width="28" height="28" style={{ imageRendering: "pixelated", flexShrink: 0, objectFit: "contain" }} />
-              <div className="min-w-0">
-                <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">CPU</span>
-                <span className="font-black text-[11px] tabular-nums block leading-none"
-                  style={{ color: isMining ? "#22c55e" : "rgba(255,255,255,0.35)" }}>
-                  {isMining ? "Active" : state.cpuRunning ? formatTime(cpuCountdown) : "Idle"}
-                </span>
-              </div>
-            </div>
-
-            {/* Capacity */}
-            <div className="px-2 py-2 flex items-center gap-1.5">
-              <img src="/capacity-icon.png" alt="Cap" width="28" height="28" style={{ imageRendering: "pixelated", flexShrink: 0, objectFit: "contain" }} />
-              <div className="min-w-0 flex-1">
-                <span className="text-white/35 text-[8px] font-semibold uppercase block leading-none mb-0.5">Cap</span>
-                <span className="text-white font-black text-[10px] tabular-nums block leading-none">
-                  {localMined.toFixed(1)}<span className="text-white/30 text-[8px] font-normal">/{state.capacity}</span>
-                </span>
-                <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                  <motion.div className="h-full rounded-full"
-                    style={{ background: capacityPct > 90 ? "#ef4444" : "linear-gradient(90deg,#3B82F6,#8B5CF6)" }}
-                    animate={{ width: `${capacityPct}%` }} transition={{ duration: 0.5 }} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* ── COLLECT + HEALTH / ENERGY ── */}
         <div className="flex items-stretch gap-2 px-2 pt-1 pb-1">
 
@@ -695,7 +650,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             </div>
 
             {/* Machine image — tighter, sits closer to claim button */}
-            <div className="relative w-full flex items-center justify-center" style={{ height: 108, marginTop: 4 }}>
+            <div className="relative w-full flex items-center justify-center" style={{ height: 160, marginTop: 4 }}>
               <motion.div
                 animate={{ opacity: [0.3, 0.85, 0.3], scale: [0.88, 1.1, 0.88] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
@@ -709,7 +664,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 }}
               />
               <motion.img
-                src="/mining-machine-icon.png"
+                src="/axn-miner.png"
                 alt="Mining Machine"
                 loading="eager"
                 fetchPriority="high"
@@ -863,7 +818,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             {/* Mining Speed */}
             <div className="rounded-xl px-3 py-4 flex items-center gap-3" style={card}>
               {/* Icon */}
-              <img src="/mining-speed-icon.png" alt="Mining Speed" className="w-14 h-14 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
+              <img src="/axn-icon-speed.png" alt="Mining Speed" className="w-14 h-14 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
               {/* Info: title + lv + value */}
               <div className="flex flex-col justify-center gap-1" style={{ minWidth: 0, width: 118 }}>
                 <span className="text-white font-black text-[11px] tracking-wide leading-none">MINING SPEED</span>
@@ -890,7 +845,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             {/* CPU Time */}
             <div className="rounded-xl px-3 py-4 flex items-center gap-3" style={card}>
               {/* Icon */}
-              <img src="/cpu-time-icon.png" alt="CPU Time" className="w-14 h-14 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
+              <img src="/axn-icon-cpu.png" alt="CPU Time" className="w-14 h-14 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
               {/* Info: title + lv + value */}
               <div className="flex flex-col justify-center gap-1" style={{ minWidth: 0, width: 118 }}>
                 <span className="text-white font-black text-[11px] tracking-wide leading-none">CPU TIME</span>
@@ -917,7 +872,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             {/* Capacity */}
             <div className="rounded-xl px-3 py-4 flex items-center gap-3" style={card}>
               {/* Icon */}
-              <img src="/capacity-icon.png" alt="Capacity" className="w-14 h-14 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
+              <img src="/axn-icon-capacity.png" alt="Capacity" className="w-14 h-14 object-contain flex-shrink-0" style={{ imageRendering: "pixelated" }} />
               {/* Info: title + lv + value */}
               <div className="flex flex-col justify-center gap-1" style={{ minWidth: 0, width: 118 }}>
                 <span className="text-white font-black text-[11px] tracking-wide leading-none">CAPACITY</span>

@@ -112,7 +112,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
 
                 <div className="px-5 py-4 space-y-2">
                   <UpgradeRow
-                    iconSrc="/mining-speed-icon.png"
+                    iconSrc="/axn-icon-speed.png"
                     iconBg="rgba(139,92,246,0.15)"
                     iconBorder="rgba(139,92,246,0.35)"
                     label="Mining Speed"
@@ -123,7 +123,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
                     onClick={() => setSubView("mining")}
                   />
                   <UpgradeRow
-                    iconSrc="/capacity-icon.png"
+                    iconSrc="/axn-icon-capacity.png"
                     iconBg="rgba(245,158,11,0.15)"
                     iconBorder="rgba(245,158,11,0.35)"
                     label="Capacity"
@@ -134,7 +134,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
                     onClick={() => setSubView("capacity")}
                   />
                   <UpgradeRow
-                    iconSrc="/cpu-time-icon.png"
+                    iconSrc="/axn-icon-cpu.png"
                     iconBg="rgba(59,130,246,0.15)"
                     iconBorder="rgba(59,130,246,0.35)"
                     label="CPU Duration"
@@ -159,7 +159,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
             {subView === "mining" && (
               <UpgradeDetail
                 key="mining"
-                iconSrc="/mining-speed-icon.png"
+                iconSrc="/axn-icon-speed.png"
                 iconBg="rgba(139,92,246,0.15)"
                 iconBorder="rgba(139,92,246,0.4)"
                 accentColor="#c084fc"
@@ -183,7 +183,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
             {subView === "capacity" && (
               <UpgradeDetail
                 key="capacity"
-                iconSrc="/capacity-icon.png"
+                iconSrc="/axn-icon-capacity.png"
                 iconBg="rgba(245,158,11,0.15)"
                 iconBorder="rgba(245,158,11,0.4)"
                 accentColor="#fbbf24"
@@ -207,7 +207,7 @@ export default function UpgradeMachinePopup({ onClose, initialSubView }: Upgrade
             {subView === "cpu" && (
               <UpgradeDetail
                 key="cpu"
-                iconSrc="/cpu-time-icon.png"
+                iconSrc="/axn-icon-cpu.png"
                 iconBg="rgba(59,130,246,0.15)"
                 iconBorder="rgba(59,130,246,0.4)"
                 accentColor="#60a5fa"
