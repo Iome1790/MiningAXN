@@ -1095,15 +1095,18 @@ export default function Home() {
       </AnimatePresence>
 
       <main
-        className="w-full overflow-y-auto"
+        className="w-full"
         style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           paddingTop: headerHeight,
-          paddingBottom: 'max(env(safe-area-inset-bottom), 12px)',
-          maxHeight: '100dvh',
-          overscrollBehavior: 'contain',
+          overflow: "hidden",
         }}
       >
-        <MiningMachinePanel onWalletOpen={() => setWithdrawPopupOpen(true)} />
+        <MiningMachinePanel onWalletOpen={() => setWithdrawPopupOpen(true)} onInviteOpen={() => setInviteOpen(true)} />
       </main>
 
       {false && boosterPopupOpen && (
