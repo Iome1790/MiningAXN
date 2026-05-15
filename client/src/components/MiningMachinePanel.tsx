@@ -664,7 +664,7 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
                 }}
               />
               <motion.img
-                src="/axn-miner.png"
+                src="/axn-miner-nobg.png"
                 alt="Mining Machine"
                 loading="eager"
                 fetchPriority="high"
