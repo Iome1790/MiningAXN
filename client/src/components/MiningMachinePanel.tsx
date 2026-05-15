@@ -164,6 +164,7 @@ interface MachineState {
 
 interface MiningMachinePanelProps {
   onWalletOpen?: () => void;
+  onInviteOpen?: () => void;
 }
 
 function formatTime(seconds: number): string {
@@ -402,7 +403,63 @@ function PixelHPBar({ health, onClick }: { health: number; onClick: () => void }
   );
 }
 
-export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelProps) {
+const BANNERS = ["/banner-1.png", "/banner-2.png"];
+
+const BANNER_CHANNEL_URL = "https://t.me/LightningSatoshi";
+
+function BannerCarousel({ onInviteOpen }: { onInviteOpen?: () => void }) {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setCurrent(c => (c + 1) % BANNERS.length);
+    }, 3000);
+    return () => clearInterval(t);
+  }, []);
+
+  function handleTap(index: number) {
+    if (index === 0) {
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink(BANNER_CHANNEL_URL);
+      } else {
+        window.open(BANNER_CHANNEL_URL, "_blank");
+      }
+    } else if (index === 1) {
+      onInviteOpen?.();
+    }
+  }
+
+  return (
+    <div style={{ position: "relative", width: "100%", height: "clamp(90px, 18svh, 140px)", borderRadius: 12, overflow: "hidden", marginTop: "clamp(4px, 1svh, 8px)", flexShrink: 0 }}>
+      {BANNERS.map((src, i) => (
+        <motion.img
+          key={src}
+          src={src}
+          alt={`banner-${i + 1}`}
+          onClick={() => handleTap(i)}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", borderRadius: 12, cursor: "pointer" }}
+          initial={false}
+          animate={{ opacity: i === current ? 1 : 0, scale: i === current ? 1 : 1.02 }}
+          transition={{ duration: 0.7, ease: "easeInOut" }}
+        />
+      ))}
+      {/* dot indicators */}
+      <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 5, zIndex: 10, pointerEvents: "none" }}>
+        {BANNERS.map((_, i) => (
+          <motion.div
+            key={i}
+            animate={{ width: i === current ? 16 : 6, background: i === current ? "#3B82F6" : "rgba(255,255,255,0.35)" }}
+            transition={{ duration: 0.3 }}
+            style={{ height: 4, borderRadius: 2 }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function MiningMachinePanel({ onWalletOpen, onInviteOpen }: MiningMachinePanelProps) {
   const queryClient = useQueryClient();
   const { showMonetagAd } = useAdFlow();
   const [cpuCountdown, setCpuCountdown] = useState(0);
@@ -597,18 +654,18 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
   return (
     <>
-      <div className="w-full px-3 pt-3 flex flex-col" style={{ minHeight: "calc(100vh - 140px)", paddingBottom: 110 }}>
+      <div className="w-full px-3 pt-2 flex flex-col" style={{ height: "100%", overflow: "hidden", paddingBottom: "calc(env(safe-area-inset-bottom) + 115px)" }}>
 
         {/* ── COLLECTABLE AMOUNT ── */}
-        <div className="flex flex-col items-center pb-1">
-          <p className="text-white/50 text-[8px] font-semibold uppercase tracking-widest leading-none">Collectable</p>
+        <div className="flex flex-col items-center" style={{ paddingBottom: "clamp(2px, 0.8svh, 8px)" }}>
+          <p className="text-white/50 font-semibold uppercase tracking-widest leading-none" style={{ fontSize: "clamp(7px, 1.5svh, 9px)" }}>Collectable</p>
           <div className="flex items-baseline gap-1">
-            <span className="text-white font-black text-xl tabular-nums leading-tight">{localMined.toFixed(2)}</span>
-            <span className="font-black text-xs leading-tight" style={{ color: "#3B82F6" }}>AXN</span>
+            <span className="text-white font-black tabular-nums leading-tight" style={{ fontSize: "clamp(16px, 3.5svh, 22px)" }}>{localMined.toFixed(2)}</span>
+            <span className="font-black leading-tight" style={{ color: "#3B82F6", fontSize: "clamp(10px, 2svh, 14px)" }}>AXN</span>
           </div>
-          <p className="text-white/25 text-[7px]" style={{ marginTop: 1 }}>≈ ${minedUsd} USD</p>
-          <div className="flex items-center gap-1" style={{ marginTop: 2 }}>
-            <span className="text-[9px] font-bold tabular-nums" style={{ color: isMining ? "#22c55e" : "rgba(255,255,255,0.3)" }}>
+          <p className="text-white/25" style={{ fontSize: "clamp(6px, 1.2svh, 8px)", marginTop: 1 }}>≈ ${minedUsd} USD</p>
+          <div className="flex items-center gap-1" style={{ marginTop: 1 }}>
+            <span className="font-bold tabular-nums" style={{ fontSize: "clamp(7px, 1.5svh, 10px)", color: isMining ? "#22c55e" : "rgba(255,255,255,0.3)" }}>
               {isMining ? `+${state.miningRate} AXN/s` : "0.00 AXN/s"}
             </span>
             {isMining && <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#22c55e" }} />}
@@ -616,52 +673,58 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
         </div>
 
         {/* ── 3-COLUMN: Left buttons | Machine | Right stats ── */}
-        <div className="flex items-center px-1 flex-1" style={{ gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "stretch", gap: "clamp(4px, 1.5vw, 10px)", flex: "1 1 0", minHeight: 0, padding: "0 2px" }}>
 
           {/* LEFT — Repair, Antivirus, Energy */}
-          <div className="flex flex-col gap-4" style={{ width: 52 }}>
-            <button onClick={() => setRepairOpen(true)}
-              className="relative flex flex-col items-center gap-0.5 active:scale-95 transition-transform">
-              <div className="relative"
-                style={{ width: 48, height: 48, backgroundImage: "url('/sidebar-icons.png')", backgroundSize: "300% auto", backgroundPosition: "0% center", backgroundRepeat: "no-repeat" }}>
-                {state.machineHealth < 100 && (
-                  <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[7px] text-white"
-                    style={{ background: "linear-gradient(135deg,#8B5CF6,#6d28d9)" }}>{state.machineHealth}</span>
-                )}
-              </div>
-              <span className="text-white/50 font-bold uppercase tracking-wide" style={{ fontSize: 8 }}>REPAIR</span>
-            </button>
-            <button onClick={() => setAntivirusOpen(true)}
-              className="relative flex flex-col items-center gap-0.5 active:scale-95 transition-transform">
-              <div className="relative"
-                style={{ width: 48, height: 48, backgroundImage: "url('/sidebar-icons.png')", backgroundSize: "300% auto", backgroundPosition: "50% center", backgroundRepeat: "no-repeat", filter: state.antivirusActive ? "none" : "grayscale(0.5) brightness(0.7)" }}>
-                {!state.antivirusActive && (
-                  <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[7px] text-white"
-                    style={{ background: "linear-gradient(135deg,#ef4444,#b91c1c)" }}>OFF</span>
-                )}
-              </div>
-              <span className="text-white/50 font-bold uppercase tracking-wide" style={{ fontSize: 8 }}>ANTIVIRUS</span>
-            </button>
-            <button onClick={() => setEnergyOpen(true)}
-              className="flex flex-col items-center gap-0.5 active:scale-95 transition-transform">
-              <div style={{ width: 48, height: 48, backgroundImage: "url('/sidebar-icons.png')", backgroundSize: "300% auto", backgroundPosition: "100% center", backgroundRepeat: "no-repeat" }} />
-              <span className="text-white/50 font-bold uppercase tracking-wide" style={{ fontSize: 8 }}>ENERGY</span>
-            </button>
+          <div style={{ width: "clamp(42px, 11vw, 54px)", display: "flex", flexDirection: "column", justifyContent: "center", gap: "clamp(4px, 1.2svh, 10px)" }}>
+            {(() => {
+              const iw = "clamp(42px, 11vw, 54px)";
+              const ih = "clamp(56px, 13svh, 72px)";
+              return (<>
+                <button onClick={() => setRepairOpen(true)}
+                  className="relative flex flex-col items-center gap-0 active:scale-95 transition-transform">
+                  <div className="relative" style={{ width: iw, height: ih }}>
+                    <img src="/icon-repair.png" alt="Repair" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    {state.machineHealth < 100 && (
+                      <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[7px] text-white"
+                        style={{ background: "linear-gradient(135deg,#8B5CF6,#6d28d9)" }}>{state.machineHealth}</span>
+                    )}
+                  </div>
+                  <span className="text-white/50 font-bold uppercase tracking-wide" style={{ fontSize: "clamp(6px, 1.2svh, 8px)" }}>REPAIR</span>
+                </button>
+                <button onClick={() => setAntivirusOpen(true)}
+                  className="relative flex flex-col items-center gap-0 active:scale-95 transition-transform">
+                  <div className="relative" style={{ width: iw, height: ih }}>
+                    <img src="/icon-antivirus.png" alt="Antivirus" style={{ width: "100%", height: "100%", objectFit: "contain", filter: state.antivirusActive ? "none" : "grayscale(0.5) brightness(0.7)" }} />
+                    {!state.antivirusActive && (
+                      <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[7px] text-white"
+                        style={{ background: "linear-gradient(135deg,#ef4444,#b91c1c)" }}>OFF</span>
+                    )}
+                  </div>
+                  <span className="text-white/50 font-bold uppercase tracking-wide" style={{ fontSize: "clamp(6px, 1.2svh, 8px)" }}>ANTIVIRUS</span>
+                </button>
+                <button onClick={() => setEnergyOpen(true)}
+                  className="flex flex-col items-center gap-0 active:scale-95 transition-transform">
+                  <img src="/icon-energy.png" alt="Energy" style={{ width: iw, height: ih, objectFit: "contain" }} />
+                  <span className="text-white/50 font-bold uppercase tracking-wide" style={{ fontSize: "clamp(6px, 1.2svh, 8px)" }}>ENERGY</span>
+                </button>
+              </>);
+            })()}
           </div>
 
           {/* CENTER — Machine image */}
-          <div className="flex-1 relative flex items-center justify-center" style={{ height: "calc(100svh - 310px)", minHeight: 280, maxHeight: 460 }}>
+          <div className="relative flex items-center justify-center" style={{ flex: "1 1 0", minWidth: 0, minHeight: 0 }}>
             <motion.div
               animate={{ opacity: [0.3, 0.85, 0.3], scale: [0.88, 1.1, 0.88] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              style={{ position: "absolute", width: 220, height: 120, top: "10%", borderRadius: "50%", background: "radial-gradient(circle at 50% 40%, rgba(59,130,246,0.55) 0%, rgba(59,130,246,0.15) 55%, transparent 80%)", filter: "blur(22px)", pointerEvents: "none" }}
+              style={{ position: "absolute", width: "80%", height: "45%", top: "10%", borderRadius: "50%", background: "radial-gradient(circle at 50% 40%, rgba(59,130,246,0.55) 0%, rgba(59,130,246,0.15) 55%, transparent 80%)", filter: "blur(22px)", pointerEvents: "none" }}
             />
             <motion.img
               src="/axn-character.png"
               alt="Mining Machine"
               loading="eager"
               fetchPriority="high"
-              style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", position: "relative", filter: "drop-shadow(0 0 32px rgba(59,130,246,0.8))", transform: "scale(1.22)", transformOrigin: "center center" }}
+              style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", position: "relative", filter: "drop-shadow(0 0 32px rgba(59,130,246,0.8))", transform: "scale(1.18)", transformOrigin: "center center" }}
               animate={{ y: 0 }}
               transition={{ duration: 0.3 }}
             />
@@ -684,25 +747,33 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
           </div>
 
           {/* RIGHT — Speed, CPU, Capacity */}
-          <div className="flex flex-col gap-4" style={{ width: 72 }}>
-            <button onClick={() => setUpgradeType("mining")}
-              className="flex flex-col items-center gap-1 active:scale-95 transition-transform">
-              <img src="/axn-icon-speed.png" alt="Speed" className="object-contain" style={{ imageRendering: "pixelated", width: 68, height: 68 }} />
-              <span className="font-black" style={{ fontSize: 11, color: "#c084fc" }}>Lv.{state.miningLevel}</span>
-            </button>
-            <button onClick={() => setUpgradeType("cpu")}
-              className="flex flex-col items-center gap-1 active:scale-95 transition-transform">
-              <img src="/axn-icon-cpu.png" alt="CPU" className="object-contain" style={{ imageRendering: "pixelated", width: 68, height: 68 }} />
-              <span className="font-black text-blue-300" style={{ fontSize: 11 }}>Lv.{state.cpuLevel}</span>
-            </button>
-            <button onClick={() => setUpgradeType("capacity")}
-              className="flex flex-col items-center gap-1 active:scale-95 transition-transform">
-              <img src="/axn-icon-capacity.png" alt="Cap" className="object-contain" style={{ imageRendering: "pixelated", width: 68, height: 68 }} />
-              <span className="font-black text-amber-300" style={{ fontSize: 11 }}>Lv.{state.capacityLevel}</span>
-            </button>
-          </div>
+          {(() => {
+            const rsz = "clamp(52px, 13svh, 68px)";
+            return (
+              <div style={{ width: "clamp(56px, 14vw, 72px)", display: "flex", flexDirection: "column", justifyContent: "center", gap: "clamp(6px, 1.5svh, 16px)" }}>
+                <button onClick={() => setUpgradeType("mining")}
+                  className="flex flex-col items-center gap-0 active:scale-95 transition-transform">
+                  <img src="/axn-icon-speed.png" alt="Speed" className="object-contain" style={{ imageRendering: "pixelated", width: rsz, height: rsz }} />
+                  <span className="font-black" style={{ fontSize: "clamp(6px, 1.2svh, 8px)", color: "#c084fc" }}>Lv.{state.miningLevel}</span>
+                </button>
+                <button onClick={() => setUpgradeType("cpu")}
+                  className="flex flex-col items-center gap-0 active:scale-95 transition-transform">
+                  <img src="/axn-icon-cpu.png" alt="CPU" className="object-contain" style={{ imageRendering: "pixelated", width: rsz, height: rsz }} />
+                  <span className="font-black text-blue-300" style={{ fontSize: "clamp(6px, 1.2svh, 8px)" }}>Lv.{state.cpuLevel}</span>
+                </button>
+                <button onClick={() => setUpgradeType("capacity")}
+                  className="flex flex-col items-center gap-0 active:scale-95 transition-transform">
+                  <img src="/axn-icon-capacity.png" alt="Cap" className="object-contain" style={{ imageRendering: "pixelated", width: rsz, height: rsz }} />
+                  <span className="font-black text-amber-300" style={{ fontSize: "clamp(6px, 1.2svh, 8px)" }}>Lv.{state.capacityLevel}</span>
+                </button>
+              </div>
+            );
+          })()}
 
         </div>
+
+        {/* ── BANNER CAROUSEL ── */}
+        <BannerCarousel onInviteOpen={onInviteOpen} />
 
       </div>
 

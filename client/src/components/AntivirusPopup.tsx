@@ -144,7 +144,7 @@ export default function AntivirusPopup({ antivirusCost, antivirusActive, balance
               initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.06 }}
             >
-              <div style={{ width: 88, height: 88, borderRadius: 12, backgroundImage: "url('/sidebar-icons.png')", backgroundSize: "300% 100%", backgroundPosition: "50% center", backgroundRepeat: "no-repeat" }} />
+              <img src="/icon-antivirus.png" alt="Antivirus" style={{ width: 80, height: 108, objectFit: "contain" }} />
             </motion.div>
             <div className="flex-1 min-w-0">
               <p className="text-white font-black text-[22px] uppercase leading-none tracking-wide">ANTIVIRUS</p>
