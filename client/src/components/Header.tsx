@@ -16,8 +16,15 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
       retry: false,
     });
 
+    const { data: miningState } = useQuery<any>({
+      queryKey: ["/api/axn-mining/state"],
+      retry: false,
+      staleTime: 15000,
+    });
+
     const satBalance = Math.floor(parseFloat((user as any)?.balance || "0"));
     const firstName: string = user?.firstName || user?.username || "You";
+    const miningLevel: number = miningState?.state?.miningLevel ?? 1;
 
     const profileImageUrl: string | null =
       user?.profileImageUrl ||
@@ -34,32 +41,55 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
       >
         <div className="max-w-md mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
 
-          {/* Left — profile photo */}
+          {/* Left — profile photo with level badge */}
           <button
             onClick={onMenuOpen}
-            className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
-            style={{ background: "#1c1c1e" }}
+            className="relative w-10 h-10 rounded-full overflow-visible flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
           >
-            {profileImageUrl ? (
-              <img
-                src={profileImageUrl}
-                alt={firstName}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = "none";
-                  const parent = target.parentElement;
-                  if (parent) {
-                    const span = document.createElement("span");
-                    span.className = "text-white font-black text-sm select-none";
-                    span.textContent = initials;
-                    parent.appendChild(span);
-                  }
-                }}
-              />
-            ) : (
-              <span className="text-white font-black text-sm select-none">{initials}</span>
-            )}
+            <div
+              className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center"
+              style={{ background: "#1c1c1e" }}
+            >
+              {profileImageUrl ? (
+                <img
+                  src={profileImageUrl}
+                  alt={firstName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    const parent = target.parentElement;
+                    if (parent) {
+                      const span = document.createElement("span");
+                      span.className = "text-white font-black text-sm select-none";
+                      span.textContent = initials;
+                      parent.appendChild(span);
+                    }
+                  }}
+                />
+              ) : (
+                <span className="text-white font-black text-sm select-none">{initials}</span>
+              )}
+            </div>
+
+            {/* Level badge */}
+            <div
+              className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+                border: "1px solid rgba(147,197,253,0.4)",
+                boxShadow: "0 0 6px rgba(59,130,246,0.5)",
+                borderRadius: 4,
+                minWidth: 22,
+                height: 14,
+                paddingInline: 3,
+                zIndex: 10,
+              }}
+            >
+              <span style={{ color: "#fff", fontWeight: 900, fontSize: 8, letterSpacing: "0.02em" }}>
+                LV{miningLevel}
+              </span>
+            </div>
           </button>
 
           {/* Center — balance pill */}
@@ -91,5 +121,4 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
 );
 
 Header.displayName = "Header";
-
 export default Header;
