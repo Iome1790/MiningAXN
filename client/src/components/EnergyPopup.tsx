@@ -133,7 +133,7 @@ export default function EnergyPopup({ energyCost, balance, onClose }: EnergyPopu
               initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.06 }}
             >
-              <img src="/energy-icon.png" alt="Energy" className="w-24 h-24 object-contain" style={{ imageRendering: "pixelated" }} />
+              <div style={{ width: 88, height: 88, borderRadius: 12, backgroundImage: "url('/sidebar-icons.png')", backgroundSize: "300% 100%", backgroundPosition: "100% center", backgroundRepeat: "no-repeat" }} />
             </motion.div>
             <div className="flex-1 min-w-0">
               <p className="text-white font-black text-[22px] uppercase leading-none tracking-wide">ENERGY</p>

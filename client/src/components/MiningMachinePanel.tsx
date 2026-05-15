@@ -597,36 +597,33 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
 
   return (
     <>
-      <div className="w-full px-3 space-y-2 pb-24 flex flex-col justify-center" style={{ minHeight: "calc(100vh - 140px)" }}>
+      <div className="w-full px-3 pt-3 flex flex-col" style={{ minHeight: "calc(100vh - 140px)", paddingBottom: 110 }}>
 
         {/* ── COLLECTABLE AMOUNT ── */}
-        <div className="flex flex-col items-center pt-1 pb-1">
+        <div className="flex flex-col items-center pb-1">
           <p className="text-white/50 text-[8px] font-semibold uppercase tracking-widest leading-none">Collectable</p>
           <div className="flex items-baseline gap-1">
             <span className="text-white font-black text-xl tabular-nums leading-tight">{localMined.toFixed(2)}</span>
             <span className="font-black text-xs leading-tight" style={{ color: "#3B82F6" }}>AXN</span>
           </div>
-          <p className="text-white/25 text-[7px]" style={{ marginTop: 2 }}>≈ ${minedUsd} USD</p>
-          <div className="flex items-center gap-1 mt-1">
+          <p className="text-white/25 text-[7px]" style={{ marginTop: 1 }}>≈ ${minedUsd} USD</p>
+          <div className="flex items-center gap-1" style={{ marginTop: 2 }}>
             <span className="text-[9px] font-bold tabular-nums" style={{ color: isMining ? "#22c55e" : "rgba(255,255,255,0.3)" }}>
               {isMining ? `+${state.miningRate} AXN/s` : "0.00 AXN/s"}
             </span>
-            {isMining && (
-              <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#22c55e" }} />
-            )}
+            {isMining && <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#22c55e" }} />}
           </div>
         </div>
 
         {/* ── 3-COLUMN: Left buttons | Machine | Right stats ── */}
-        <div className="flex items-center px-1" style={{ gap: 8 }}>
+        <div className="flex items-center px-1 flex-1" style={{ gap: 8 }}>
 
-          {/* LEFT — Repair, Antivirus, Energy (circular + label) */}
+          {/* LEFT — Repair, Antivirus, Energy */}
           <div className="flex flex-col gap-4" style={{ width: 52 }}>
             <button onClick={() => setRepairOpen(true)}
               className="relative flex flex-col items-center gap-0.5 active:scale-95 transition-transform">
-              <div className="relative flex items-center justify-center rounded-full"
-                style={{ width: 44, height: 44, background: "rgba(20,20,28,0.95)", border: "2px solid rgba(255,255,255,0.12)", boxShadow: "0 4px 16px rgba(0,0,0,0.5)" }}>
-                <img src="/repair-icon.png" alt="Repair" className="object-contain" style={{ imageRendering: "pixelated", width: 30, height: 30 }} />
+              <div className="relative"
+                style={{ width: 48, height: 48, backgroundImage: "url('/sidebar-icons.png')", backgroundSize: "300% auto", backgroundPosition: "0% center", backgroundRepeat: "no-repeat" }}>
                 {state.machineHealth < 100 && (
                   <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[7px] text-white"
                     style={{ background: "linear-gradient(135deg,#8B5CF6,#6d28d9)" }}>{state.machineHealth}</span>
@@ -636,10 +633,8 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             </button>
             <button onClick={() => setAntivirusOpen(true)}
               className="relative flex flex-col items-center gap-0.5 active:scale-95 transition-transform">
-              <div className="relative flex items-center justify-center rounded-full"
-                style={{ width: 44, height: 44, background: "rgba(20,20,28,0.95)", border: "2px solid rgba(255,255,255,0.12)", boxShadow: "0 4px 16px rgba(0,0,0,0.5)" }}>
-                <img src="/virus-icon.png" alt="Antivirus" className="object-contain"
-                  style={{ imageRendering: "pixelated", width: 30, height: 30, filter: state.antivirusActive ? "none" : "grayscale(0.4) brightness(0.85)" }} />
+              <div className="relative"
+                style={{ width: 48, height: 48, backgroundImage: "url('/sidebar-icons.png')", backgroundSize: "300% auto", backgroundPosition: "50% center", backgroundRepeat: "no-repeat", filter: state.antivirusActive ? "none" : "grayscale(0.5) brightness(0.7)" }}>
                 {!state.antivirusActive && (
                   <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[7px] text-white"
                     style={{ background: "linear-gradient(135deg,#ef4444,#b91c1c)" }}>OFF</span>
@@ -649,40 +644,46 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
             </button>
             <button onClick={() => setEnergyOpen(true)}
               className="flex flex-col items-center gap-0.5 active:scale-95 transition-transform">
-              <div className="flex items-center justify-center rounded-full"
-                style={{ width: 44, height: 44, background: "rgba(20,20,28,0.95)", border: "2px solid rgba(255,255,255,0.12)", boxShadow: "0 4px 16px rgba(0,0,0,0.5)" }}>
-                <img src="/mining-speed-pixel-nobg.png" alt="Energy" className="object-contain" style={{ imageRendering: "pixelated", width: 30, height: 30 }} />
-              </div>
+              <div style={{ width: 48, height: 48, backgroundImage: "url('/sidebar-icons.png')", backgroundSize: "300% auto", backgroundPosition: "100% center", backgroundRepeat: "no-repeat" }} />
               <span className="text-white/50 font-bold uppercase tracking-wide" style={{ fontSize: 8 }}>ENERGY</span>
             </button>
           </div>
 
           {/* CENTER — Machine image */}
-          <div className="flex-1 relative flex items-center justify-center" style={{ height: 260 }}>
+          <div className="flex-1 relative flex items-center justify-center" style={{ height: "calc(100svh - 310px)", minHeight: 280, maxHeight: 460 }}>
             <motion.div
               animate={{ opacity: [0.3, 0.85, 0.3], scale: [0.88, 1.1, 0.88] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               style={{ position: "absolute", width: 220, height: 120, top: "10%", borderRadius: "50%", background: "radial-gradient(circle at 50% 40%, rgba(59,130,246,0.55) 0%, rgba(59,130,246,0.15) 55%, transparent 80%)", filter: "blur(22px)", pointerEvents: "none" }}
             />
             <motion.img
-              src="/axn-miner-nobg.png"
+              src="/axn-character.png"
               alt="Mining Machine"
               loading="eager"
               fetchPriority="high"
-              style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", position: "relative", filter: "drop-shadow(0 0 32px rgba(59,130,246,0.8))" }}
+              style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", position: "relative", filter: "drop-shadow(0 0 32px rgba(59,130,246,0.8))", transform: "scale(1.22)", transformOrigin: "center center" }}
               animate={{ y: 0 }}
               transition={{ duration: 0.3 }}
             />
-            {isMining && [0, 1, 2, 3].map((i) => (
+            {isMining && [
+              { left: "30%", top: "8%",  delay: 0,    color: "#93c5fd" },
+              { left: "65%", top: "14%", delay: 0.25, color: "#60a5fa" },
+              { left: "50%", top: "28%", delay: 0.5,  color: "#38bdf8" },
+              { left: "20%", top: "38%", delay: 0.15, color: "#93c5fd" },
+              { left: "75%", top: "32%", delay: 0.4,  color: "#7dd3fc" },
+              { left: "38%", top: "52%", delay: 0.6,  color: "#60a5fa" },
+              { left: "62%", top: "58%", delay: 0.8,  color: "#38bdf8" },
+              { left: "48%", top: "72%", delay: 0.35, color: "#93c5fd" },
+            ].map((p, i) => (
               <motion.div key={i}
-                style={{ position: "absolute", top: "10%", left: `${35 + (i % 2 === 0 ? -14 : 14)}%`, width: 9, height: 9, borderRadius: "50%", background: "radial-gradient(circle at 35% 35%, #93c5fd, #3b82f6, #1d4ed8)", boxShadow: "0 0 8px rgba(59,130,246,0.95)", pointerEvents: "none" }}
-                animate={{ y: [0, -45, -58], opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
-                transition={{ duration: 1.3, repeat: Infinity, delay: i * 0.32, ease: "easeOut" }}
+                style={{ position: "absolute", top: p.top, left: p.left, width: 8, height: 8, borderRadius: "50%", background: `radial-gradient(circle at 35% 35%, ${p.color}, #3b82f6, #1d4ed8)`, boxShadow: "0 0 8px rgba(59,130,246,0.95)", pointerEvents: "none" }}
+                animate={{ y: [0, -40, -55], opacity: [0, 1, 0], scale: [0.4, 1, 0.4] }}
+                transition={{ duration: 1.4, repeat: Infinity, delay: p.delay, ease: "easeOut" }}
               />
             ))}
           </div>
 
-          {/* RIGHT — Speed, CPU, Capacity (bigger, no circle) */}
+          {/* RIGHT — Speed, CPU, Capacity */}
           <div className="flex flex-col gap-4" style={{ width: 72 }}>
             <button onClick={() => setUpgradeType("mining")}
               className="flex flex-col items-center gap-1 active:scale-95 transition-transform">
@@ -700,149 +701,98 @@ export default function MiningMachinePanel({ onWalletOpen }: MiningMachinePanelP
               <span className="font-black text-amber-300" style={{ fontSize: 11 }}>Lv.{state.capacityLevel}</span>
             </button>
           </div>
+
         </div>
 
-        {/* ── HEALTH + ENERGY BARS + CLAIM — below machine ── */}
-        <div className="flex flex-col gap-1.5 px-3 mt-1">
-          {/* Health bar */}
+      </div>
+
+      {/* ── FIXED BOTTOM NAV ── */}
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, background: "rgba(6,6,10,0.97)", borderTop: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)", paddingTop: 7, paddingBottom: "max(calc(env(safe-area-inset-bottom) + 18px), 22px)", paddingLeft: 12, paddingRight: 12 }}>
+
+        {/* Health + Energy bars */}
+        <div className="flex flex-col gap-1 mb-2.5">
           {(() => {
             const hp = Math.max(0, Math.min(100, state.machineHealth));
             return (
               <div className="flex items-center gap-2">
                 <span style={{ fontFamily: "'Courier New',monospace", fontSize: 8, fontWeight: 900, color: "#cc1111", letterSpacing: 1, width: 38, flexShrink: 0, textShadow: "0 0 4px #cc1111" }}>HEALTH</span>
-                <div className="flex-1 h-3 rounded-full overflow-hidden relative" style={{ background: "#1a1a1a", border: "1.5px solid #333" }}>
+                <div className="flex-1 h-2.5 rounded-full overflow-hidden relative" style={{ background: "#1a1a1a", border: "1.5px solid #333" }}>
                   <motion.div className="absolute inset-y-0 left-0 rounded-full"
                     animate={{ width: `${hp}%` }} transition={{ duration: 0.6, ease: "easeOut" }}
                     style={{ background: hp > 50 ? "#cc1111" : hp > 20 ? "#990000" : "#550000", boxShadow: "inset 0 1px 0 rgba(255,100,100,0.3)" }} />
-                  {Array.from({ length: 9 }).map((_, i) => (
-                    <div key={i} style={{ position: "absolute", top: 0, bottom: 0, left: `${(i + 1) * 10}%`, width: 1, background: "rgba(0,0,0,0.35)" }} />
-                  ))}
                 </div>
                 <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", fontFamily: "monospace", width: 34, flexShrink: 0, textAlign: "right" }}>{hp}/100</span>
               </div>
             );
           })()}
-
-          {/* Energy bar */}
           <div className="flex items-center gap-2">
             <span style={{ fontFamily: "'Courier New',monospace", fontSize: 8, fontWeight: 900, color: "#F5C542", letterSpacing: 1, width: 38, flexShrink: 0, textShadow: "0 0 4px #F5C542" }}>ENERGY</span>
-            <div className="flex-1 h-3 rounded-full overflow-hidden relative" style={{ background: "#1a1a1a", border: "1.5px solid #333" }}>
+            <div className="flex-1 h-2.5 rounded-full overflow-hidden relative" style={{ background: "#1a1a1a", border: "1.5px solid #333" }}>
               <motion.div className="absolute inset-y-0 left-0 rounded-full"
                 animate={{ width: `${energyPct}%` }} transition={{ duration: 0.6, ease: "easeOut" }}
                 style={{ background: energyPct > 50 ? "#f5c542" : energyPct > 20 ? "#e07b00" : "#cc1111", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18)" }} />
-              {Array.from({ length: 9 }).map((_, i) => (
-                <div key={i} style={{ position: "absolute", top: 0, bottom: 0, left: `${(i + 1) * 10}%`, width: 1, background: "rgba(0,0,0,0.35)" }} />
-              ))}
             </div>
             <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", fontFamily: "monospace", width: 34, flexShrink: 0, textAlign: "right" }}>{energyPct}%</span>
           </div>
-
-          {/* Claim button */}
-          <button
-            onClick={handleCollect}
-            disabled={!canClaim || claimMutation.isPending}
-            className="w-full rounded-xl font-black tracking-widest uppercase transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2"
-            style={{
-              height: 44,
-              ...(canClaim
-                ? { background: "linear-gradient(135deg,#1a6fdb,#1248a8)", color: "#fff", boxShadow: "0 0 18px rgba(59,130,246,0.45)", border: "2px solid rgba(99,160,255,0.5)" }
-                : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.08)" })
-            }}>
-            {claimMutation.isPending
-              ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              : <>
-                  <img src="/axn-coin.jpg" alt="AXN" style={{ width: 18, height: 18, borderRadius: "50%" }} />
-                  <span className="text-sm font-black tracking-[0.15em]">CLAIM</span>
-                  <span className="text-sm font-black tabular-nums">{localMined.toFixed(2)} AXN</span>
-                </>}
-          </button>
         </div>
 
+        {/* Pill buttons row */}
+        <div className="flex gap-2.5">
 
-      </div>
-
-      {/* ── FIXED BOTTOM ACTION BAR ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-30"
-        style={{
-          background: "linear-gradient(to top, #080808 80%, transparent)",
-          paddingBottom: "max(env(safe-area-inset-bottom), 10px)",
-        }}>
-        <div className="max-w-md mx-auto px-3 pt-2 pb-1">
-          <div className="flex items-center rounded-full px-4 py-2 gap-1"
-            style={{ background: "rgba(18,18,22,0.98)", border: "1px solid rgba(255,255,255,0.08)", minHeight: 68 }}>
-
-            {/* Repair */}
-            <button onClick={() => setRepairOpen(true)}
-              className="flex-1 flex flex-col items-center gap-0.5 py-1 relative active:scale-95 transition-transform">
-              <img src="/repair-icon.png" alt="Repair" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated" }} />
-              {state.machineHealth < 100 && (
-                <span className="absolute -top-0.5 right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[6px] text-white"
-                  style={{ background: "linear-gradient(135deg,#8B5CF6,#6d28d9)" }}>{state.machineHealth}</span>
-              )}
-            </button>
-
-            {/* Antivirus */}
-            <button onClick={() => setAntivirusOpen(true)}
-              className="flex-1 flex flex-col items-center gap-0.5 py-1 relative active:scale-95 transition-transform">
-              <img src="/virus-icon.png" alt="Antivirus" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated", filter: state.antivirusActive ? "none" : "grayscale(0.4) brightness(0.85)" }} />
-              {!state.antivirusActive && (
-                <span className="absolute -top-0.5 right-1 min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center font-black text-[6px] text-white"
-                  style={{ background: "linear-gradient(135deg,#ef4444,#b91c1c)" }}>OFF</span>
-              )}
-            </button>
-
-            {/* START — big center button */}
-            <button
-              onClick={() => {
+          {/* LEFT pill — Start / Mining+timer / Claim */}
+          <button
+            onClick={() => {
+              if (!state.cpuRunning && !canClaim) {
                 if (state.machineHealth <= 0) { setRepairOpen(true); showNotification("Machine needs repair before mining!", "error"); return; }
-                if (!state.hasEnergy && !state.cpuRunning) { setEnergyOpen(true); showNotification("Refill energy to start mining!", "warning"); return; }
+                if (!state.hasEnergy) { setEnergyOpen(true); showNotification("Refill energy to start mining!", "warning"); return; }
                 handleStartMining();
-              }}
-              disabled={startCpuMutation.isPending || state.cpuRunning}
-              className="mx-2 flex-shrink-0 w-[62px] h-[62px] rounded-full flex items-center justify-center transition-all active:scale-[0.93] disabled:opacity-50"
-              style={state.cpuRunning
-                ? { background: "rgba(34,197,94,0.15)", border: "2px solid rgba(34,197,94,0.5)", boxShadow: "0 0 18px rgba(34,197,94,0.25)" }
-                : state.machineHealth <= 0
-                ? { background: "rgba(239,68,68,0.12)", border: "2px solid rgba(239,68,68,0.35)" }
-                : { background: "linear-gradient(145deg,#3B82F6,#1d4ed8)", boxShadow: "0 0 22px rgba(59,130,246,0.55)", border: "2px solid rgba(99,155,255,0.4)" }}>
-              {startCpuMutation.isPending ? (
-                <span className="w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin" />
-              ) : state.cpuRunning ? (
-                /* pixel art running CPU */
-                <svg viewBox="0 0 16 16" width="30" height="30" style={{ imageRendering: "pixelated" }}>
-                  <rect x="4" y="4" width="8" height="8" fill="#22c55e"/>
-                  <rect x="5" y="5" width="6" height="6" fill="#052e16"/>
-                  <rect x="6" y="6" width="4" height="4" fill="#4ade80"/>
-                  <rect x="2" y="6" width="2" height="1" fill="#22c55e"/><rect x="2" y="9" width="2" height="1" fill="#22c55e"/>
-                  <rect x="12" y="6" width="2" height="1" fill="#22c55e"/><rect x="12" y="9" width="2" height="1" fill="#22c55e"/>
-                  <rect x="6" y="2" width="1" height="2" fill="#22c55e"/><rect x="9" y="2" width="1" height="2" fill="#22c55e"/>
-                  <rect x="6" y="12" width="1" height="2" fill="#22c55e"/><rect x="9" y="12" width="1" height="2" fill="#22c55e"/>
-                </svg>
-              ) : (
-                /* pixel art play triangle */
-                <svg viewBox="0 0 14 14" width="30" height="30" style={{ imageRendering: "pixelated" }}>
-                  <rect x="3" y="2" width="2" height="10" fill="white"/>
-                  <rect x="5" y="3" width="2" height="8" fill="white"/>
-                  <rect x="7" y="4" width="2" height="6" fill="white"/>
-                  <rect x="9" y="5" width="2" height="4" fill="white"/>
-                  <rect x="11" y="6" width="2" height="2" fill="white"/>
-                </svg>
-              )}
-            </button>
+              } else if (canClaim) {
+                handleCollect();
+              }
+            }}
+            disabled={claimMutation.isPending || startCpuMutation.isPending || (state.cpuRunning && !canClaim && !canClaim)}
+            className="flex-1 active:scale-95 transition-all disabled:opacity-40"
+            style={{ height: 56, borderRadius: 28, background: "rgba(22,24,36,0.98)", border: "1.5px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center", paddingLeft: 20, paddingRight: 16 }}>
+            {(claimMutation.isPending || startCpuMutation.isPending)
+              ? <div className="w-full flex items-center justify-center"><span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /></div>
+              : state.cpuRunning
+              ? <>
+                  <div className="flex items-center gap-2">
+                    <span style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>Farming</span>
+                    <span style={{ color: "#fff", fontSize: 14, fontWeight: 900 }}>{localMined.toFixed(3)}</span>
+                    <div style={{ width: 18, height: 18, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#1a3a6b", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <img src="/axn-logo.svg" alt="AXN" style={{ width: 14, height: 14, objectFit: "contain" }} />
+                    </div>
+                  </div>
+                  <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, fontFamily: "monospace", fontWeight: 600, marginTop: 1 }}>
+                    {String(Math.floor(cpuCountdown / 3600)).padStart(2,"0")}:{String(Math.floor((cpuCountdown % 3600) / 60)).padStart(2,"0")}:{String(cpuCountdown % 60).padStart(2,"0")}
+                  </div>
+                </>
+              : canClaim
+              ? <div className="flex items-center gap-2 w-full justify-center">
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#1a3a6b", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img src="/axn-logo.svg" alt="AXN" style={{ width: 15, height: 15, objectFit: "contain" }} />
+                  </div>
+                  <span style={{ color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: "0.02em" }}>Claim</span>
+                  <span style={{ color: "#fff", fontSize: 15, fontWeight: 900 }}>{localMined.toFixed(3)}</span>
+                </div>
+              : <div className="w-full flex items-center justify-center">
+                  <span style={{ color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: "0.06em" }}>START MINING</span>
+                </div>
+            }
+          </button>
 
-            {/* Recharge */}
-            <button onClick={() => setEnergyOpen(true)}
-              className="flex-1 flex flex-col items-center gap-0.5 py-1 active:scale-95 transition-transform">
-              <img src="/mining-speed-pixel-nobg.png" alt="Energy" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated" }} />
-            </button>
+          {/* RIGHT pill — Withdraw (blue) */}
+          <button
+            onClick={onWalletOpen}
+            className="active:scale-95 transition-all"
+            style={{ height: 56, borderRadius: 28, background: "linear-gradient(135deg,#1d8ef0,#0d6fcb)", minWidth: 100, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingInline: 16 }}>
+            <div className="flex items-center gap-1.5">
+              <img src="/money-icon-nobg.png" alt="Withdraw" style={{ width: 20, height: 20, objectFit: "contain", imageRendering: "pixelated", filter: "brightness(0) invert(1)" }} />
+              <span style={{ color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: "0.05em" }}>WITHDRAW</span>
+            </div>
+          </button>
 
-            {/* Withdraw */}
-            <button onClick={onWalletOpen}
-              className="flex-1 flex flex-col items-center gap-0.5 py-1 active:scale-95 transition-transform">
-              <img src="/money-icon-nobg.png" alt="Withdraw" className="w-11 h-11 object-contain" style={{ imageRendering: "pixelated" }} />
-            </button>
-
-          </div>
         </div>
       </div>
 

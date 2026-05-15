@@ -25,6 +25,9 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
     const satBalance = Math.floor(parseFloat((user as any)?.balance || "0"));
     const firstName: string = user?.firstName || user?.username || "You";
     const miningLevel: number = miningState?.state?.miningLevel ?? 1;
+    const cpuLevel: number = miningState?.state?.cpuLevel ?? 1;
+    const capacityLevel: number = miningState?.state?.capacityLevel ?? 1;
+    const machineLevel: number = Math.min(miningLevel, cpuLevel, capacityLevel);
 
     const profileImageUrl: string | null =
       user?.profileImageUrl ||
@@ -87,7 +90,7 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
               }}
             >
               <span style={{ color: "#fff", fontWeight: 900, fontSize: 8, letterSpacing: "0.02em" }}>
-                LV{miningLevel}
+                LV{machineLevel}
               </span>
             </div>
           </button>
