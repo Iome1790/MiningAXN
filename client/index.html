@@ -67,6 +67,50 @@
     <link rel="preload" href="/mining-machine-icon.png" as="image" />
   </head>
   <body>
+    <script>
+      (function() {
+        // Block right-click and long-press context menu everywhere
+        document.addEventListener('contextmenu', function(e) {
+          // Allow context menu only inside input/textarea for paste
+          var t = e.target;
+          while (t) {
+            if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+            t = t.parentElement;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }, true);
+
+        // Block image dragging
+        document.addEventListener('dragstart', function(e) {
+          if (e.target.tagName === 'IMG' || e.target.tagName === 'A') {
+            e.preventDefault();
+          }
+        }, true);
+
+        // Block long-press touchstart text selection on non-input elements
+        document.addEventListener('touchstart', function(e) {
+          var t = e.target;
+          while (t) {
+            if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+            t = t.parentElement;
+          }
+        }, { passive: true });
+
+        // Prevent default on touchend for images (stops save/share options)
+        // BUT skip if the image is inside a button/link so taps still work
+        document.addEventListener('touchend', function(e) {
+          if (e.target.tagName !== 'IMG') return;
+          var p = e.target.parentElement;
+          while (p) {
+            if (p.tagName === 'BUTTON' || p.tagName === 'A' || p.getAttribute('role') === 'button') return;
+            p = p.parentElement;
+          }
+          e.preventDefault();
+        }, false);
+      })();
+    </script>
     <div id="root"></div>
     <!-- AdExtra Container (hidden by default) -->
     <div id="353c332d4f2440f448057df79cb605e5d3d64ef0" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.9);"></div>
