@@ -3,7 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppNotification from "@/components/AppNotification";
-import { useEffect, lazy, Suspense, useState, memo, useCallback, useRef } from "react";
+import { useEffect, lazy, Suspense, useState, memo, useCallback, useRef, createContext } from "react";
 import { setupDeviceTracking } from "@/lib/deviceId";
 import BanScreen from "@/components/BanScreen";
 import CountryBlockedScreen from "@/components/CountryBlockedScreen";
@@ -11,6 +11,8 @@ import SeasonEndOverlay from "@/components/SeasonEndOverlay";
 import { SeasonEndContext } from "@/lib/SeasonEndContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import ChannelJoinPopup from "@/components/ChannelJoinPopup";
+
+export const AppReadyContext = createContext<() => void>(() => {});
 
 declare global {
   interface Window {
@@ -28,78 +30,61 @@ const PageLoader = memo(function PageLoader() {
   return null;
 });
 
-function LoadingFallback() {
+function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDone?: () => void }) {
+  const [opacity, setOpacity] = useState(1);
+  const readyRef = useRef(false);
+  const rafRef = useRef<number>(0);
+  const doneRef = useRef(false);
+
+  const startFadeOut = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    let fadeStart = 0;
+    function fadeTick(ts: number) {
+      if (!fadeStart) fadeStart = ts;
+      const ft = Math.min((ts - fadeStart) / 380, 1);
+      setOpacity(1 - ft);
+      if (ft < 1) {
+        rafRef.current = requestAnimationFrame(fadeTick);
+      } else {
+        onDone?.();
+      }
+    }
+    rafRef.current = requestAnimationFrame(fadeTick);
+  }, [onDone]);
+
+  useEffect(() => {
+    if (isReady) {
+      readyRef.current = true;
+      // Small delay so user sees screen briefly, then fade
+      const t = setTimeout(startFadeOut, 200);
+      return () => clearTimeout(t);
+    }
+  }, [isReady, startFadeOut]);
+
+  // Safety: force dismiss after 5s max
+  useEffect(() => {
+    const t = setTimeout(startFadeOut, 5000);
+    return () => clearTimeout(t);
+  }, [startFadeOut]);
+
   return (
     <div
-      className="fixed inset-0 overflow-hidden flex flex-col items-center justify-center"
-      style={{
-        backgroundImage: 'url(/app-bg.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
+      className="fixed inset-0 overflow-hidden"
+      style={{ background: '#020810', zIndex: 9999, opacity, pointerEvents: opacity < 0.05 ? 'none' : 'auto' }}
     >
-      <style>{`
-        @keyframes ldFadeIn { from { opacity:0; transform:scale(0.93); } to { opacity:1; transform:scale(1); } }
-        @keyframes ldGlow {
-          0%,100% { filter: drop-shadow(0 0 18px rgba(59,130,246,0.55)) drop-shadow(0 0 40px rgba(59,130,246,0.2)); }
-          50%      { filter: drop-shadow(0 0 36px rgba(59,130,246,0.9)) drop-shadow(0 0 80px rgba(59,130,246,0.4)); }
-        }
-        @keyframes ldBar {
-          0%   { width:0%; opacity:1; }
-          80%  { width:100%; opacity:1; }
-          100% { width:100%; opacity:0.4; }
-        }
-        @keyframes ldDot {
-          0%,80%,100% { opacity:0.15; transform:scale(0.7); }
-          40%         { opacity:1;    transform:scale(1); }
-        }
-      `}</style>
-
-      {/* Overlay — keeps background readable but visible */}
-      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.48)' }} />
-
-      {/* Center content */}
-      <div
-        className="relative z-10 flex flex-col items-center gap-8"
-        style={{ animation: 'ldFadeIn 0.6s cubic-bezier(0.22,1,0.36,1) both' }}
-      >
-        {/* Logo — cut-out, big, glowing */}
-        <img
-          src="/axionet-logo-nobg.png"
-          alt="Axionet"
-          style={{
-            width: 180,
-            height: 180,
-            objectFit: 'contain',
-            animation: 'ldGlow 2.4s ease-in-out infinite',
-          }}
-        />
-
-        {/* Loading bar */}
-        <div className="flex flex-col items-center gap-3" style={{ width: 180 }}>
-          <div className="w-full h-0.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-            <div
-              className="h-full rounded-full"
-              style={{
-                background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
-                animation: 'ldBar 2s ease-in-out infinite',
-                boxShadow: '0 0 8px rgba(59,130,246,0.7)',
-              }}
-            />
-          </div>
-
-          {/* Dots */}
-          <div className="flex items-center gap-2">
-            {[0, 0.25, 0.5].map((delay, i) => (
-              <div
-                key={i}
-                className="w-1.5 h-1.5 rounded-full bg-blue-400"
-                style={{ animation: `ldDot 1.2s ease-in-out ${delay}s infinite` }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      <img
+        src="/loading-screen.png"
+        alt="Loading"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+          objectPosition: 'center center',
+        }}
+      />
     </div>
   );
 }
@@ -428,6 +413,16 @@ function App() {
     }
   }, [isDevMode, isCheckingCountry, isCountryBlocked]);
 
+  const [isAppReady, setIsAppReady] = useState(false);
+  const [showLoader, setShowLoader] = useState(!import.meta.env.DEV);
+  const signalReady = useCallback(() => setIsAppReady(true), []);
+
+  // Safety fallback — dismiss loader after 3s max
+  useEffect(() => {
+    const t = setTimeout(() => setIsAppReady(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
   // Public route — bypass all Telegram auth checks
   if (typeof window !== "undefined" && window.location.pathname === "/landing") {
     return (
@@ -443,15 +438,14 @@ function App() {
     return <BanScreen reason={banReason} banType={banType} adminBanReason={adminBanReason} />;
   }
 
-  if (isCheckingCountry || isAuthenticating || isCheckingMembership) {
-    return <LoadingFallback />;
-  }
-
   if (isCountryBlocked) {
     return <CountryBlockedScreen />;
   }
 
-  if (!telegramId && !isDevMode) {
+  const isChecking = isCheckingCountry || isAuthenticating || isCheckingMembership;
+
+  // Show plain "Open in Telegram" only after all checks done
+  if (!isChecking && !telegramId && !isDevMode) {
     return (
       <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center p-6">
         <div className="text-center max-w-sm">
@@ -474,18 +468,32 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <TooltipProvider>
-          {!isChannelVerified && (
-            <Suspense fallback={null}>
-              <ChannelJoinPopup 
-                telegramId={telegramId || ""} 
-                onVerified={() => {
-                  setIsChannelVerified(true);
-                  showNotification("Verification successful! Welcome.", "success");
-                }} 
+          <AppReadyContext.Provider value={signalReady}>
+            {/* Loading overlay — stays on top until home data is ready */}
+            {showLoader && (
+              <LoadingFallback
+                isReady={isAppReady && !isChecking}
+                onDone={() => setShowLoader(false)}
               />
-            </Suspense>
-          )}
-          <AppContent />
+            )}
+            {/* Real app — renders underneath so data fetching starts immediately */}
+            {!isChecking && (
+              <>
+                {!isChannelVerified && (
+                  <Suspense fallback={null}>
+                    <ChannelJoinPopup
+                      telegramId={telegramId || ""}
+                      onVerified={() => {
+                        setIsChannelVerified(true);
+                        showNotification("Verification successful! Welcome.", "success");
+                      }}
+                    />
+                  </Suspense>
+                )}
+                <AppContent />
+              </>
+            )}
+          </AppReadyContext.Provider>
         </TooltipProvider>
       </LanguageProvider>
     </QueryClientProvider>
