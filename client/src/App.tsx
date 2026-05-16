@@ -24,6 +24,10 @@ const Home = lazy(() => import("@/pages/Home"));
 const Landing = lazy(() => import("@/pages/Landing"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const CountryControls = lazy(() => import("@/pages/CountryControls"));
+const Missions = lazy(() => import("@/pages/Missions"));
+const Friends = lazy(() => import("@/pages/Friends"));
+const WalletPage = lazy(() => import("@/pages/Wallet"));
+const ProfilePage = lazy(() => import("@/pages/Profile"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const PageLoader = memo(function PageLoader() {
@@ -81,7 +85,7 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
           inset: 0,
           width: '100%',
           height: '100%',
-          objectFit: 'contain',
+          objectFit: 'cover',
           objectPosition: 'center center',
         }}
       />
@@ -97,6 +101,10 @@ function Router() {
         <Route path="/landing" component={Landing} />
         <Route path="/admin" component={Admin} />
         <Route path="/admin/country-controls" component={CountryControls} />
+        <Route path="/missions" component={Missions} />
+        <Route path="/friends" component={Friends} />
+        <Route path="/wallet" component={WalletPage} />
+        <Route path="/profile" component={ProfilePage} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
