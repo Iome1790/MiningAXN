@@ -2,19 +2,18 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users, Wifi, CalendarDays, Receipt, Zap, ChevronRight, Check, ArrowLeft,
+  Users, Wifi, CalendarDays, Receipt, Zap, ChevronRight, ArrowLeft,
   TrendingUp, Activity, RefreshCw, Star, FileText, Lock, Info, Shield,
   Loader2, Clock, CheckCircle, XCircle,
 } from "lucide-react";
 import { RiBarChartFill } from "react-icons/ri";
 import { AXNIcon } from "@/components/AXNIcon";
 import { FaReceipt, FaBalanceScale, FaCrown } from "react-icons/fa";
-import { MdLanguage, MdOutlineSupportAgent } from "react-icons/md";
+import { MdOutlineSupportAgent } from "react-icons/md";
 import { BsQuestionCircleFill } from "react-icons/bs";
 import { format } from "date-fns";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useLocation } from "wouter";
-import { useLanguage, SUPPORTED_LANGUAGES } from "@/hooks/useLanguage";
 import { showNotification } from "@/components/AppNotification";
 
 interface MenuPopupProps {
@@ -22,7 +21,21 @@ interface MenuPopupProps {
   onOpenInvite?: () => void;
 }
 
-type Overlay = "transactions" | "stats" | "legal" | "terms" | "faq" | "language" | null;
+type Overlay = "transactions" | "stats" | "legal" | "terms" | "faq" | null;
+
+const CUT_SM = 'polygon(8px 0%,calc(100% - 8px) 0%,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0% calc(100% - 8px),0% 8px)';
+const CUT_LG = 'polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px)';
+
+const CORNER_ACCENTS = [
+  { top:'2px',    left:'14px',  width:'30px', height:'1.5px' },
+  { top:'14px',   left:'2px',   width:'1.5px',height:'30px'  },
+  { top:'2px',    right:'14px', width:'30px', height:'1.5px' },
+  { top:'14px',   right:'2px',  width:'1.5px',height:'30px'  },
+  { bottom:'2px', left:'14px',  width:'30px', height:'1.5px' },
+  { bottom:'14px',left:'2px',   width:'1.5px',height:'30px'  },
+  { bottom:'2px', right:'14px', width:'30px', height:'1.5px' },
+  { bottom:'14px',right:'2px',  width:'1.5px',height:'30px'  },
+] as React.CSSProperties[];
 
 function fmtNum(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
@@ -37,7 +50,6 @@ function fmtAge(days: number): string {
 export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
   const { isAdmin } = useAdmin();
   const [, setLocation] = useLocation();
-  const { language, setLanguage } = useLanguage();
   const [overlay, setOverlay] = useState<Overlay>(null);
 
   const { data: user } = useQuery<any>({ queryKey: ["/api/auth/user"], retry: false, staleTime: 60000 });
@@ -49,7 +61,6 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
   });
 
   const withdrawals = txData?.withdrawals || [];
-  const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === language) || SUPPORTED_LANGUAGES[0];
   const firstName: string = user?.firstName || user?.username || "User";
   const profileImageUrl: string | null =
     user?.profileImageUrl ||
@@ -78,14 +89,20 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
     >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
+      {/* Outer border — blue glow + cut corners */}
+      <div style={{ clipPath: CUT_LG, padding: '1.5px', background: 'linear-gradient(135deg,rgba(0,160,255,0.75) 0%,rgba(0,80,200,0.45) 50%,rgba(0,160,255,0.75) 100%)', boxShadow: '0 0 32px rgba(0,120,255,0.45), 0 0 64px rgba(0,80,200,0.2)', width: '100%', maxWidth: 384 }}>
       <motion.div
-        className="relative w-full max-w-sm rounded-3xl overflow-hidden popup-glow-open"
-        style={{ background: 'rgba(8,14,32,0.72)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.10)' }}
+        className="relative w-full popup-glow-open"
+        style={{ clipPath: CUT_LG, background: 'linear-gradient(180deg,rgba(5,16,44,0.99) 0%,rgba(3,9,26,0.99) 100%)', position: 'relative', overflow: 'hidden' }}
         initial={{ scale: 0.88, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.88, opacity: 0, y: 20 }}
         transition={{ type: "spring", damping: 26, stiffness: 320 }}
       >
+        {/* Corner accent lines */}
+        {CORNER_ACCENTS.map((s, i) => (
+          <div key={i} className="absolute pointer-events-none" style={{ ...s, background: 'rgba(0,200,255,0.75)', zIndex: 10 }} />
+        ))}
         {/*
           KEY TRICK:
           - Main menu is rendered normally (relative) → it sets the card's natural height
@@ -116,8 +133,6 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
 
             <div className="py-2">
               <MenuItem icon={<RiBarChartFill className="w-5 h-5 text-blue-400" />} label="Project Statistics" onClick={() => setOverlay("stats")} />
-              <MenuItem icon={<MdLanguage className="w-5 h-5 text-purple-400" />} label="Language"
-                right={<span className="text-white/50 text-sm">{currentLang.flag}</span>} onClick={() => setOverlay("language")} />
               <MenuItem icon={<FaReceipt className="w-5 h-5 text-yellow-400" />} label="Transactions" onClick={() => setOverlay("transactions")} />
               <MenuItem icon={<BsQuestionCircleFill className="w-5 h-5 text-sky-400" />} label="FAQs" onClick={() => setOverlay("faq")} />
               <MenuItem icon={<MdOutlineSupportAgent className="w-5 h-5 text-pink-400" />} label="Support" onClick={() => {
@@ -154,23 +169,6 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
               >
                 {/* Scrollable content */}
                 <div className="flex-1 overflow-y-auto min-h-0">
-
-                  {overlay === "language" && (
-                    <div data-no-translate className="py-2">
-                      {SUPPORTED_LANGUAGES.map(lang => (
-                        <button key={lang.code}
-                          onClick={() => { setLanguage(lang.code); showNotification(`Language changed to ${lang.label}`, "success"); setOverlay(null); }}
-                          className={`w-full flex items-center justify-between px-5 py-3.5 active:bg-white/5 transition-all ${language === lang.code ? "bg-[#F5C542]/8" : ""}`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl leading-none">{lang.flag}</span>
-                            <span className={`text-sm font-bold ${language === lang.code ? "text-[#F5C542]" : "text-white"}`}>{lang.label}</span>
-                          </div>
-                          {language === lang.code && <Check className="w-4 h-4 text-[#F5C542]" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
 
                   {overlay === "stats" && (
                     <div className="px-4 py-4 space-y-4">
@@ -296,11 +294,11 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
                 </div>
 
                 {/* Back button — pinned at bottom */}
-                <div className="flex-shrink-0 px-4 py-3 border-t border-white/[0.07]">
+                <div className="flex-shrink-0 px-4 py-3" style={{ borderTop: '1px solid rgba(0,120,255,0.18)' }}>
                   <button
                     onClick={() => setOverlay(null)}
-                    className="w-full h-10 rounded-2xl flex items-center justify-center gap-2 text-white/50 text-sm font-black uppercase tracking-wider active:scale-[0.97] transition-all"
-                    style={{ background: "#1c1c1e", border: "1px solid rgba(255,255,255,0.06)" }}
+                    className="w-full flex items-center justify-center gap-2 text-white/50 text-sm font-black uppercase tracking-wider active:opacity-70 transition-opacity"
+                    style={{ clipPath: CUT_SM, height: 40, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
                   >
                     <ArrowLeft className="w-4 h-4" />
                     Back
@@ -311,22 +309,29 @@ export default function MenuPopup({ onClose, onOpenInvite }: MenuPopupProps) {
           </AnimatePresence>
         </div>
       </motion.div>
+      </div>
     </motion.div>
   );
 }
 
 function MenuItem({ icon, label, onClick, right }: { icon: React.ReactNode; label: string; onClick: () => void; right?: React.ReactNode }) {
   return (
-    <button onClick={onClick} className="w-full flex items-center justify-between px-4 py-3 active:bg-white/5 transition-all">
-      <div className="flex items-center gap-3">
-        {icon}
-        <span className="text-white text-sm font-semibold">{label}</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        {right}
-        <ChevronRight className="w-4 h-4 text-white/20" />
-      </div>
-    </button>
+    <div style={{ margin: '3px 10px' }}>
+      <button
+        onClick={onClick}
+        className="w-full flex items-center justify-between active:opacity-70 transition-opacity"
+        style={{ clipPath: CUT_SM, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(0,120,255,0.18)', padding: '10px 14px' }}
+      >
+        <div className="flex items-center gap-3">
+          {icon}
+          <span className="text-white text-sm font-semibold">{label}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {right}
+          <ChevronRight className="w-4 h-4 text-white/20" />
+        </div>
+      </button>
+    </div>
   );
 }
 

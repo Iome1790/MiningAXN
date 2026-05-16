@@ -1,19 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ChevronRight, Wrench, Gift, ShieldCheck, ShieldOff, Wallet } from "lucide-react";
+import { ChevronRight, Wrench, Gift, ShieldCheck, ShieldOff, Wallet, Home, Target, Users, User } from "lucide-react";
+import { useLocation } from "wouter";
 import { useAdFlow } from "@/hooks/useAdFlow";
 import { RiPlayFill, RiToolsFill, RiCpuFill, RiDatabase2Fill } from "react-icons/ri";
 import { BsLightningChargeFill } from "react-icons/bs";
 import { FaBug } from "react-icons/fa";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
+import { AXNIcon } from "@/components/AXNIcon";
 import RepairPopup from "@/components/RepairPopup";
 import AntivirusPopup from "@/components/AntivirusPopup";
 import UpgradeMachinePopup from "@/components/UpgradeMachinePopup";
 import EnergyPopup from "@/components/EnergyPopup";
 
 const fanImg = "/fan-image.png";
+
+const CUT_SM = 'polygon(8px 0%,calc(100% - 8px) 0%,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0% calc(100% - 8px),0% 8px)';
 
 /* ── Pixel Battery ──
    Vertical pixel-art battery (AA style) with 5 stacked segments,
@@ -165,6 +169,56 @@ interface MachineState {
 interface MiningMachinePanelProps {
   onWalletOpen?: () => void;
   onInviteOpen?: () => void;
+  onProfileOpen?: () => void;
+}
+
+interface BottomTabNavProps {
+  onFriendsOpen?: () => void;
+  onWalletOpen?: () => void;
+  onProfileOpen?: () => void;
+}
+
+function BottomTabNav({ onFriendsOpen, onWalletOpen, onProfileOpen }: BottomTabNavProps) {
+  const [location, setLocation] = useLocation();
+
+  const tabs = [
+    { label: "Home",     icon: Home,   action: () => setLocation("/"),  isActive: () => location === "/" },
+    { label: "Missions", icon: Target, action: () => {},                isActive: () => false },
+    { label: "Friends",  icon: Users,  action: () => onFriendsOpen?.(), isActive: () => false },
+    { label: "Wallet",   icon: Wallet, action: () => onWalletOpen?.(),  isActive: () => false },
+    { label: "Profile",  icon: User,   action: () => onProfileOpen?.(), isActive: () => false },
+  ];
+
+  return (
+    <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", height: 60, paddingBottom: "max(calc(env(safe-area-inset-bottom) + 4px), 8px)" }}>
+      {tabs.map(({ label, icon: Icon, action, isActive }) => {
+        const active = isActive();
+        return (
+          <button
+            key={label}
+            onClick={action}
+            className="flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-transform"
+            style={{ flex: 1, height: "100%" }}
+          >
+            <Icon
+              style={{
+                width: 26, height: 26,
+                color: active ? "#3B82F6" : "rgba(255,255,255,0.45)",
+                filter: active ? "drop-shadow(0 0 8px rgba(59,130,246,0.8))" : "none",
+                transition: "color 0.18s, filter 0.18s",
+              }}
+            />
+            <span style={{
+              fontSize: 11, fontWeight: active ? 700 : 500,
+              color: active ? "#3B82F6" : "rgba(255,255,255,0.4)",
+              letterSpacing: 0.2, lineHeight: 1,
+              transition: "color 0.18s",
+            }}>{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function formatTime(seconds: number): string {
@@ -431,7 +485,7 @@ function BannerCarousel({ onInviteOpen }: { onInviteOpen?: () => void }) {
   }
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "clamp(90px, 18svh, 140px)", borderRadius: 12, overflow: "hidden", marginTop: "clamp(4px, 1svh, 8px)", flexShrink: 0 }}>
+    <div style={{ position: "relative", width: "100%", height: "clamp(68px, 13svh, 100px)", borderRadius: 12, overflow: "hidden", marginTop: "clamp(4px, 1svh, 8px)", flexShrink: 0 }}>
       {BANNERS.map((src, i) => (
         <motion.img
           key={src}
@@ -459,7 +513,7 @@ function BannerCarousel({ onInviteOpen }: { onInviteOpen?: () => void }) {
   );
 }
 
-export default function MiningMachinePanel({ onWalletOpen, onInviteOpen }: MiningMachinePanelProps) {
+export default function MiningMachinePanel({ onWalletOpen, onInviteOpen, onProfileOpen }: MiningMachinePanelProps) {
   const queryClient = useQueryClient();
   const { showMonetagAd } = useAdFlow();
   const [cpuCountdown, setCpuCountdown] = useState(0);
@@ -654,23 +708,7 @@ export default function MiningMachinePanel({ onWalletOpen, onInviteOpen }: Minin
 
   return (
     <>
-      <div className="w-full px-3 pt-2 flex flex-col" style={{ height: "100%", overflow: "hidden", paddingBottom: "calc(env(safe-area-inset-bottom) + 115px)" }}>
-
-        {/* ── COLLECTABLE AMOUNT ── */}
-        <div className="flex flex-col items-center" style={{ paddingBottom: "clamp(2px, 0.8svh, 8px)" }}>
-          <p className="text-white/50 font-semibold uppercase tracking-widest leading-none" style={{ fontSize: "clamp(7px, 1.5svh, 9px)" }}>Collectable</p>
-          <div className="flex items-baseline gap-1">
-            <span className="text-white font-black tabular-nums leading-tight" style={{ fontSize: "clamp(16px, 3.5svh, 22px)" }}>{localMined.toFixed(2)}</span>
-            <span className="font-black leading-tight" style={{ color: "#3B82F6", fontSize: "clamp(10px, 2svh, 14px)" }}>AXN</span>
-          </div>
-          <p className="text-white/25" style={{ fontSize: "clamp(6px, 1.2svh, 8px)", marginTop: 1 }}>≈ ${minedUsd} USD</p>
-          <div className="flex items-center gap-1" style={{ marginTop: 1 }}>
-            <span className="font-bold tabular-nums" style={{ fontSize: "clamp(7px, 1.5svh, 10px)", color: isMining ? "#22c55e" : "rgba(255,255,255,0.3)" }}>
-              {isMining ? `+${state.miningRate} AXN/s` : "0.00 AXN/s"}
-            </span>
-            {isMining && <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#22c55e" }} />}
-          </div>
-        </div>
+      <div className="w-full px-3 pt-2 flex flex-col" style={{ height: "100%", overflow: "hidden", paddingBottom: "calc(env(safe-area-inset-bottom) + 70px)" }}>
 
         {/* ── 3-COLUMN: Left buttons | Machine | Right stats ── */}
         <div style={{ display: "flex", alignItems: "stretch", gap: "clamp(4px, 1.5vw, 10px)", flex: "1 1 0", minHeight: 0, padding: "0 2px" }}>
@@ -767,6 +805,69 @@ export default function MiningMachinePanel({ onWalletOpen, onInviteOpen }: Minin
 
         </div>
 
+        {/* ── START FARMING — between character and banner ── */}
+        <div style={{ paddingTop: "clamp(4px, 1svh, 10px)", paddingBottom: "clamp(2px, 0.5svh, 6px)", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
+
+          {/* LEFT: HEALTH % */}
+          <div style={{ textAlign: "center", minWidth: 48, flexShrink: 0 }}>
+            <div style={{ fontFamily: "'Courier New',monospace", fontSize: 8, fontWeight: 900, color: "#cc1111", letterSpacing: 1, textShadow: "0 0 6px #cc111166", marginBottom: 2 }}>HP</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: Math.max(0, Math.min(100, state.machineHealth)) > 50 ? "#fff" : Math.max(0, Math.min(100, state.machineHealth)) > 20 ? "#ff8844" : "#cc1111", lineHeight: 1 }}>
+              {Math.max(0, Math.min(100, state.machineHealth))}%
+            </div>
+          </div>
+
+          {/* CENTER: Button with corner-cut shape — blue glow */}
+          <div style={{ flex: 1, clipPath: CUT_SM, padding: "1.5px", background: "linear-gradient(135deg,rgba(0,160,255,0.75) 0%,rgba(0,80,200,0.45) 50%,rgba(0,160,255,0.75) 100%)", boxShadow: "0 0 20px rgba(0,120,255,0.4)" }}>
+            <button
+              onClick={() => {
+                if (!state.cpuRunning && !canClaim) {
+                  if (state.machineHealth <= 0) { setRepairOpen(true); showNotification("Machine needs repair before mining!", "error"); return; }
+                  if (!state.hasEnergy) { setEnergyOpen(true); showNotification("Refill energy to start mining!", "warning"); return; }
+                  handleStartMining();
+                } else if (canClaim) {
+                  handleCollect();
+                }
+              }}
+              disabled={claimMutation.isPending || startCpuMutation.isPending || (state.cpuRunning && !canClaim)}
+              className="w-full active:opacity-75 transition-all disabled:opacity-40"
+              style={{ clipPath: CUT_SM, height: 38, background: canClaim ? "linear-gradient(135deg,#0847c8 0%,#1560e0 40%,#0a52d4 100%)" : "linear-gradient(180deg,rgba(5,16,44,0.99),rgba(3,9,26,0.99))", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+              {(claimMutation.isPending || startCpuMutation.isPending)
+                ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : state.cpuRunning
+                ? <div className="flex flex-col items-center">
+                    <div className="flex items-center gap-1.5">
+                      <AXNIcon size={16} />
+                      <span style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>Farming</span>
+                      <span style={{ color: "#fff", fontSize: 13, fontWeight: 900 }}>{localMined.toFixed(3)}</span>
+                    </div>
+                    <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, fontFamily: "monospace", fontWeight: 600 }}>
+                      {String(Math.floor(cpuCountdown / 3600)).padStart(2,"0")}:{String(Math.floor((cpuCountdown % 3600) / 60)).padStart(2,"0")}:{String(cpuCountdown % 60).padStart(2,"0")}
+                    </div>
+                  </div>
+                : canClaim
+                ? <div className="flex items-center gap-2">
+                    <AXNIcon size={18} />
+                    <span style={{ color: "#fff", fontSize: 14, fontWeight: 900, letterSpacing: "0.02em" }}>Claim</span>
+                    <span style={{ color: "#fff", fontSize: 14, fontWeight: 900 }}>{localMined.toFixed(3)}</span>
+                  </div>
+                : <div className="flex items-center gap-2">
+                    <AXNIcon size={18} />
+                    <span style={{ color: "#fff", fontSize: 14, fontWeight: 900, letterSpacing: "0.06em" }}>START FARMING</span>
+                  </div>
+              }
+            </button>
+          </div>
+
+          {/* RIGHT: ENERGY % */}
+          <div style={{ textAlign: "center", minWidth: 48, flexShrink: 0 }}>
+            <div style={{ fontFamily: "'Courier New',monospace", fontSize: 8, fontWeight: 900, color: "#F5C542", letterSpacing: 1, textShadow: "0 0 6px #F5C54266", marginBottom: 2 }}>NRG</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: energyPct > 50 ? "#fff" : energyPct > 20 ? "#F5C542" : "#cc1111", lineHeight: 1 }}>
+              {energyPct}%
+            </div>
+          </div>
+
+        </div>
+
         {/* ── BANNER CAROUSEL ── */}
         <div
           ref={(el) => {
@@ -787,94 +888,9 @@ export default function MiningMachinePanel({ onWalletOpen, onInviteOpen }: Minin
 
       </div>
 
-      {/* ── FIXED BOTTOM NAV ── */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, background: "rgba(6,6,10,0.97)", borderTop: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)", paddingTop: 7, paddingBottom: "max(calc(env(safe-area-inset-bottom) + 18px), 22px)", paddingLeft: 12, paddingRight: 12 }}>
-
-        {/* Health + Energy bars */}
-        <div className="flex flex-col gap-1 mb-2.5">
-          {(() => {
-            const hp = Math.max(0, Math.min(100, state.machineHealth));
-            return (
-              <div className="flex items-center gap-2">
-                <span style={{ fontFamily: "'Courier New',monospace", fontSize: 8, fontWeight: 900, color: "#cc1111", letterSpacing: 1, width: 38, flexShrink: 0, textShadow: "0 0 4px #cc1111" }}>HEALTH</span>
-                <div className="flex-1 h-2.5 rounded-full overflow-hidden relative" style={{ background: "#1a1a1a", border: "1.5px solid #333" }}>
-                  <motion.div className="absolute inset-y-0 left-0 rounded-full"
-                    animate={{ width: `${hp}%` }} transition={{ duration: 0.6, ease: "easeOut" }}
-                    style={{ background: hp > 50 ? "#cc1111" : hp > 20 ? "#990000" : "#550000", boxShadow: "inset 0 1px 0 rgba(255,100,100,0.3)" }} />
-                </div>
-                <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", fontFamily: "monospace", width: 34, flexShrink: 0, textAlign: "right" }}>{hp}/100</span>
-              </div>
-            );
-          })()}
-          <div className="flex items-center gap-2">
-            <span style={{ fontFamily: "'Courier New',monospace", fontSize: 8, fontWeight: 900, color: "#F5C542", letterSpacing: 1, width: 38, flexShrink: 0, textShadow: "0 0 4px #F5C542" }}>ENERGY</span>
-            <div className="flex-1 h-2.5 rounded-full overflow-hidden relative" style={{ background: "#1a1a1a", border: "1.5px solid #333" }}>
-              <motion.div className="absolute inset-y-0 left-0 rounded-full"
-                animate={{ width: `${energyPct}%` }} transition={{ duration: 0.6, ease: "easeOut" }}
-                style={{ background: energyPct > 50 ? "#f5c542" : energyPct > 20 ? "#e07b00" : "#cc1111", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18)" }} />
-            </div>
-            <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", fontFamily: "monospace", width: 34, flexShrink: 0, textAlign: "right" }}>{energyPct}%</span>
-          </div>
-        </div>
-
-        {/* Pill buttons row */}
-        <div className="flex gap-2.5">
-
-          {/* LEFT pill — Start / Mining+timer / Claim */}
-          <button
-            onClick={() => {
-              if (!state.cpuRunning && !canClaim) {
-                if (state.machineHealth <= 0) { setRepairOpen(true); showNotification("Machine needs repair before mining!", "error"); return; }
-                if (!state.hasEnergy) { setEnergyOpen(true); showNotification("Refill energy to start mining!", "warning"); return; }
-                handleStartMining();
-              } else if (canClaim) {
-                handleCollect();
-              }
-            }}
-            disabled={claimMutation.isPending || startCpuMutation.isPending || (state.cpuRunning && !canClaim && !canClaim)}
-            className="flex-1 active:scale-95 transition-all disabled:opacity-40"
-            style={{ height: 56, borderRadius: 28, background: "rgba(22,24,36,0.98)", border: "1.5px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center", paddingLeft: 20, paddingRight: 16 }}>
-            {(claimMutation.isPending || startCpuMutation.isPending)
-              ? <div className="w-full flex items-center justify-center"><span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /></div>
-              : state.cpuRunning
-              ? <>
-                  <div className="flex items-center gap-2">
-                    <span style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>Farming</span>
-                    <span style={{ color: "#fff", fontSize: 14, fontWeight: 900 }}>{localMined.toFixed(3)}</span>
-                    <div style={{ width: 18, height: 18, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#1a3a6b", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <img src="/axn-logo.svg" alt="AXN" style={{ width: 14, height: 14, objectFit: "contain" }} />
-                    </div>
-                  </div>
-                  <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, fontFamily: "monospace", fontWeight: 600, marginTop: 1 }}>
-                    {String(Math.floor(cpuCountdown / 3600)).padStart(2,"0")}:{String(Math.floor((cpuCountdown % 3600) / 60)).padStart(2,"0")}:{String(cpuCountdown % 60).padStart(2,"0")}
-                  </div>
-                </>
-              : canClaim
-              ? <div className="flex items-center gap-2 w-full justify-center">
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#1a3a6b", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <img src="/axn-logo.svg" alt="AXN" style={{ width: 15, height: 15, objectFit: "contain" }} />
-                  </div>
-                  <span style={{ color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: "0.02em" }}>Claim</span>
-                  <span style={{ color: "#fff", fontSize: 15, fontWeight: 900 }}>{localMined.toFixed(3)}</span>
-                </div>
-              : <div className="w-full flex items-center justify-center">
-                  <span style={{ color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: "0.06em" }}>START MINING</span>
-                </div>
-            }
-          </button>
-
-          {/* RIGHT pill — Withdraw (blue) */}
-          <button
-            onClick={onWalletOpen}
-            className="active:scale-95 transition-all"
-            style={{ height: 56, borderRadius: 28, background: "linear-gradient(135deg,#1d8ef0,#0d6fcb)", minWidth: 100, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingInline: 16 }}>
-            <div className="flex items-center gap-1.5">
-              <img src="/money-icon-nobg.png" alt="Withdraw" style={{ width: 20, height: 20, objectFit: "contain", imageRendering: "pixelated", filter: "brightness(0) invert(1)" }} />
-              <span style={{ color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: "0.05em" }}>WITHDRAW</span>
-            </div>
-          </button>
-
-        </div>
+      {/* ── FIXED BOTTOM — only tab nav ── */}
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, background: "rgba(6,6,10,0.97)", borderTop: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)" }}>
+        <BottomTabNav onFriendsOpen={onInviteOpen} onWalletOpen={onWalletOpen} onProfileOpen={onProfileOpen} />
       </div>
 
       {repairOpen && <RepairPopup repairCost={state.repairCost} machineHealth={state.machineHealth} balance={state.balance} onClose={() => setRepairOpen(false)} />}
