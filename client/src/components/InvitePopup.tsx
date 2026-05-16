@@ -1,13 +1,27 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CheckCircle, XCircle, Loader2, HelpCircle, X,
+  CheckCircle, XCircle, Loader2, HelpCircle,
 } from "lucide-react";
 import { RiShareForwardFill, RiUserFollowFill, RiLinkM, RiGroupFill, RiCoinFill } from "react-icons/ri";
 import { AXNIcon } from "@/components/AXNIcon";
 import { FaCopy } from "react-icons/fa";
 import { showNotification } from "@/components/AppNotification";
 import { motion, AnimatePresence } from "framer-motion";
+
+const CUT_SM = 'polygon(8px 0%,calc(100% - 8px) 0%,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0% calc(100% - 8px),0% 8px)';
+const CUT_LG = 'polygon(16px 0%,calc(100% - 16px) 0%,100% 16px,100% calc(100% - 16px),calc(100% - 16px) 100%,16px 100%,0% calc(100% - 16px),0% 16px)';
+
+const CORNER_ACCENTS = [
+  { top:'2px',    left:'14px',  width:'30px', height:'1.5px' },
+  { top:'14px',   left:'2px',   width:'1.5px',height:'30px'  },
+  { top:'2px',    right:'14px', width:'30px', height:'1.5px' },
+  { top:'14px',   right:'2px',  width:'1.5px',height:'30px'  },
+  { bottom:'2px', left:'14px',  width:'30px', height:'1.5px' },
+  { bottom:'14px',left:'2px',   width:'1.5px',height:'30px'  },
+  { bottom:'2px', right:'14px', width:'30px', height:'1.5px' },
+  { bottom:'14px',right:'2px',  width:'1.5px',height:'30px'  },
+];
 
 interface ReferralItem {
   refereeId: string;
@@ -55,10 +69,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
 
   const claimWellMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/referrals/well/claim", {
-        method: "POST",
-        credentials: "include",
-      });
+      const res = await fetch("/api/referrals/well/claim", { method: "POST", credentials: "include" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed");
       return data;
@@ -97,11 +108,8 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
       const tgWebApp = (window as any).Telegram?.WebApp;
       const shareTitle = "⛏️ Mine AXN with me on Axionet! Use my invite link:";
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareTitle)}`;
-      if (tgWebApp?.openTelegramLink) {
-        tgWebApp.openTelegramLink(shareUrl);
-      } else {
-        window.open(shareUrl, "_blank");
-      }
+      if (tgWebApp?.openTelegramLink) tgWebApp.openTelegramLink(shareUrl);
+      else window.open(shareUrl, "_blank");
     } catch {}
     setIsSharing(false);
   };
@@ -109,224 +117,230 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[300] flex items-center justify-center px-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[300] flex items-center justify-center px-3"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       >
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
         <motion.div
-          className="relative w-full max-w-sm rounded-3xl overflow-hidden flex flex-col popup-glow-open"
-          style={{ background: 'rgba(8,14,32,0.72)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.10)', maxHeight: '70vh' }}
+          className="relative w-full max-w-sm"
+          style={{ maxHeight: '82vh' }}
           initial={{ scale: 0.88, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.88, opacity: 0, y: 20 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
         >
-          {/* Header */}
-          <div className="px-5 pt-5 pb-4 border-b border-[#1c1c1e] flex-shrink-0">
-            <h2 className="text-white font-black text-sm uppercase tracking-wider">Invite Friends</h2>
-            <p className="text-white/30 text-[11px] mt-0.5">Earn AXN when friends mine & withdraw</p>
-          </div>
+          {/* Outer border — cut corners, electric blue glow */}
+          <div style={{
+            background: 'linear-gradient(135deg,rgba(0,160,255,0.75) 0%,rgba(0,80,200,0.45) 50%,rgba(0,160,255,0.75) 100%)',
+            clipPath: CUT_LG, padding: '1.5px',
+            boxShadow: '0 0 32px rgba(0,120,255,0.45), 0 0 64px rgba(0,80,200,0.2)',
+          }}>
+            <div style={{
+              background: 'linear-gradient(180deg,rgba(5,16,44,0.99) 0%,rgba(3,9,26,0.99) 100%)',
+              clipPath: CUT_LG, position: 'relative', overflow: 'hidden',
+              display: 'flex', flexDirection: 'column', maxHeight: 'calc(82vh - 3px)',
+            }}>
+              {/* Corner accent lines */}
+              {CORNER_ACCENTS.map((s, i) => (
+                <div key={i} className="absolute pointer-events-none"
+                  style={{ ...s, background: 'rgba(0,200,255,0.75)', zIndex: 10 }} />
+              ))}
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-
-            {/* Well balance */}
-            <div className="bg-white/[0.06] border border-white/5 rounded-2xl p-4 flex items-center gap-4">
-              <AXNIcon size={32} className="flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-0.5">Your Well</p>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-white font-black text-2xl tabular-nums leading-none">
-                    {wellBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </span>
-                  <span className="text-white/40 text-xs font-bold">AXN</span>
-                </div>
+              {/* Header */}
+              <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid rgba(0,120,255,0.18)', flexShrink: 0, position: 'relative', zIndex: 1 }}>
+                <p style={{ color: '#fff', fontWeight: 900, fontSize: '18px', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>Invite Friends</p>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginTop: '3px' }}>Earn AXN when friends mine & withdraw</p>
               </div>
-              <button
-                onClick={() => claimWellMutation.mutate()}
-                disabled={claimWellMutation.isPending || wellBalance <= 0}
-                className="flex-shrink-0 h-9 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-40 flex items-center gap-1.5"
-                style={wellBalance > 0 ? {
-                  background: "linear-gradient(135deg, #F5C542, #d4920a)",
-                  color: "#000",
-                } : {
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.25)",
-                }}
-              >
-                {claimWellMutation.isPending ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <><RiCoinFill className="w-3.5 h-3.5" /> Claim</>
-                )}
-              </button>
-            </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white/[0.06] border border-white/5 rounded-2xl p-3 text-center">
-                <p className="text-white font-black text-2xl tabular-nums">{totalFriends}</p>
-                <p className="text-white/30 text-[10px] uppercase tracking-wide mt-1">Friends Invited</p>
-              </div>
-              <div className="bg-white/[0.06] border border-white/5 rounded-2xl p-3 text-center">
-                <p className="text-white font-black text-2xl tabular-nums">10%</p>
-                <p className="text-white/30 text-[10px] uppercase tracking-wide mt-1">Commission Rate</p>
-              </div>
-            </div>
+              {/* Scrollable body */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative', zIndex: 1 }}>
 
-            {/* Invite Link */}
-            <div>
-              <p className="text-white/25 text-[10px] font-black uppercase tracking-widest mb-2 px-0.5">Your Invite Link</p>
-              <div className="bg-white/[0.06] border border-white/5 rounded-2xl px-4 py-3 text-[11px] text-white/40 font-mono mb-2.5 break-all">
-                {referralLink || "Loading..."}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={copyLink}
-                  disabled={!referralLink}
-                  className="h-10 flex items-center justify-center gap-2 bg-white/[0.06] border border-white/8 text-white rounded-2xl text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-40"
-                >
-                  <FaCopy className="w-3.5 h-3.5 text-white/40" />
-                  Copy Link
-                </button>
-                <button
-                  onClick={shareLink}
-                  disabled={!referralLink || isSharing}
-                  className="h-10 flex items-center justify-center gap-2 rounded-2xl text-xs font-black transition-all active:scale-[0.98] disabled:opacity-40"
-                  style={{ background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "#fff" }}
-                >
-                  {isSharing ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <RiShareForwardFill className="w-4 h-4" />
-                  )}
-                  {isSharing ? "Sharing..." : "Share"}
-                </button>
-              </div>
-            </div>
-
-            {/* How it works */}
-            <button
-              onClick={() => setShowHowItWorks(true)}
-              className="w-full flex items-center justify-center gap-1.5 text-white/25 text-xs py-1 active:text-white/40 transition-colors"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              How does it work?
-            </button>
-
-            {/* Friends List */}
-            <div>
-              <p className="text-white/25 text-[10px] font-black uppercase tracking-widest mb-2 px-0.5 flex items-center gap-1.5">
-                <RiGroupFill className="w-3.5 h-3.5" />
-                Friends ({referrals.length})
-              </p>
-
-              {referralsLoading ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="w-5 h-5 text-white/20 animate-spin" />
-                </div>
-              ) : referrals.length === 0 ? (
-                <div className="text-center py-8">
-                  <RiGroupFill className="w-7 h-7 mx-auto mb-2.5" style={{ color: "rgba(255,255,255,0.08)" }} />
-                  <p className="text-white/25 text-sm font-bold">No friends yet</p>
-                  <p className="text-white/15 text-xs mt-1">Share your link to fill your Well!</p>
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  {referrals.map((r, i) => (
-                    <div
-                      key={i}
-                      className="bg-white/[0.06] border border-white/5 rounded-2xl px-4 py-3"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-white text-sm font-bold truncate">{r.name}</span>
-                            {r.isActive ? (
-                              <CheckCircle className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                            ) : (
-                              <XCircle className="w-3.5 h-3.5 text-white/20 flex-shrink-0" />
-                            )}
-                          </div>
-                          {r.username && (
-                            <p className="text-white/25 text-[10px] mt-0.5">@{r.username}</p>
-                          )}
-                        </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                          r.isActive
-                            ? "bg-white/8 text-white/60"
-                            : "bg-white/4 text-white/25"
-                        }`}>
-                          {r.isActive ? "Active" : r.referralStatus === "pending" ? "Pending" : "Inactive"}
-                        </span>
-                      </div>
+                {/* Well balance card */}
+                <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(0,120,255,0.18)', clipPath: CUT_SM, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <AXNIcon size={32} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '2px' }}>Your Well</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: '#fff', fontWeight: 900, fontSize: '22px', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                        {wellBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </span>
+                      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', fontWeight: 700 }}>AXN</span>
                     </div>
-                  ))}
+                  </div>
+                  <button
+                    onClick={() => claimWellMutation.mutate()}
+                    disabled={claimWellMutation.isPending || wellBalance <= 0}
+                    style={{
+                      flexShrink: 0, height: '36px', padding: '0 12px', clipPath: CUT_SM,
+                      fontWeight: 900, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em',
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      transition: 'all 0.15s', cursor: (claimWellMutation.isPending || wellBalance <= 0) ? 'not-allowed' : 'pointer',
+                      opacity: (claimWellMutation.isPending || wellBalance <= 0) ? 0.4 : 1,
+                      ...(wellBalance > 0
+                        ? { background: 'linear-gradient(135deg,#F5C542,#d4920a)', color: '#000' }
+                        : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.25)' }),
+                    }}
+                  >
+                    {claimWellMutation.isPending
+                      ? <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" />
+                      : <><RiCoinFill style={{ width: 13, height: 13 }} /> Claim</>}
+                  </button>
                 </div>
-              )}
-            </div>
-          </div>
 
-          {/* Close button */}
-          <div className="px-4 py-3 border-t border-[#1c1c1e] flex-shrink-0">
-            <button
-              onClick={onClose}
-              className="w-full h-11 rounded-2xl font-bold text-sm text-white/40 active:scale-[0.97] transition-transform"
-              style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}
-            >
-              Close
-            </button>
+                {/* Stats grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(0,120,255,0.18)', clipPath: CUT_SM, padding: '12px', textAlign: 'center' }}>
+                    <p style={{ color: '#fff', fontWeight: 900, fontSize: '22px', fontVariantNumeric: 'tabular-nums' }}>{totalFriends}</p>
+                    <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px' }}>Friends Invited</p>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(0,120,255,0.18)', clipPath: CUT_SM, padding: '12px', textAlign: 'center' }}>
+                    <p style={{ color: '#fff', fontWeight: 900, fontSize: '22px', fontVariantNumeric: 'tabular-nums' }}>10%</p>
+                    <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px' }}>Commission Rate</p>
+                  </div>
+                </div>
+
+                {/* Invite link section */}
+                <div>
+                  <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>Your Invite Link</p>
+                  <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(0,120,255,0.15)', clipPath: CUT_SM, padding: '12px 14px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', wordBreak: 'break-all', marginBottom: '8px' }}>
+                    {referralLink || "Loading..."}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <button
+                      onClick={copyLink}
+                      disabled={!referralLink}
+                      style={{ height: '44px', clipPath: CUT_SM, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'white', fontWeight: 900, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: !referralLink ? 'not-allowed' : 'pointer', opacity: !referralLink ? 0.4 : 1, transition: 'all 0.15s' }}
+                    >
+                      <FaCopy style={{ width: 13, height: 13, color: 'rgba(255,255,255,0.5)' }} />
+                      Copy
+                    </button>
+                    <button
+                      onClick={shareLink}
+                      disabled={!referralLink || isSharing}
+                      style={{ height: '44px', clipPath: CUT_SM, background: canAffordShare(referralLink, isSharing) ? 'linear-gradient(135deg,#0847c8 0%,#1560e0 40%,#0a52d4 100%)' : 'rgba(255,255,255,0.05)', border: canAffordShare(referralLink, isSharing) ? '1px solid rgba(80,150,255,0.5)' : '1px solid rgba(255,255,255,0.08)', color: canAffordShare(referralLink, isSharing) ? '#fff' : 'rgba(255,255,255,0.3)', boxShadow: canAffordShare(referralLink, isSharing) ? '0 0 28px rgba(20,80,220,0.7),inset 0 1px 0 rgba(255,255,255,0.18)' : 'none', fontWeight: 900, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: (!referralLink || isSharing) ? 'not-allowed' : 'pointer', opacity: (!referralLink || isSharing) ? 0.4 : 1, transition: 'all 0.15s' }}
+                    >
+                      {isSharing
+                        ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
+                        : <><RiShareForwardFill style={{ width: 16, height: 16 }} /> Share</>}
+                    </button>
+                  </div>
+                </div>
+
+                {/* How it works link */}
+                <button
+                  onClick={() => setShowHowItWorks(true)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'rgba(255,255,255,0.25)', fontSize: '12px', fontWeight: 700, padding: '4px 0', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  <HelpCircle style={{ width: 13, height: 13 }} />
+                  How does it work?
+                </button>
+
+                {/* Friends list */}
+                <div>
+                  <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <RiGroupFill style={{ width: 13, height: 13 }} />
+                    Friends ({referrals.length})
+                  </p>
+
+                  {referralsLoading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+                      <Loader2 style={{ width: 18, height: 18, color: 'rgba(255,255,255,0.2)' }} className="animate-spin" />
+                    </div>
+                  ) : referrals.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                      <RiGroupFill style={{ width: 28, height: 28, color: 'rgba(255,255,255,0.08)', margin: '0 auto 10px' }} />
+                      <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '13px', fontWeight: 700 }}>No friends yet</p>
+                      <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: '11px', marginTop: '4px' }}>Share your link to fill your Well!</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {referrals.map((r, i) => (
+                        <div key={i} style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(0,120,255,0.15)', clipPath: CUT_SM, padding: '10px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                                {r.isActive
+                                  ? <CheckCircle style={{ width: 13, height: 13, color: '#4ade80', flexShrink: 0 }} />
+                                  : <XCircle style={{ width: 13, height: 13, color: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />}
+                              </div>
+                              {r.username && (
+                                <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', marginTop: '2px' }}>@{r.username}</p>
+                              )}
+                            </div>
+                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', flexShrink: 0, color: r.isActive ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)', background: r.isActive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)', clipPath: CUT_SM }}>
+                              {r.isActive ? "Active" : r.referralStatus === "pending" ? "Pending" : "Inactive"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Close button */}
+              <div style={{ padding: '10px 16px 14px', borderTop: '1px solid rgba(0,120,255,0.15)', flexShrink: 0, position: 'relative', zIndex: 1 }}>
+                <button onClick={onClose}
+                  style={{ width: '100%', height: '40px', clipPath: CUT_SM, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', transition: 'transform 0.12s' }}
+                  onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
+                  onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+                >← CLOSE</button>
+              </div>
+            </div>
           </div>
         </motion.div>
       </motion.div>
 
-      {/* How It Works Modal */}
+      {/* How It Works modal */}
       <AnimatePresence>
         {showHowItWorks && (
           <motion.div
-            className="fixed inset-0 z-[400] flex items-center justify-center px-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[400] flex items-center justify-center px-3"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowHowItWorks(false)} />
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowHowItWorks(false)} />
             <motion.div
-              className="relative w-full max-w-sm rounded-3xl overflow-hidden"
-              style={{ background: 'rgba(8,14,32,0.72)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.10)' }}
+              className="relative w-full max-w-sm"
               initial={{ scale: 0.88, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.88, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 26, stiffness: 320 }}
             >
-              <div className="px-5 pt-5 pb-4 border-b border-[#1c1c1e]">
-                <p className="text-white font-black text-sm uppercase tracking-wider">How the Well Works</p>
-              </div>
-              <div className="px-5 py-4 space-y-2.5">
-                {[
-                  { icon: <RiLinkM className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#F5C542]" />, title: "Invite friends", desc: "Share your unique invite link. Friends join via your link." },
-                  { icon: <RiShareForwardFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-white/50" />, title: "They mine & withdraw", desc: "Every time a friend withdraws AXN, 10% flows into your Well." },
-                  { icon: <RiUserFollowFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-400" />, title: "Machine level-up bonus", desc: "Earn 50 AXN each time a friend upgrades their mining machine." },
-                  { icon: <AXNIcon size={16} />, title: "Claim your Well", desc: "When your Well has AXN, claim it anytime to add to your balance." },
-                ].map((item, i) => (
-                  <div key={i} className="bg-white/[0.06] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
-                    {item.icon}
-                    <div>
-                      <p className="text-white text-xs font-bold">{item.title}</p>
-                      <p className="text-white/40 text-xs mt-0.5 leading-relaxed">{item.desc}</p>
-                    </div>
+              <div style={{ background: 'linear-gradient(135deg,rgba(0,160,255,0.75) 0%,rgba(0,80,200,0.45) 50%,rgba(0,160,255,0.75) 100%)', clipPath: CUT_LG, padding: '1.5px', boxShadow: '0 0 32px rgba(0,120,255,0.45), 0 0 64px rgba(0,80,200,0.2)' }}>
+                <div style={{ background: 'linear-gradient(180deg,rgba(5,16,44,0.99) 0%,rgba(3,9,26,0.99) 100%)', clipPath: CUT_LG, position: 'relative', overflow: 'hidden' }}>
+                  {CORNER_ACCENTS.map((s, i) => (
+                    <div key={i} className="absolute pointer-events-none"
+                      style={{ ...s, background: 'rgba(0,200,255,0.75)', zIndex: 10 }} />
+                  ))}
+                  <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid rgba(0,120,255,0.18)', position: 'relative', zIndex: 1 }}>
+                    <p style={{ color: '#fff', fontWeight: 900, fontSize: '16px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>How the Well Works</p>
                   </div>
-                ))}
-              </div>
-              <div className="px-5 pb-5">
-                <button
-                  onClick={() => setShowHowItWorks(false)}
-                  className="w-full h-11 rounded-2xl font-bold text-sm text-white/40 transition-transform active:scale-[0.97]"
-                  style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}
-                >
-                  Got it
-                </button>
+                  <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative', zIndex: 1 }}>
+                    {[
+                      { icon: <RiLinkM style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1, color: '#F5C542' }} />, title: "Invite friends", desc: "Share your unique invite link. Friends join via your link." },
+                      { icon: <RiShareForwardFill style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1, color: 'rgba(255,255,255,0.5)' }} />, title: "They mine & withdraw", desc: "Every time a friend withdraws AXN, 10% flows into your Well." },
+                      { icon: <RiUserFollowFill style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1, color: '#60a5fa' }} />, title: "Machine level-up bonus", desc: "Earn 50 AXN each time a friend upgrades their mining machine." },
+                      { icon: <AXNIcon size={15} />, title: "Claim your Well", desc: "When your Well has AXN, claim it anytime to add to your balance." },
+                    ].map((item, i) => (
+                      <div key={i} style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(0,120,255,0.15)', clipPath: CUT_SM, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        {item.icon}
+                        <div>
+                          <p style={{ color: '#fff', fontSize: '12px', fontWeight: 700 }}>{item.title}</p>
+                          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', marginTop: '2px', lineHeight: 1.4 }}>{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ padding: '4px 16px 14px', position: 'relative', zIndex: 1 }}>
+                    <button onClick={() => setShowHowItWorks(false)}
+                      style={{ width: '100%', height: '40px', clipPath: CUT_SM, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', transition: 'transform 0.12s' }}
+                      onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
+                      onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+                    >Got it</button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -334,4 +348,8 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
       </AnimatePresence>
     </AnimatePresence>
   );
+}
+
+function canAffordShare(referralLink: string, isSharing: boolean) {
+  return !!(referralLink && !isSharing);
 }

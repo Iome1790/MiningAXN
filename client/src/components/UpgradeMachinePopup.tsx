@@ -309,7 +309,7 @@ function UpgradeDetail({
       <div style={{ position:'relative', zIndex:1, padding:'20px 20px 12px' }}>
         <div style={{ display:'flex', alignItems:'flex-start', gap:'14px' }}>
 
-          {/* Icon — NO box, full-size image with glow */}
+          {/* Icon — NO box, full-size image, no glow */}
           <motion.img
             src={iconSrc} alt={title}
             initial={{ scale:0.5, opacity:0 }} animate={{ scale:1, opacity:1 }}
@@ -317,7 +317,6 @@ function UpgradeDetail({
             style={{
               width:'90px', height:'90px', flexShrink:0,
               objectFit:'contain', imageRendering:'pixelated',
-              filter:`drop-shadow(0 0 10px ${accentColor}) drop-shadow(0 0 22px ${accentColor}bb) drop-shadow(0 0 4px #fff8)`,
             }}
           />
 
