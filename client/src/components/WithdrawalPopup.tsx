@@ -10,6 +10,20 @@ import {
   AreaChart, Area, ResponsiveContainer, Tooltip, YAxis, XAxis,
 } from "recharts";
 
+const CUT_SM = 'polygon(8px 0%,calc(100% - 8px) 0%,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0% calc(100% - 8px),0% 8px)';
+const CUT_LG = 'polygon(16px 0%,calc(100% - 16px) 0%,100% 16px,100% calc(100% - 16px),calc(100% - 16px) 100%,16px 100%,0% calc(100% - 16px),0% 16px)';
+
+const CORNER_ACCENTS = [
+  { top:'2px',    left:'14px',  width:'30px', height:'1.5px' },
+  { top:'14px',   left:'2px',   width:'1.5px',height:'30px'  },
+  { top:'2px',    right:'14px', width:'30px', height:'1.5px' },
+  { top:'14px',   right:'2px',  width:'1.5px',height:'30px'  },
+  { bottom:'2px', left:'14px',  width:'30px', height:'1.5px' },
+  { bottom:'14px',left:'2px',   width:'1.5px',height:'30px'  },
+  { bottom:'2px', right:'14px', width:'30px', height:'1.5px' },
+  { bottom:'14px',right:'2px',  width:'1.5px',height:'30px'  },
+];
+
 interface WithdrawalPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -19,15 +33,12 @@ interface WithdrawalPopupProps {
 type ChartTab = "1D" | "7D" | "30D" | "90D";
 
 const TAB_DAYS: Record<ChartTab, number> = {
-  "1D": 1,
-  "7D": 7,
-  "30D": 30,
-  "90D": 90,
+  "1D": 1, "7D": 7, "30D": 30, "90D": 90,
 };
 
 interface PricePoint { t: number; p: number; }
 
-const AXN_TO_TON = 0.00001; // 100000 AXN = 1 TON
+const AXN_TO_TON = 0.00001;
 
 function formatTON(n: number): string {
   if (n < 0.001) return n.toFixed(6);
@@ -51,9 +62,9 @@ const ChartTooltip = ({ active, payload, days }: any) => {
     const val: number = payload[0].value;
     const ts: number = payload[0].payload?.t;
     return (
-      <div className="rounded-xl px-2.5 py-1.5 text-[10px] shadow-2xl" style={{ background: '#1c1c1e', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <p className="text-white font-black">{formatUSD(val)}</p>
-        {ts && <p className="text-white/40 mt-0.5">{formatTimeLabel(ts, days)}</p>}
+      <div style={{ background: '#1c1c1e', border: '1px solid rgba(0,120,255,0.2)', clipPath: CUT_SM, padding: '6px 10px' }}>
+        <p style={{ color: '#fff', fontWeight: 900, fontSize: 10 }}>{formatUSD(val)}</p>
+        {ts && <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, marginTop: 2 }}>{formatTimeLabel(ts, days)}</p>}
       </div>
     );
   }
@@ -72,14 +83,10 @@ function TonPriceChart() {
   const loadData = async (selectedTab: ChartTab) => {
     if (cacheRef.current[selectedTab]) {
       const c = cacheRef.current[selectedTab]!;
-      setData(c.data);
-      setPrice(c.price);
-      setChange(c.change);
-      setLoading(false);
-      return;
+      setData(c.data); setPrice(c.price); setChange(c.change);
+      setLoading(false); return;
     }
-    setLoading(true);
-    setError(false);
+    setLoading(true); setError(false);
     try {
       const days = TAB_DAYS[selectedTab];
       const url = `https://api.coingecko.com/api/v3/coins/the-open-network/market_chart?vs_currency=usd&days=${days}`;
@@ -94,13 +101,10 @@ function TonPriceChart() {
       const pct = first ? ((last - first) / first) * 100 : 0;
       const entry = { data: points, price: last, change: pct };
       cacheRef.current[selectedTab] = entry;
-      setData(points);
-      setPrice(last);
-      setChange(pct);
+      setData(points); setPrice(last); setChange(pct);
       setLoading(false);
     } catch {
-      setError(true);
-      setLoading(false);
+      setError(true); setLoading(false);
     }
   };
 
@@ -111,52 +115,44 @@ function TonPriceChart() {
   const lineColor = isUp ? "#22c55e" : "#ef4444";
 
   return (
-    <div className="space-y-2">
-      {/* Price Header */}
-      <div className="flex items-center justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           {loading ? (
-            <div className="h-5 w-20 bg-white/5 rounded animate-pulse" />
+            <div style={{ height: 20, width: 80, background: 'rgba(255,255,255,0.05)', borderRadius: 4 }} />
           ) : error ? (
-            <span className="text-white/30 text-sm">—</span>
+            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>—</span>
           ) : (
-            <div className="flex items-baseline gap-2">
-              <span className="text-white font-black text-lg tabular-nums">{price ? formatUSD(price) : "—"}</span>
-              <div className={`flex items-center gap-0.5 text-xs font-black ${isUp ? "text-green-400" : "text-red-400"}`}>
-                {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ color: '#fff', fontWeight: 900, fontSize: 16, fontVariantNumeric: 'tabular-nums' }}>{price ? formatUSD(price) : "—"}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 11, fontWeight: 900, color: isUp ? '#4ade80' : '#f87171' }}>
+                {isUp ? <TrendingUp style={{ width: 11, height: 11 }} /> : <TrendingDown style={{ width: 11, height: 11 }} />}
                 {Math.abs(change).toFixed(2)}%
               </div>
             </div>
           )}
-          <p className="text-white/30 text-[10px] mt-0.5 font-bold uppercase tracking-wide">TON / USD</p>
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, marginTop: 2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>TON / USD</p>
         </div>
         {/* Tab switcher */}
-        <div className="flex gap-1 rounded-xl p-1" style={{ background: '#141414' }}>
+        <div style={{ display: 'flex', gap: 2, background: 'rgba(0,0,0,0.5)', borderRadius: 10, padding: '3px' }}>
           {(["1D","7D","30D","90D"] as ChartTab[]).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className="px-2.5 py-1 rounded-lg text-[10px] font-black transition-all"
-              style={tab === t
-                ? { background: '#1c1c1e', color: '#F5C542' }
-                : { color: 'rgba(255,255,255,0.3)' }
-              }
-            >
-              {t}
-            </button>
+            <button key={t} onClick={() => setTab(t)}
+              style={{ padding: '4px 8px', borderRadius: 7, fontSize: 10, fontWeight: 900, cursor: 'pointer', border: 'none', transition: 'all 0.15s',
+                background: tab === t ? 'rgba(0,120,255,0.25)' : 'transparent',
+                color: tab === t ? '#60a5fa' : 'rgba(255,255,255,0.3)',
+              }}
+            >{t}</button>
           ))}
         </div>
       </div>
-
-      {/* Chart */}
-      <div style={{ height: 100 }}>
+      <div style={{ height: 90 }}>
         {loading ? (
-          <div className="h-full rounded-xl bg-white/[0.02] animate-pulse flex items-center justify-center">
-            <Loader2 className="w-4 h-4 text-white/20 animate-spin" />
+          <div style={{ height: '100%', background: 'rgba(255,255,255,0.02)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Loader2 style={{ width: 16, height: 16, color: 'rgba(255,255,255,0.2)' }} className="animate-spin" />
           </div>
         ) : error ? (
-          <div className="h-full rounded-xl flex items-center justify-center">
-            <p className="text-white/20 text-xs">Chart unavailable</p>
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>Chart unavailable</p>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -170,15 +166,7 @@ function TonPriceChart() {
               <YAxis domain={["auto", "auto"]} hide />
               <XAxis dataKey="t" hide />
               <Tooltip content={<ChartTooltip days={TAB_DAYS[tab]} />} />
-              <Area
-                type="monotone"
-                dataKey="p"
-                stroke={lineColor}
-                strokeWidth={1.5}
-                fill={`url(#${gradId})`}
-                dot={false}
-                activeDot={{ r: 3, fill: lineColor }}
-              />
+              <Area type="monotone" dataKey="p" stroke={lineColor} strokeWidth={1.5} fill={`url(#${gradId})`} dot={false} activeDot={{ r: 3, fill: lineColor }} />
             </AreaChart>
           </ResponsiveContainer>
         )}
@@ -205,11 +193,11 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
   });
 
   const satBalance = Math.floor(parseFloat(user?.balance || "0"));
-
   const axnNum = parseFloat(axnAmount) || 0;
   const tonReceive = axnNum * AXN_TO_TON;
-  const buttonLabel = axnNum > 0 && cwalletId.trim()
-    ? `Trade ${axnNum.toLocaleString()} AXN for ${formatTON(tonReceive)} TON`
+  const hasInput = axnNum > 0 && cwalletId.trim();
+  const buttonLabel = hasInput
+    ? `Trade ${axnNum.toLocaleString()} AXN → ${formatTON(tonReceive)} TON`
     : "Trade AXN for TON";
 
   const tradeMutation = useMutation({
@@ -271,131 +259,135 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[200] flex items-end justify-center"
+          className="fixed inset-0 z-[200] flex items-center justify-center px-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => onOpenChange(false)}
-          />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
 
           <motion.div
-            className="relative w-full max-w-sm rounded-t-3xl overflow-hidden popup-glow-open flex flex-col"
-            style={{
-              background: 'rgba(8,14,32,0.97)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              borderBottom: 'none',
-              maxHeight: '92vh',
-            }}
-            initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0 }}
-            transition={{ type: "spring", damping: 28, stiffness: 300 }}
+            className="relative w-full max-w-sm"
+            style={{ maxHeight: '88vh' }}
+            initial={{ scale: 0.88, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.88, opacity: 0, y: 20 }}
+            transition={{ type: "spring", damping: 26, stiffness: 320 }}
           >
-            {/* Drag handle */}
-            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-              <div className="w-10 h-1 rounded-full bg-white/20" />
-            </div>
+            {/* Outer border — cut corners, electric blue glow */}
+            <div style={{
+              background: 'linear-gradient(135deg,rgba(0,160,255,0.75) 0%,rgba(0,80,200,0.45) 50%,rgba(0,160,255,0.75) 100%)',
+              clipPath: CUT_LG, padding: '1.5px',
+              boxShadow: '0 0 32px rgba(0,120,255,0.45), 0 0 64px rgba(0,80,200,0.2)',
+            }}>
+              <div style={{
+                background: 'linear-gradient(180deg,rgba(5,16,44,0.99) 0%,rgba(3,9,26,0.99) 100%)',
+                clipPath: CUT_LG, position: 'relative', overflow: 'hidden',
+                display: 'flex', flexDirection: 'column', maxHeight: 'calc(88vh - 3px)',
+              }}>
+                {/* Corner accent lines */}
+                {CORNER_ACCENTS.map((s, i) => (
+                  <div key={i} className="absolute pointer-events-none"
+                    style={{ ...s, background: 'rgba(0,200,255,0.75)', zIndex: 10 }} />
+                ))}
 
-            {/* Header */}
-            <div className="flex items-center gap-3 px-5 pt-2 pb-4 border-b border-white/[0.06] flex-shrink-0">
-              <RiExchangeFill style={{ width: 22, height: 22, color: "#facc15", flexShrink: 0 }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-black text-sm uppercase tracking-wider">Trade AXN for TON</p>
-                <p className="text-white/35 text-[11px] mt-0.5">100,000 AXN = 1 TON</p>
-              </div>
-            </div>
-
-            <div className="px-5 py-4 space-y-3 overflow-y-auto flex-1" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
-              {/* TON Price Chart */}
-              <div className="rounded-2xl px-4 py-3" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <TonPriceChart />
-              </div>
-
-              {/* Balance */}
-              <div className="rounded-2xl px-4 py-3 flex justify-between items-center" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <span className="text-white/40 text-xs font-semibold">Available Balance</span>
-                <div className="flex items-center gap-1.5">
-                  <AXNIcon size={16} />
-                  <span className="text-white font-black text-sm tabular-nums">
-                    {satBalance.toLocaleString()}
-                  </span>
-                  <span className="text-white/40 text-xs font-bold uppercase tracking-wide">AXN</span>
-                </div>
-              </div>
-
-              {/* AXN Amount Input */}
-              <div className="space-y-1.5">
-                <label className="text-white/40 text-[10px] font-black uppercase tracking-widest">AXN Amount</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={axnAmount}
-                    onChange={(e) => setAxnAmount(e.target.value)}
-                    className="w-full h-11 rounded-xl px-4 pr-20 text-white font-bold text-sm outline-none transition-all"
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                    }}
-                  />
-                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                    <button
-                      onClick={() => setAxnAmount(satBalance.toString())}
-                      className="h-7 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
-                      style={{ background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', color: '#fff' }}
-                    >
-                      MAX
-                    </button>
+                {/* Header */}
+                <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid rgba(0,120,255,0.18)', flexShrink: 0, position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <RiExchangeFill style={{ width: 22, height: 22, color: '#facc15', flexShrink: 0 }} />
+                  <div>
+                    <p style={{ color: '#fff', fontWeight: 900, fontSize: '16px', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>Trade AXN for TON</p>
+                    <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginTop: '3px' }}>100,000 AXN = 1 TON</p>
                   </div>
                 </div>
+
+                {/* Scrollable body */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative', zIndex: 1 }}>
+
+                  {/* TON Price Chart */}
+                  <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(0,120,255,0.18)', clipPath: CUT_SM, padding: '12px 14px' }}>
+                    <TonPriceChart />
+                  </div>
+
+                  {/* Available balance */}
+                  <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(0,120,255,0.15)', clipPath: CUT_SM, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontWeight: 600 }}>Available Balance</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <AXNIcon size={14} />
+                      <span style={{ color: '#fff', fontWeight: 900, fontSize: '13px', fontVariantNumeric: 'tabular-nums' }}>{satBalance.toLocaleString()}</span>
+                      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>AXN</span>
+                    </div>
+                  </div>
+
+                  {/* AXN Amount input */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}>AXN Amount</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={axnAmount}
+                        onChange={(e) => setAxnAmount(e.target.value)}
+                        style={{
+                          width: '100%', height: '44px', clipPath: CUT_SM,
+                          background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,120,255,0.2)',
+                          color: '#fff', fontWeight: 700, fontSize: '14px',
+                          padding: '0 70px 0 14px', outline: 'none', boxSizing: 'border-box',
+                        }}
+                      />
+                      <button
+                        onClick={() => setAxnAmount(satBalance.toString())}
+                        style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', height: '28px', padding: '0 10px', clipPath: CUT_SM, background: 'linear-gradient(135deg,#0847c8,#0a52d4)', color: '#fff', fontWeight: 900, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', border: 'none' }}
+                      >MAX</button>
+                    </div>
+                  </div>
+
+                  {/* Cwallet ID input */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Cwallet ID</label>
+                    <input
+                      type="text"
+                      placeholder="Enter your Cwallet ID"
+                      value={cwalletId}
+                      onChange={(e) => setCwalletId(e.target.value)}
+                      style={{
+                        width: '100%', height: '44px', clipPath: CUT_SM,
+                        background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,120,255,0.2)',
+                        color: '#fff', fontWeight: 500, fontSize: '13px',
+                        padding: '0 14px', outline: 'none', boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+
+                  {/* Trade button */}
+                  <button
+                    onClick={handleTrade}
+                    disabled={tradeMutation.isPending}
+                    style={{
+                      width: '100%', height: '46px', clipPath: CUT_SM,
+                      background: 'linear-gradient(135deg,#0847c8 0%,#1560e0 40%,#0a52d4 100%)',
+                      border: '1px solid rgba(80,150,255,0.5)',
+                      color: '#fff', fontWeight: 900, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.08em',
+                      boxShadow: '0 0 28px rgba(20,80,220,0.7),inset 0 1px 0 rgba(255,255,255,0.18)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      cursor: tradeMutation.isPending ? 'not-allowed' : 'pointer',
+                      opacity: tradeMutation.isPending ? 0.6 : 1,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {tradeMutation.isPending ? (
+                      <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
+                    ) : buttonLabel}
+                  </button>
+
+                  {/* Close button */}
+                  <button
+                    onClick={() => onOpenChange(false)}
+                    style={{ width: '100%', height: '40px', clipPath: CUT_SM, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', transition: 'transform 0.12s', marginBottom: '2px' }}
+                    onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
+                    onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+                  >← CLOSE</button>
+                </div>
               </div>
-
-              {/* Cwallet ID Input */}
-              <div className="space-y-1.5">
-                <label className="text-white/40 text-[10px] font-black uppercase tracking-widest block">Cwallet ID</label>
-                <input
-                  type="text"
-                  placeholder="Enter your Cwallet ID"
-                  value={cwalletId}
-                  onChange={(e) => setCwalletId(e.target.value)}
-                  className="w-full h-11 rounded-xl px-4 text-white font-medium text-sm outline-none transition-all"
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                  }}
-                />
-              </div>
-
-              {/* Trade Button */}
-              <button
-                onClick={handleTrade}
-                disabled={tradeMutation.isPending}
-                className="w-full h-12 rounded-2xl font-black text-sm uppercase tracking-wider transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                style={{
-                  background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                  color: '#fff',
-                  boxShadow: '0 0 20px rgba(59,130,246,0.25)',
-                }}
-              >
-                {tradeMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  buttonLabel
-                )}
-              </button>
-
-              <button
-                onClick={() => onOpenChange(false)}
-                className="w-full h-11 rounded-2xl font-bold text-sm text-white/40 active:scale-[0.97] transition-transform"
-                style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}
-              >
-                Close
-              </button>
             </div>
           </motion.div>
         </motion.div>

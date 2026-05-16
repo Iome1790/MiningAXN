@@ -713,18 +713,13 @@ export default function MiningMachinePanel({ onWalletOpen, onInviteOpen }: Minin
           </div>
 
           {/* CENTER — Machine image */}
-          <div className="relative flex items-center justify-center" style={{ flex: "1 1 0", minWidth: 0, minHeight: 0 }}>
-            <motion.div
-              animate={{ opacity: [0.3, 0.85, 0.3], scale: [0.88, 1.1, 0.88] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              style={{ position: "absolute", width: "80%", height: "45%", top: "10%", borderRadius: "50%", background: "radial-gradient(circle at 50% 40%, rgba(59,130,246,0.55) 0%, rgba(59,130,246,0.15) 55%, transparent 80%)", filter: "blur(22px)", pointerEvents: "none" }}
-            />
+          <div className="relative flex items-end justify-center" style={{ flex: "1 1 0", minWidth: 0, minHeight: 0 }}>
             <motion.img
               src="/axn-character.png"
               alt="Mining Machine"
               loading="eager"
               fetchPriority="high"
-              style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", position: "relative", filter: "drop-shadow(0 0 32px rgba(59,130,246,0.8))", transform: "scale(1.18)", transformOrigin: "center center" }}
+              style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center bottom", position: "relative", filter: "drop-shadow(0 0 28px rgba(59,130,246,0.9)) drop-shadow(0 0 8px rgba(0,180,255,0.6))", transform: "scale(1.18)", transformOrigin: "center bottom" }}
               animate={{ y: 0 }}
               transition={{ duration: 0.3 }}
             />
@@ -773,7 +768,22 @@ export default function MiningMachinePanel({ onWalletOpen, onInviteOpen }: Minin
         </div>
 
         {/* ── BANNER CAROUSEL ── */}
-        <BannerCarousel onInviteOpen={onInviteOpen} />
+        <div
+          ref={(el) => {
+            if (!el) return;
+            const update = () => {
+              const rect = el.getBoundingClientRect();
+              const fromBottom = window.innerHeight - rect.bottom;
+              document.documentElement.style.setProperty('--char-ground-bottom', `${Math.max(0, fromBottom)}px`);
+            };
+            update();
+            const ro = new ResizeObserver(update);
+            ro.observe(el);
+            window.addEventListener('resize', update);
+          }}
+        >
+          <BannerCarousel onInviteOpen={onInviteOpen} />
+        </div>
 
       </div>
 
