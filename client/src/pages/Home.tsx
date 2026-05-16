@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useContext } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AppReadyContext } from "@/App";
 import React from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdFlow } from "@/hooks/useAdFlow";
@@ -73,6 +74,16 @@ export default function Home() {
   const { t, tText } = useLanguage();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const signalAppReady = useContext(AppReadyContext);
+  const readySignaled = useRef(false);
+
+  // Signal loading screen to dismiss once user data is available
+  useEffect(() => {
+    if (!readySignaled.current && !isLoading && user) {
+      readySignaled.current = true;
+      signalAppReady();
+    }
+  }, [isLoading, user, signalAppReady]);
 
   const [promoPopupOpen, setPromoPopupOpen] = useState(false);
   const [withdrawPopupOpen, setWithdrawPopupOpen] = useState(false);
