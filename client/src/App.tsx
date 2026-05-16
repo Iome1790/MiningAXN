@@ -179,6 +179,73 @@ function AppContent() {
     };
   }, [popupAdsEnabled, popupAdInterval]);
 
+  // ── Global long-press / context-menu protection ──
+  useEffect(() => {
+    const PROTECTED_TAGS = new Set(['INPUT', 'TEXTAREA']);
+
+    // Block contextmenu everywhere except inside inputs
+    const blockCtx = (e: MouseEvent | Event) => {
+      let t = e.target as HTMLElement | null;
+      while (t) {
+        if (PROTECTED_TAGS.has(t.tagName) || (t as HTMLElement).isContentEditable) return;
+        t = t.parentElement;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    // Block dragstart on images and links
+    const blockDrag = (e: DragEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'IMG' || tag === 'A') e.preventDefault();
+    };
+
+    // Prevent long-press save/open on images via touchend
+    // BUT only if the image is NOT inside a button/link (so nav taps still work)
+    const blockImgTouch = (e: TouchEvent) => {
+      if ((e.target as HTMLElement).tagName !== 'IMG') return;
+      let p = (e.target as HTMLElement).parentElement;
+      while (p) {
+        const tag = p.tagName;
+        if (tag === 'BUTTON' || tag === 'A' || p.getAttribute('role') === 'button') return;
+        p = p.parentElement;
+      }
+      e.preventDefault();
+    };
+
+    // Apply draggable=false + contextmenu block to every img in DOM
+    const lockImage = (img: HTMLElement) => {
+      img.setAttribute('draggable', 'false');
+      (img as any).oncontextmenu = (e: Event) => { e.preventDefault(); return false; };
+      (img as any).onselectstart = (e: Event) => { e.preventDefault(); return false; };
+    };
+
+    // Process all current images
+    document.querySelectorAll<HTMLElement>('img').forEach(lockImage);
+
+    // Watch for new images added to DOM
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(m => {
+        m.addedNodes.forEach(node => {
+          if ((node as HTMLElement).tagName === 'IMG') lockImage(node as HTMLElement);
+          (node as HTMLElement).querySelectorAll?.('img').forEach(lockImage);
+        });
+      });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    document.addEventListener('contextmenu', blockCtx, true);
+    document.addEventListener('dragstart', blockDrag, true);
+    document.addEventListener('touchend', blockImgTouch, { passive: false });
+
+    return () => {
+      document.removeEventListener('contextmenu', blockCtx, true);
+      document.removeEventListener('dragstart', blockDrag, true);
+      document.removeEventListener('touchend', blockImgTouch);
+      observer.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     const checkSeasonStatus = () => {
       fetch("/api/app-settings")
