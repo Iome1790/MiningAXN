@@ -18,7 +18,7 @@ import {
 import { db } from "./db";
 import { eq, sql, desc, and, gte } from "drizzle-orm";
 import crypto from "crypto";
-import { sendTelegramMessage, sendUserTelegramNotification, sendWelcomeMessage, handleTelegramMessage, setupTelegramWebhook, verifyChannelMembership, sendSharePhotoToChat, getBotUsername } from "./telegram";
+import { sendTelegramMessage, sendUserTelegramNotification, sendWelcomeMessage, handleTelegramMessage, setupTelegramWebhook, verifyChannelMembership, sendSharePhotoToChat, getBotUsername, sendMissionResetNotification } from "./telegram";
 import { authenticateTelegram, requireAuth, optionalAuth } from "./auth";
 import { isAuthenticated } from "./replitAuth";
 import { config, getChannelConfig } from "./config";
@@ -7956,6 +7956,273 @@ ${walletAddress}
     } catch (error) {
       console.error("Contest submission error:", error);
       return res.status(500).json({ message: "Failed to submit. Please try again." });
+    }
+  });
+
+  // ==================== NEW DAILY MISSIONS SYSTEM ====================
+
+  function isSameUTCDay(a: Date, b: Date): boolean {
+    return a.getUTCFullYear() === b.getUTCFullYear() &&
+      a.getUTCMonth() === b.getUTCMonth() &&
+      a.getUTCDate() === b.getUTCDate();
+  }
+
+  async function resetMissionsIfNewDay(userId: string): Promise<void> {
+    const user = await storage.getUser(userId);
+    if (!user) return;
+    const now = new Date();
+    const lastDate = (user as any).missionLastDate ? new Date((user as any).missionLastDate) : null;
+    if (!lastDate || !isSameUTCDay(lastDate, now)) {
+      await db.execute(sql`
+        UPDATE users SET
+          mission_last_date = NOW(),
+          mission_login_claimed = FALSE,
+          mission_announcement_claimed = FALSE,
+          mission_watch_ad_claimed = FALSE,
+          mission_share_app_claimed = FALSE,
+          mission_app_time_claimed = FALSE,
+          mission_community_claimed = FALSE,
+          mission_bonus_claimed = FALSE,
+          mission_app_time_seconds = 0,
+          mission_invite_claimed = FALSE
+        WHERE id = ${userId}
+      `);
+      // Send reset notification (only if user had missions before, i.e. lastDate exists)
+      if (lastDate) {
+        const telegramId = (user as any).telegramId;
+        const firstName = (user as any).firstName || '';
+        if (telegramId) {
+          sendMissionResetNotification(telegramId, firstName).catch(() => {});
+        }
+      }
+    }
+  }
+
+  // GET /api/daily-missions/status
+  app.get('/api/daily-missions/status', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      await resetMissionsIfNewDay(userId);
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+
+      // Check if new referral today
+      const referrals = await db.execute(sql`
+        SELECT COUNT(*) as cnt FROM referrals
+        WHERE referrer_id = ${userId}
+        AND DATE(created_at) = CURRENT_DATE
+      `);
+      const hasNewReferralToday = parseInt((referrals.rows[0] as any)?.cnt || '0') > 0;
+
+      const u = user as any;
+      const appTimeSecs = u.missionAppTimeSeconds ?? 0;
+      const allCoreDone =
+        u.missionLoginClaimed &&
+        u.missionAnnouncementClaimed &&
+        u.missionWatchAdClaimed &&
+        u.missionShareAppClaimed &&
+        u.missionAppTimeClaimed &&
+        u.missionCommunityClaimed &&
+        (hasNewReferralToday ? u.missionInviteClaimed : true);
+
+      const now = new Date();
+      const nextReset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+      const secsUntilReset = Math.max(0, Math.floor((nextReset.getTime() - now.getTime()) / 1000));
+
+      res.json({
+        success: true,
+        secsUntilReset,
+        appTimeSeconds: appTimeSecs,
+        hasNewReferralToday,
+        login: { claimed: !!u.missionLoginClaimed },
+        announcement: { claimed: !!u.missionAnnouncementClaimed },
+        watchAd: { claimed: !!u.missionWatchAdClaimed },
+        shareApp: { claimed: !!u.missionShareAppClaimed },
+        appTime: { claimed: !!u.missionAppTimeClaimed, seconds: appTimeSecs },
+        community: { claimed: !!u.missionCommunityClaimed },
+        invite: { claimed: !!u.missionInviteClaimed, available: hasNewReferralToday },
+        bonus: { claimed: !!u.missionBonusClaimed, available: allCoreDone },
+      });
+    } catch (err) {
+      console.error('daily-missions/status error:', err);
+      res.status(500).json({ error: 'Failed to get mission status' });
+    }
+  });
+
+  // POST /api/daily-missions/claim/login
+  app.post('/api/daily-missions/claim/login', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      await resetMissionsIfNewDay(userId);
+      const user = await storage.getUser(userId) as any;
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.missionLoginClaimed) return res.status(400).json({ error: 'Already claimed today' });
+      const reward = 2;
+      await db.execute(sql`UPDATE users SET mission_login_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to claim' });
+    }
+  });
+
+  // POST /api/daily-missions/claim/announcement
+  app.post('/api/daily-missions/claim/announcement', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      await resetMissionsIfNewDay(userId);
+      const user = await storage.getUser(userId) as any;
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.missionAnnouncementClaimed) return res.status(400).json({ error: 'Already claimed today' });
+      const reward = 1;
+      await db.execute(sql`UPDATE users SET mission_announcement_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to claim' });
+    }
+  });
+
+  // POST /api/daily-missions/claim/watch-ad
+  app.post('/api/daily-missions/claim/watch-ad', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      await resetMissionsIfNewDay(userId);
+      const user = await storage.getUser(userId) as any;
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.missionWatchAdClaimed) return res.status(400).json({ error: 'Already claimed today' });
+      const reward = 3;
+      await db.execute(sql`UPDATE users SET mission_watch_ad_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to claim' });
+    }
+  });
+
+  // POST /api/daily-missions/claim/share-app
+  app.post('/api/daily-missions/claim/share-app', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      await resetMissionsIfNewDay(userId);
+      const user = await storage.getUser(userId) as any;
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.missionShareAppClaimed) return res.status(400).json({ error: 'Already claimed today' });
+      const reward = 5;
+      await db.execute(sql`UPDATE users SET mission_share_app_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to claim' });
+    }
+  });
+
+  // POST /api/daily-missions/track-app-time  { seconds: number }
+  app.post('/api/daily-missions/track-app-time', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      await resetMissionsIfNewDay(userId);
+      const { seconds } = req.body;
+      if (!seconds || typeof seconds !== 'number' || seconds <= 0 || seconds > 120) {
+        return res.status(400).json({ error: 'Invalid seconds value' });
+      }
+      await db.execute(sql`
+        UPDATE users SET mission_app_time_seconds = LEAST(mission_app_time_seconds + ${Math.floor(seconds)}, 600)
+        WHERE id = ${userId}
+      `);
+      const user = await storage.getUser(userId) as any;
+      res.json({ success: true, totalSeconds: user.missionAppTimeSeconds ?? 0 });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to track time' });
+    }
+  });
+
+  // POST /api/daily-missions/claim/app-time
+  app.post('/api/daily-missions/claim/app-time', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      await resetMissionsIfNewDay(userId);
+      const user = await storage.getUser(userId) as any;
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.missionAppTimeClaimed) return res.status(400).json({ error: 'Already claimed today' });
+      if ((user.missionAppTimeSeconds ?? 0) < 600) return res.status(400).json({ error: 'Not enough app time yet' });
+      const reward = 6;
+      await db.execute(sql`UPDATE users SET mission_app_time_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to claim' });
+    }
+  });
+
+  // POST /api/daily-missions/claim/community
+  app.post('/api/daily-missions/claim/community', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      await resetMissionsIfNewDay(userId);
+      const user = await storage.getUser(userId) as any;
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.missionCommunityClaimed) return res.status(400).json({ error: 'Already claimed today' });
+      const reward = 2;
+      await db.execute(sql`UPDATE users SET mission_community_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to claim' });
+    }
+  });
+
+  // POST /api/daily-missions/claim/invite
+  app.post('/api/daily-missions/claim/invite', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      await resetMissionsIfNewDay(userId);
+      const user = await storage.getUser(userId) as any;
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.missionInviteClaimed) return res.status(400).json({ error: 'Already claimed today' });
+      const referrals = await db.execute(sql`
+        SELECT COUNT(*) as cnt FROM referrals WHERE referrer_id = ${userId} AND DATE(created_at) = CURRENT_DATE
+      `);
+      const hasNew = parseInt((referrals.rows[0] as any)?.cnt || '0') > 0;
+      if (!hasNew) return res.status(400).json({ error: 'No new referral today' });
+      const reward = 50;
+      await db.execute(sql`UPDATE users SET mission_invite_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to claim' });
+    }
+  });
+
+  // POST /api/daily-missions/claim/bonus
+  app.post('/api/daily-missions/claim/bonus', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      await resetMissionsIfNewDay(userId);
+      const user = await storage.getUser(userId) as any;
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.missionBonusClaimed) return res.status(400).json({ error: 'Already claimed today' });
+      const referrals = await db.execute(sql`
+        SELECT COUNT(*) as cnt FROM referrals WHERE referrer_id = ${userId} AND DATE(created_at) = CURRENT_DATE
+      `);
+      const hasNewReferral = parseInt((referrals.rows[0] as any)?.cnt || '0') > 0;
+      const allCoreDone =
+        user.missionLoginClaimed &&
+        user.missionAnnouncementClaimed &&
+        user.missionWatchAdClaimed &&
+        user.missionShareAppClaimed &&
+        user.missionAppTimeClaimed &&
+        user.missionCommunityClaimed &&
+        (hasNewReferral ? user.missionInviteClaimed : true);
+      if (!allCoreDone) return res.status(400).json({ error: 'Complete all daily missions first' });
+      const reward = 10;
+      await db.execute(sql`UPDATE users SET mission_bonus_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} AXN bonus claimed!` });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to claim bonus' });
     }
   });
 

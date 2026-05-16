@@ -655,6 +655,19 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_mining_sessions_user_id ON mining_sessions(user_id)`);
     console.log('✅ [MIGRATION] mining_sessions table ensured');
 
+    // Mission system columns
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_last_date TIMESTAMP`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_login_claimed BOOLEAN DEFAULT FALSE`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_announcement_claimed BOOLEAN DEFAULT FALSE`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_watch_ad_claimed BOOLEAN DEFAULT FALSE`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_share_app_claimed BOOLEAN DEFAULT FALSE`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_app_time_claimed BOOLEAN DEFAULT FALSE`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_community_claimed BOOLEAN DEFAULT FALSE`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_bonus_claimed BOOLEAN DEFAULT FALSE`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_app_time_seconds INTEGER DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_invite_claimed BOOLEAN DEFAULT FALSE`);
+    console.log('✅ [MIGRATION] Mission system columns ensured');
+
     console.log('✅ [MIGRATION] All tables and indexes created successfully');
     
   } catch (error) {

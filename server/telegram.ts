@@ -386,6 +386,32 @@ export async function sendTelegramMessage(message: string): Promise<boolean> {
 }
 
 
+export async function sendMissionResetNotification(telegramId: string, firstName: string): Promise<void> {
+  if (!TELEGRAM_BOT_TOKEN || !telegramId) return;
+  try {
+    const name = firstName ? firstName : 'Friend';
+    const botUsername = await getBotUsername();
+    const appUrl = `https://t.me/${botUsername}/app`;
+    const text = `🎯 <b>Good news, ${name}!</b>\n\nYour daily tasks have been reset. Come and claim your rewards now!`;
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: telegramId,
+        text,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '🚀 Claim Rewards', web_app: { url: appUrl } }
+          ]]
+        }
+      })
+    });
+  } catch (e) {
+    // Silent fail — never break app flow for notifications
+  }
+}
+
 export async function sendUserTelegramNotification(userId: string, message: string, replyMarkup?: any, parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML'): Promise<boolean> {
   if (!TELEGRAM_BOT_TOKEN) {
     console.error('❌ Telegram bot token not configured');
