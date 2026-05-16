@@ -13,6 +13,7 @@ import { AXNIcon } from "@/components/AXNIcon";
 import RepairPopup from "@/components/RepairPopup";
 import AntivirusPopup from "@/components/AntivirusPopup";
 import UpgradeMachinePopup from "@/components/UpgradeMachinePopup";
+import MissionsPopup from "@/components/MissionsPopup";
 import EnergyPopup from "@/components/EnergyPopup";
 
 const fanImg = "/fan-image.png";
@@ -173,45 +174,67 @@ interface MiningMachinePanelProps {
 }
 
 interface BottomTabNavProps {
+  onMissionsOpen?: () => void;
   onFriendsOpen?: () => void;
   onWalletOpen?: () => void;
   onProfileOpen?: () => void;
 }
 
-function BottomTabNav({ onFriendsOpen, onWalletOpen, onProfileOpen }: BottomTabNavProps) {
+function BottomTabNav({ onMissionsOpen, onFriendsOpen, onWalletOpen, onProfileOpen }: BottomTabNavProps) {
   const [location, setLocation] = useLocation();
 
   const tabs = [
-    { label: "Home",     icon: Home,   action: () => setLocation("/"),  isActive: () => location === "/" },
-    { label: "Missions", icon: Target, action: () => {},                isActive: () => false },
-    { label: "Friends",  icon: Users,  action: () => onFriendsOpen?.(), isActive: () => false },
-    { label: "Wallet",   icon: Wallet, action: () => onWalletOpen?.(),  isActive: () => false },
-    { label: "Profile",  icon: User,   action: () => onProfileOpen?.(), isActive: () => false },
+    { label: "Mission", img: "/nav-mission.png", action: () => onMissionsOpen?.(), isActive: () => false },
+    { label: "Home",    img: "/nav-home.png",    action: () => setLocation("/"),   isActive: () => location === "/" },
+    { label: "Friends", img: "/nav-friends.png", action: () => onFriendsOpen?.(),  isActive: () => false },
+    { label: "Wallet",  img: "/nav-wallet.png",  action: () => onWalletOpen?.(),   isActive: () => false },
   ];
 
   return (
-    <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", height: 60, paddingBottom: "max(calc(env(safe-area-inset-bottom) + 4px), 8px)" }}>
-      {tabs.map(({ label, icon: Icon, action, isActive }) => {
+    <div style={{
+      display: "flex",
+      justifyContent: "space-around",
+      alignItems: "center",
+      height: 76,
+      paddingBottom: "max(calc(env(safe-area-inset-bottom) + 6px), 10px)",
+      background: "linear-gradient(180deg, rgba(2,6,18,0.0) 0%, rgba(2,6,18,0.82) 30%, rgba(2,6,18,0.97) 100%)",
+      borderTop: "1px solid rgba(59,130,246,0.12)",
+      backdropFilter: "blur(12px)",
+    }}>
+      {tabs.map(({ label, img, action, isActive }) => {
         const active = isActive();
         return (
           <button
             key={label}
             onClick={action}
-            className="flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-transform"
-            style={{ flex: 1, height: "100%" }}
+            className="flex flex-col items-center justify-center gap-1 active:scale-90 transition-transform"
+            style={{ flex: 1, height: "100%", paddingTop: 4 }}
           >
-            <Icon
-              style={{
-                width: 26, height: 26,
-                color: active ? "#3B82F6" : "rgba(255,255,255,0.45)",
-                filter: active ? "drop-shadow(0 0 8px rgba(59,130,246,0.8))" : "none",
-                transition: "color 0.18s, filter 0.18s",
-              }}
-            />
+            <div style={{
+              width: 40, height: 40,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: "50%",
+              background: active ? "rgba(59,130,246,0.15)" : "transparent",
+              boxShadow: active ? "0 0 14px rgba(59,130,246,0.35)" : "none",
+              transition: "background 0.2s, box-shadow 0.2s",
+            }}>
+              <img
+                src={img}
+                alt={label}
+                style={{
+                  width: 34, height: 34,
+                  objectFit: "contain",
+                  filter: active
+                    ? "drop-shadow(0 0 6px rgba(59,130,246,0.9)) brightness(1.15)"
+                    : "brightness(0.65) saturate(0.7)",
+                  transition: "filter 0.2s",
+                }}
+              />
+            </div>
             <span style={{
-              fontSize: 11, fontWeight: active ? 700 : 500,
-              color: active ? "#3B82F6" : "rgba(255,255,255,0.4)",
-              letterSpacing: 0.2, lineHeight: 1,
+              fontSize: 10, fontWeight: active ? 700 : 500,
+              color: active ? "#60a5fa" : "rgba(255,255,255,0.38)",
+              letterSpacing: 0.3, lineHeight: 1,
               transition: "color 0.18s",
             }}>{label}</span>
           </button>
@@ -520,6 +543,7 @@ export default function MiningMachinePanel({ onWalletOpen, onInviteOpen, onProfi
   const [repairOpen, setRepairOpen] = useState(false);
   const [antivirusOpen, setAntivirusOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [missionOpen, setMissionOpen] = useState(false);
   const [upgradeType, setUpgradeType] = useState<null | "mining" | "cpu" | "capacity">(null);
   const [energyOpen, setEnergyOpen] = useState(false);
   const [adRunning, setAdRunning] = useState(false);
@@ -890,9 +914,10 @@ export default function MiningMachinePanel({ onWalletOpen, onInviteOpen, onProfi
 
       {/* ── FIXED BOTTOM — only tab nav ── */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, background: "rgba(6,6,10,0.97)", borderTop: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)" }}>
-        <BottomTabNav onFriendsOpen={onInviteOpen} onWalletOpen={onWalletOpen} onProfileOpen={onProfileOpen} />
+        <BottomTabNav onMissionsOpen={() => setMissionOpen(true)} onFriendsOpen={onInviteOpen} onWalletOpen={onWalletOpen} onProfileOpen={onProfileOpen} />
       </div>
 
+      {missionOpen && <MissionsPopup onClose={() => setMissionOpen(false)} />}
       {repairOpen && <RepairPopup repairCost={state.repairCost} machineHealth={state.machineHealth} balance={state.balance} onClose={() => setRepairOpen(false)} />}
       {antivirusOpen && <AntivirusPopup antivirusCost={state.antivirusCost} antivirusActive={state.antivirusActive} balance={state.balance} miningLevel={state.miningLevel} onClose={() => setAntivirusOpen(false)} />}
       {upgradeOpen && <UpgradeMachinePopup onClose={() => setUpgradeOpen(false)} />}
