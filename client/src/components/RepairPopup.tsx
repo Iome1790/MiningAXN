@@ -2,12 +2,25 @@ import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { RiTv2Fill, RiToolsFill } from "react-icons/ri";
-import { FaHourglassHalf } from "react-icons/fa";
+import { RiTv2Fill } from "react-icons/ri";
+import { FaHourglassHalf, FaHeartbeat } from "react-icons/fa";
 import { AXNIcon } from "@/components/AXNIcon";
-import { FaHeartbeat } from "react-icons/fa";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
+
+const CUT_SM = 'polygon(8px 0%,calc(100% - 8px) 0%,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0% calc(100% - 8px),0% 8px)';
+const CUT_LG = 'polygon(16px 0%,calc(100% - 16px) 0%,100% 16px,100% calc(100% - 16px),calc(100% - 16px) 100%,16px 100%,0% calc(100% - 16px),0% 16px)';
+
+const CORNER_ACCENTS = [
+  { top:'2px',    left:'14px',  width:'30px', height:'1.5px' },
+  { top:'14px',   left:'2px',   width:'1.5px',height:'30px'  },
+  { top:'2px',    right:'14px', width:'30px', height:'1.5px' },
+  { top:'14px',   right:'2px',  width:'1.5px',height:'30px'  },
+  { bottom:'2px', left:'14px',  width:'30px', height:'1.5px' },
+  { bottom:'14px',left:'2px',   width:'1.5px',height:'30px'  },
+  { bottom:'2px', right:'14px', width:'30px', height:'1.5px' },
+  { bottom:'14px',right:'2px',  width:'1.5px',height:'30px'  },
+];
 
 const COOLDOWN_KEY = "repair_free_used_at";
 const COOLDOWN_MS = 35 * 60 * 1000;
@@ -67,12 +80,7 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
 
   const repairPaidMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/axn-mining/repair").then((r) => r.json()),
-    onSuccess: (d) => {
-      showNotification(d.message, "success");
-      applyRepair(repairCost);
-      invalidate();
-      onClose();
-    },
+    onSuccess: (d) => { showNotification(d.message, "success"); applyRepair(repairCost); invalidate(); onClose(); },
     onError: (e: any) => showNotification(e.message || "Repair failed", "error"),
   });
 
@@ -82,9 +90,7 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
       showNotification(d.message, "success");
       localStorage.setItem(COOLDOWN_KEY, String(Date.now()));
       setCooldown(COOLDOWN_MS / 1000);
-      applyRepair(0);
-      invalidate();
-      onClose();
+      applyRepair(0); invalidate(); onClose();
     },
     onError: (e: any) => showNotification(e.message || "Repair failed", "error"),
   });
@@ -97,11 +103,8 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
         try { await (window as any).show_10963365(); } catch {}
       }
       repairFreeMutation.mutate();
-    } catch {
-      showNotification("Ad failed. Try again.", "error");
-    } finally {
-      setAdWatching(false);
-    }
+    } catch { showNotification("Ad failed. Try again.", "error"); }
+    finally { setAdWatching(false); }
   };
 
   const canAfford = balance >= repairCost;
@@ -111,113 +114,141 @@ export default function RepairPopup({ repairCost, machineHealth, balance, onClos
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[500] flex items-center justify-center px-4"
+        className="fixed inset-0 z-[500] flex items-center justify-center px-3"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       >
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
         <motion.div
-          className="relative w-full max-w-sm rounded-2xl overflow-hidden"
-          style={{ background: 'linear-gradient(180deg, rgba(14,26,58,0.99) 0%, rgba(7,13,30,0.99) 100%)', border: '1.5px solid rgba(251,146,60,0.25)' }}
+          className="relative w-full max-w-sm"
           initial={{ scale: 0.88, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.88, opacity: 0, y: 20 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
         >
-          {/* Header: icon left + title right */}
-          <div className="flex items-center gap-4 px-5 pt-5 pb-4">
-            <motion.div
-              className="flex items-center justify-center flex-shrink-0"
-              initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.06 }}
-            >
-              <img src="/icon-repair.png" alt="Repair" style={{ width: 80, height: 108, objectFit: "contain" }} />
-            </motion.div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white font-black text-[22px] uppercase leading-none tracking-wide">REPAIR</p>
-              <p className="text-orange-400 font-black text-base leading-none mt-0.5">MACHINE</p>
-              <p className="text-white/40 text-[10px] mt-1 leading-tight">Restore machine health to 100%</p>
-              <div className="flex items-center gap-2 mt-2">
-                <FaHeartbeat style={{ color: healthColor, width: 13, height: 13 }} />
-                <span className="text-white/40 text-xs">Health:</span>
-                <span className="font-black text-sm tabular-nums" style={{ color: healthColor }}>{machineHealth}%</span>
+          {/* Outer border — cut corners, electric blue glow */}
+          <div style={{
+            background: 'linear-gradient(135deg,rgba(0,160,255,0.75) 0%,rgba(0,80,200,0.45) 50%,rgba(0,160,255,0.75) 100%)',
+            clipPath: CUT_LG, padding: '1.5px',
+            boxShadow: '0 0 32px rgba(0,120,255,0.45), 0 0 64px rgba(0,80,200,0.2)',
+          }}>
+            {/* Inner bg */}
+            <div style={{
+              background: 'linear-gradient(180deg,rgba(5,16,44,0.99) 0%,rgba(3,9,26,0.99) 100%)',
+              clipPath: CUT_LG, position: 'relative', overflow: 'hidden',
+            }}>
+              {/* Corner accent lines */}
+              {CORNER_ACCENTS.map((s, i) => (
+                <div key={i} className="absolute pointer-events-none"
+                  style={{ ...s, background: 'rgba(0,200,255,0.75)', zIndex: 10 }} />
+              ))}
+
+              {/* Warrior — top-right */}
+              <div style={{ position:'absolute', top:0, right:0, width:'55%', height:'210px', zIndex:0, pointerEvents:'none', overflow:'hidden' }}>
+                <img src="/axn-warrior-attack-nobg.png" alt="warrior"
+                  style={{
+                    position:'absolute', top:'-10%', right:'-4%',
+                    width:'115%', height:'115%',
+                    objectFit:'contain', objectPosition:'top center',
+                    filter:[
+                      'drop-shadow(0 0 8px rgba(0,220,255,0.95))',
+                      'drop-shadow(0 0 20px rgba(0,160,255,0.85))',
+                      'drop-shadow(0 0 40px rgba(0,100,220,0.7))',
+                      'drop-shadow(0 0 60px rgba(0,60,200,0.5))',
+                    ].join(' '),
+                  }}
+                />
+                <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right,rgba(5,16,44,1) 0%,rgba(5,16,44,0.55) 28%,transparent 62%)' }} />
+                <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(5,16,44,1) 0%,transparent 50%)' }} />
+              </div>
+
+              {/* Header */}
+              <div style={{ position:'relative', zIndex:1, padding:'20px 20px 14px', display:'flex', alignItems:'flex-start', gap:'6px' }}>
+                <motion.img src="/icon-repair.png" alt="Repair"
+                  initial={{ scale:0.5, opacity:0 }} animate={{ scale:1, opacity:1 }}
+                  transition={{ type:'spring', damping:14, stiffness:260, delay:0.06 }}
+                  style={{ width:88, height:88, objectFit:'contain', flexShrink:0 }}
+                />
+                <div style={{ flex:1, paddingTop:'4px' }}>
+                  <p style={{ color:'#fff', fontWeight:900, fontSize:'26px', lineHeight:1, textTransform:'uppercase', letterSpacing:'0.05em' }}>REPAIR</p>
+                  <p style={{ color:'#fb923c', fontWeight:900, fontSize:'13px', lineHeight:1, marginTop:'3px', letterSpacing:'0.12em' }}>MACHINE</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:'8px', marginTop:'10px' }}>
+                    <FaHeartbeat style={{ color:healthColor, width:14, height:14 }} />
+                    <span style={{ color:'rgba(255,255,255,0.6)', fontWeight:900, fontSize:'15px' }}>{machineHealth}%</span>
+                    <span style={{ color:'#60a5fa', fontWeight:900, fontSize:'14px' }}>→</span>
+                    <span style={{ color:'#22c55e', fontWeight:900, fontSize:'15px' }}>100%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ height:'1px', margin:'0 20px', background:'rgba(0,120,255,0.2)', position:'relative', zIndex:1 }} />
+
+              {/* Body */}
+              <div style={{ position:'relative', zIndex:1, padding:'14px 16px', display:'flex', flexDirection:'column', gap:'10px' }}>
+
+                {/* Stats card */}
+                <div style={{ background:'rgba(0,0,0,0.55)', border:'1px solid rgba(0,120,255,0.2)', clipPath:CUT_SM, padding:'14px 16px', display:'flex', flexDirection:'column', gap:'10px' }}>
+                  {/* Health bar */}
+                  <div>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
+                      <span style={{ color:'rgba(255,255,255,0.4)', fontWeight:900, fontSize:'11px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Health</span>
+                      <span style={{ color:'#22c55e', fontWeight:900, fontSize:'12px' }}>→ 100%</span>
+                    </div>
+                    <div style={{ height:'5px', background:'rgba(255,255,255,0.08)', overflow:'hidden' }}>
+                      <div style={{ height:'100%', width:`${machineHealth}%`, background:healthColor, transition:'width 0.5s' }} />
+                    </div>
+                  </div>
+                  <div style={{ height:'1px', background:'rgba(0,120,255,0.15)' }} />
+                  {/* Cooldown */}
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                      <FaHourglassHalf style={{ color:'#60a5fa', width:12, height:12 }} />
+                      <span style={{ color:'rgba(255,255,255,0.4)', fontSize:'12px', fontWeight:700 }}>Free Cooldown</span>
+                    </div>
+                    {cooldown > 0
+                      ? <span style={{ color:'rgba(255,255,255,0.5)', fontWeight:900, fontSize:'13px', fontVariantNumeric:'tabular-nums' }}>{formatCooldown(cooldown)}</span>
+                      : <span style={{ color:'#22c55e', fontWeight:900, fontSize:'13px' }}>Ready</span>}
+                  </div>
+                  <div style={{ height:'1px', background:'rgba(0,120,255,0.15)' }} />
+                  {/* Cost */}
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <span style={{ color:'rgba(255,255,255,0.4)', fontWeight:900, fontSize:'11px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Cost</span>
+                    <div style={{ display:'flex', alignItems:'center', gap:'4px' }}>
+                      <AXNIcon size={13} />
+                      <span style={{ fontWeight:900, fontSize:'13px', color:canAfford?'#F5C542':'#f87171', fontVariantNumeric:'tabular-nums' }}>{repairCost} AXN</span>
+                    </div>
+                  </div>
+                </div>
+
+                {isFullHealth ? (
+                  <div style={{ height:'52px', display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(34,197,94,0.12)', border:'1px solid rgba(34,197,94,0.3)', clipPath:CUT_SM }}>
+                    <span style={{ color:'#22c55e', fontWeight:900, fontSize:'13px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Machine is at 100% Health</span>
+                  </div>
+                ) : (
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
+                    <button onClick={handleFreeRepair}
+                      disabled={cooldown>0||adWatching||repairFreeMutation.isPending}
+                      style={{ height:'52px', clipPath:CUT_SM, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', color:'white', fontWeight:900, fontSize:'13px', textTransform:'uppercase', letterSpacing:'0.06em', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', cursor:(cooldown>0||adWatching||repairFreeMutation.isPending)?'not-allowed':'pointer', opacity:(cooldown>0||adWatching||repairFreeMutation.isPending)?0.5:1, transition:'all 0.15s' }}
+                    >
+                      {repairFreeMutation.isPending||adWatching ? <Loader2 style={{width:16,height:16}} className="animate-spin" />
+                        : cooldown>0 ? <><FaHourglassHalf style={{width:14,height:14,color:'rgba(255,255,255,0.3)'}} /> {formatCooldown(cooldown)}</>
+                        : <><RiTv2Fill style={{width:16,height:16,color:'#60a5fa'}} /> AD FREE</>}
+                    </button>
+                    <button onClick={()=>repairPaidMutation.mutate()}
+                      disabled={repairPaidMutation.isPending||!canAfford}
+                      style={{ height:'52px', clipPath:CUT_SM, background:canAfford?'linear-gradient(135deg,#0847c8 0%,#1560e0 40%,#0a52d4 100%)':'rgba(255,255,255,0.05)', border:canAfford?'1px solid rgba(80,150,255,0.5)':'1px solid rgba(255,255,255,0.08)', color:canAfford?'#fff':'rgba(255,255,255,0.3)', boxShadow:canAfford?'0 0 28px rgba(20,80,220,0.7),inset 0 1px 0 rgba(255,255,255,0.18)':'none', fontWeight:900, fontSize:'13px', textTransform:'uppercase', letterSpacing:'0.06em', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', cursor:(repairPaidMutation.isPending||!canAfford)?'not-allowed':'pointer', opacity:(repairPaidMutation.isPending||!canAfford)?0.5:1, transition:'all 0.15s' }}
+                    >
+                      {repairPaidMutation.isPending ? <Loader2 style={{width:16,height:16}} className="animate-spin" /> : <><AXNIcon size={18}/> {repairCost} AXN</>}
+                    </button>
+                  </div>
+                )}
+
+                <button onClick={onClose}
+                  style={{ width:'100%', height:'40px', clipPath:CUT_SM, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.4)', fontWeight:700, fontSize:'13px', textTransform:'uppercase', letterSpacing:'0.1em', cursor:'pointer', transition:'transform 0.12s' }}
+                  onMouseDown={e=>(e.currentTarget.style.transform='scale(0.97)')}
+                  onMouseUp={e=>(e.currentTarget.style.transform='scale(1)')}
+                >← CLOSE</button>
               </div>
             </div>
-          </div>
-
-          <div className="h-px mx-5" style={{ background: 'rgba(251,146,60,0.18)' }} />
-
-          <div className="px-5 py-4 space-y-2.5">
-            {/* Stats card */}
-            <div className="rounded-xl px-4 py-3 space-y-2.5" style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(251,146,60,0.12)' }}>
-              <div className="flex items-center justify-between">
-                <span className="text-white/40 text-xs font-bold uppercase tracking-wide">Health</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-white/60 text-xs font-bold tabular-nums">{machineHealth}%</span>
-                  <span className="text-white/25 text-xs">→</span>
-                  <span className="text-[#F5C542] text-xs font-black">100%</span>
-                </div>
-              </div>
-              <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${machineHealth}%`, background: healthColor }} />
-              </div>
-              <div className="h-px" style={{ background: 'rgba(251,146,60,0.1)' }} />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <FaHourglassHalf style={{ color: '#60a5fa', width: 12, height: 12 }} />
-                  <span className="text-white/40 text-xs">Free Cooldown</span>
-                </div>
-                {cooldown > 0
-                  ? <span className="text-white/50 font-black text-sm tabular-nums">{formatCooldown(cooldown)}</span>
-                  : <span className="text-green-400 font-black text-sm">Ready</span>}
-              </div>
-              <div className="h-px" style={{ background: 'rgba(251,146,60,0.1)' }} />
-              <div className="flex items-center justify-between">
-                <span className="text-white/40 text-xs font-bold uppercase tracking-wide">Cost</span>
-                <div className="flex items-center gap-1">
-                  <AXNIcon size={13} />
-                  <span className={`font-black text-sm tabular-nums ${canAfford ? "text-[#F5C542]" : "text-red-400/70"}`}>{repairCost} AXN</span>
-                </div>
-              </div>
-            </div>
-
-            {isFullHealth ? (
-              <div className="w-full h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
-                <span className="text-green-400 font-black text-sm">Machine is at 100% health</span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleFreeRepair}
-                  disabled={cooldown > 0 || adWatching || repairFreeMutation.isPending}
-                  className="h-12 rounded-xl font-black text-sm transition-all active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-2"
-                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'white' }}
-                >
-                  {repairFreeMutation.isPending || adWatching
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : cooldown > 0
-                    ? <><FaHourglassHalf style={{ width: 14, height: 14, color: 'rgba(255,255,255,0.3)' }} /> {formatCooldown(cooldown)}</>
-                    : <><RiTv2Fill style={{ width: 16, height: 16, color: '#60a5fa' }} /> Ad Free</>}
-                </button>
-                <button
-                  onClick={() => repairPaidMutation.mutate()}
-                  disabled={repairPaidMutation.isPending || !canAfford}
-                  className="h-12 rounded-xl font-black text-sm transition-all active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-2"
-                  style={canAfford
-                    ? { background: 'linear-gradient(135deg,#1d4ed8,#1e40af)', color: '#fff', boxShadow: '0 0 18px rgba(29,78,216,0.45)' }
-                    : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.3)' }}
-                >
-                  {repairPaidMutation.isPending
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <><AXNIcon size={20} /> {repairCost}</>}
-                </button>
-              </div>
-            )}
-
-            <button onClick={onClose}
-              className="w-full h-10 rounded-xl font-bold text-sm text-white/35 active:scale-[0.97] transition-transform"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              Close
-            </button>
           </div>
         </motion.div>
       </motion.div>
