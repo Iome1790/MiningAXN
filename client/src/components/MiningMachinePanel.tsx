@@ -14,6 +14,7 @@ import RepairPopup from "@/components/RepairPopup";
 import AntivirusPopup from "@/components/AntivirusPopup";
 import UpgradeMachinePopup from "@/components/UpgradeMachinePopup";
 import MissionsPopup from "@/components/MissionsPopup";
+import RoadmapPopup from "@/components/RoadmapPopup";
 import EnergyPopup from "@/components/EnergyPopup";
 
 const fanImg = "/fan-image.png";
@@ -171,6 +172,7 @@ interface MiningMachinePanelProps {
   onWalletOpen?: () => void;
   onInviteOpen?: () => void;
   onProfileOpen?: () => void;
+  onRoadmapChange?: (open: boolean) => void;
 }
 
 interface BottomTabNavProps {
@@ -178,16 +180,19 @@ interface BottomTabNavProps {
   onFriendsOpen?: () => void;
   onWalletOpen?: () => void;
   onProfileOpen?: () => void;
+  onRoadmapOpen?: () => void;
+  onHomePress?: () => void;
 }
 
-function BottomTabNav({ onMissionsOpen, onFriendsOpen, onWalletOpen, onProfileOpen }: BottomTabNavProps) {
+function BottomTabNav({ onMissionsOpen, onFriendsOpen, onWalletOpen, onProfileOpen, onRoadmapOpen, onHomePress }: BottomTabNavProps) {
   const [location, setLocation] = useLocation();
 
   const tabs = [
-    { label: "Mission", img: "/nav-mission.png", action: () => onMissionsOpen?.(), isActive: () => false },
-    { label: "Home",    img: "/nav-home.png",    action: () => setLocation("/"),   isActive: () => location === "/" },
-    { label: "Friends", img: "/nav-friends.png", action: () => onFriendsOpen?.(),  isActive: () => false },
-    { label: "Wallet",  img: "/nav-wallet.png",  action: () => onWalletOpen?.(),   isActive: () => false },
+    { label: "Mission",  img: "/nav-mission.png",  action: () => { onHomePress?.(); onMissionsOpen?.(); },  isActive: () => false },
+    { label: "Home",     img: "/nav-home.png",     action: () => { onHomePress?.(); setLocation("/"); },    isActive: () => location === "/" },
+    { label: "Friends",  img: "/nav-friends.png",  action: () => { onHomePress?.(); onFriendsOpen?.(); },   isActive: () => false },
+    { label: "Wallet",   img: "/nav-wallet.png",   action: () => { onHomePress?.(); onWalletOpen?.(); },    isActive: () => false },
+    { label: "Roadmap",  img: null,                action: () => onRoadmapOpen?.(),                         isActive: () => false },
   ];
 
   return (
@@ -218,18 +223,31 @@ function BottomTabNav({ onMissionsOpen, onFriendsOpen, onWalletOpen, onProfileOp
               boxShadow: active ? "0 0 14px rgba(59,130,246,0.35)" : "none",
               transition: "background 0.2s, box-shadow 0.2s",
             }}>
-              <img
-                src={img}
-                alt={label}
-                style={{
-                  width: 34, height: 34,
-                  objectFit: "contain",
-                  filter: active
-                    ? "drop-shadow(0 0 6px rgba(59,130,246,0.9)) brightness(1.15)"
-                    : "brightness(0.65) saturate(0.7)",
-                  transition: "filter 0.2s",
-                }}
-              />
+              {img ? (
+                <img
+                  src={img}
+                  alt={label}
+                  style={{
+                    width: 34, height: 34,
+                    objectFit: "contain",
+                    filter: active
+                      ? "drop-shadow(0 0 6px rgba(59,130,246,0.9)) brightness(1.15)"
+                      : "brightness(0.65) saturate(0.7)",
+                    transition: "filter 0.2s",
+                  }}
+                />
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24"
+                  fill="none" stroke={active ? "#60a5fa" : "rgba(255,255,255,0.42)"}
+                  strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transition: "stroke 0.2s", filter: active ? "drop-shadow(0 0 5px rgba(59,130,246,0.8))" : "none" }}
+                >
+                  <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+                  <line x1="9" x2="9" y1="3" y2="18"/>
+                  <line x1="15" x2="15" y1="6" y2="21"/>
+                </svg>
+              )}
             </div>
             <span style={{
               fontSize: 10, fontWeight: active ? 700 : 500,
@@ -536,7 +554,7 @@ function BannerCarousel({ onInviteOpen }: { onInviteOpen?: () => void }) {
   );
 }
 
-export default function MiningMachinePanel({ onWalletOpen, onInviteOpen, onProfileOpen }: MiningMachinePanelProps) {
+export default function MiningMachinePanel({ onWalletOpen, onInviteOpen, onProfileOpen, onRoadmapChange }: MiningMachinePanelProps) {
   const queryClient = useQueryClient();
   const { showMonetagAd } = useAdFlow();
   const [cpuCountdown, setCpuCountdown] = useState(0);
@@ -544,6 +562,8 @@ export default function MiningMachinePanel({ onWalletOpen, onInviteOpen, onProfi
   const [antivirusOpen, setAntivirusOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [missionOpen, setMissionOpen] = useState(false);
+  const [roadmapOpen, setRoadmapOpen] = useState(false);
+  useEffect(() => { onRoadmapChange?.(roadmapOpen); }, [roadmapOpen]);
   const [upgradeType, setUpgradeType] = useState<null | "mining" | "cpu" | "capacity">(null);
   const [energyOpen, setEnergyOpen] = useState(false);
   const [adRunning, setAdRunning] = useState(false);
@@ -913,11 +933,19 @@ export default function MiningMachinePanel({ onWalletOpen, onInviteOpen, onProfi
       </div>
 
       {/* ── FIXED BOTTOM — only tab nav ── */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, background: "rgba(6,6,10,0.97)", borderTop: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)" }}>
-        <BottomTabNav onMissionsOpen={() => setMissionOpen(true)} onFriendsOpen={onInviteOpen} onWalletOpen={onWalletOpen} onProfileOpen={onProfileOpen} />
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 600, background: "rgba(6,6,10,0.97)", borderTop: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)" }}>
+        <BottomTabNav
+          onMissionsOpen={() => setMissionOpen(true)}
+          onFriendsOpen={onInviteOpen}
+          onWalletOpen={onWalletOpen}
+          onProfileOpen={onProfileOpen}
+          onRoadmapOpen={() => setRoadmapOpen(r => !r)}
+          onHomePress={() => { setRoadmapOpen(false); setMissionOpen(false); }}
+        />
       </div>
 
       {missionOpen && <MissionsPopup onClose={() => setMissionOpen(false)} />}
+      {roadmapOpen && <RoadmapPopup onClose={() => setRoadmapOpen(false)} />}
       {repairOpen && <RepairPopup repairCost={state.repairCost} machineHealth={state.machineHealth} balance={state.balance} onClose={() => setRepairOpen(false)} />}
       {antivirusOpen && <AntivirusPopup antivirusCost={state.antivirusCost} antivirusActive={state.antivirusActive} balance={state.balance} miningLevel={state.miningLevel} onClose={() => setAntivirusOpen(false)} />}
       {upgradeOpen && <UpgradeMachinePopup onClose={() => setUpgradeOpen(false)} />}
