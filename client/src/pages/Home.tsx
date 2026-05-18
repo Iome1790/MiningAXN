@@ -95,6 +95,7 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(88);
+  const [roadmapOpen, setRoadmapOpen] = useState(false);
 
   useEffect(() => {
     queryClient.prefetchQuery({
@@ -1074,12 +1075,14 @@ export default function Home() {
 
   return (
     <Layout>
-      <Header
-        ref={headerRef}
-        onMenuOpen={() => setMenuOpen(true)}
-        onInviteOpen={() => setInviteOpen(true)}
-        onWithdrawOpen={() => setWithdrawPopupOpen(true)}
-      />
+      {!roadmapOpen && (
+        <Header
+          ref={headerRef}
+          onMenuOpen={() => setMenuOpen(true)}
+          onInviteOpen={() => setInviteOpen(true)}
+          onWithdrawOpen={() => setWithdrawPopupOpen(true)}
+        />
+      )}
 
       {/* Mining Paused Banner */}
       <AnimatePresence>
@@ -1117,7 +1120,7 @@ export default function Home() {
           overflow: "hidden",
         }}
       >
-        <MiningMachinePanel onWalletOpen={() => setWithdrawPopupOpen(true)} onInviteOpen={() => setInviteOpen(true)} />
+        <MiningMachinePanel onWalletOpen={() => setWithdrawPopupOpen(true)} onInviteOpen={() => setInviteOpen(true)} onRoadmapChange={setRoadmapOpen} />
       </main>
 
       {false && boosterPopupOpen && (
