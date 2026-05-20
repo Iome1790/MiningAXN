@@ -119,6 +119,16 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// User Ad Watches — per-slot tracking
+export const userAdWatches = pgTable("user_ad_watches", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  adSlot: integer("ad_slot").notNull(),
+  watchedCount: integer("watched_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Earnings table
 export const earnings = pgTable("earnings", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
