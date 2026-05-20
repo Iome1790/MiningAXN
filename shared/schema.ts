@@ -242,23 +242,11 @@ export const blockedCountries = pgTable("blocked_countries", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// User machines table
-export const userMachines = pgTable("user_machines", {
+// User farming table (simple farming system)
+export const userFarming = pgTable("user_farming", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").unique().notNull().references(() => users.id),
-  miningLevel: integer("mining_level").default(1).notNull(),
-  capacityLevel: integer("capacity_level").default(1).notNull(),
-  cpuLevel: integer("cpu_level").default(1).notNull(),
-  hasEnergy: boolean("has_energy").default(true).notNull(),
-  antivirusActive: boolean("antivirus_active").default(false).notNull(),
-  machineHealth: integer("machine_health").default(100).notNull(),
-  cpuStartTime: timestamp("cpu_start_time"),
-  cpuEndTime: timestamp("cpu_end_time"),
-  lastClaimTime: timestamp("last_claim_time").defaultNow(),
-  lastVirusAttack: timestamp("last_virus_attack"),
-  lastHealthDecay: timestamp("last_health_decay"),
-  antivirusActivatedAt: timestamp("antivirus_activated_at"),
-  accumulatedAxn: decimal("accumulated_axn").default("0"),
+  startedAt: timestamp("started_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -275,7 +263,7 @@ export const insertBanLogSchema = createInsertSchema(banLogs).omit({ id: true, c
 export const insertSpinDataSchema = createInsertSchema(spinData).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertSpinHistorySchema = createInsertSchema(spinHistory).omit({ id: true, createdAt: true });
 export const insertBlockedCountrySchema = createInsertSchema(blockedCountries).omit({ id: true, createdAt: true });
-export const insertUserMachineSchema = createInsertSchema(userMachines).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUserFarmingSchema = createInsertSchema(userFarming).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -300,5 +288,5 @@ export type SpinHistory = typeof spinHistory.$inferSelect;
 export type InsertSpinHistory = z.infer<typeof insertSpinHistorySchema>;
 export type BlockedCountry = typeof blockedCountries.$inferSelect;
 export type InsertBlockedCountry = z.infer<typeof insertBlockedCountrySchema>;
-export type UserMachine = typeof userMachines.$inferSelect;
-export type InsertUserMachine = typeof userMachines.$inferInsert;
+export type UserFarming = typeof userFarming.$inferSelect;
+export type InsertUserFarming = typeof userFarming.$inferInsert;
