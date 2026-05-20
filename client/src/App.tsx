@@ -4,6 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppNotification from "@/components/AppNotification";
 import { useEffect, lazy, Suspense, useState, memo, useCallback, useRef, createContext } from "react";
+import { useLocation } from "wouter";
+import BottomNav from "@/components/BottomNav";
 import { setupDeviceTracking } from "@/lib/deviceId";
 import BanScreen from "@/components/BanScreen";
 import CountryBlockedScreen from "@/components/CountryBlockedScreen";
@@ -28,6 +30,7 @@ const Missions = lazy(() => import("@/pages/Missions"));
 const Friends = lazy(() => import("@/pages/Friends"));
 const WalletPage = lazy(() => import("@/pages/Wallet"));
 const ProfilePage = lazy(() => import("@/pages/Profile"));
+const RoadmapPage = lazy(() => import("@/pages/Roadmap"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const PageLoader = memo(function PageLoader() {
@@ -93,21 +96,30 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
   );
 }
 
+const NAV_ROUTES = new Set(["/", "/missions", "/friends", "/wallet", "/roadmap"]);
+
 function Router() {
+  const [location] = useLocation();
+  const showNav = NAV_ROUTES.has(location);
+
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/landing" component={Landing} />
-        <Route path="/admin" component={Admin} />
-        <Route path="/admin/country-controls" component={CountryControls} />
-        <Route path="/missions" component={Missions} />
-        <Route path="/friends" component={Friends} />
-        <Route path="/wallet" component={WalletPage} />
-        <Route path="/profile" component={ProfilePage} />
-        <Route component={NotFound} />
-      </Switch>
-    </Suspense>
+    <>
+      <Suspense fallback={null}>
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/landing" component={Landing} />
+          <Route path="/admin" component={Admin} />
+          <Route path="/admin/country-controls" component={CountryControls} />
+          <Route path="/missions" component={Missions} />
+          <Route path="/friends" component={Friends} />
+          <Route path="/wallet" component={WalletPage} />
+          <Route path="/roadmap" component={RoadmapPage} />
+          <Route path="/profile" component={ProfilePage} />
+          <Route component={NotFound} />
+        </Switch>
+      </Suspense>
+      {showNav && <BottomNav />}
+    </>
   );
 }
 
