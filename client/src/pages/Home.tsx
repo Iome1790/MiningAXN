@@ -3,17 +3,16 @@ import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import { AppReadyContext } from "@/App";
 import React from "react";
-import { useLocation } from "wouter";
 import { SettingsPopup } from "@/components/SettingsPopup";
 import InvitePopup from "@/components/InvitePopup";
 import Header from "@/components/Header";
 import WithdrawalPopup from "@/components/WithdrawalPopup";
 import MenuPopup from "@/components/MenuPopup";
-import FarmingPanel from "@/components/FarmingPanel";
+import AdsList from "@/components/AdsList";
+import { showNotification } from "@/components/AppNotification";
 
 export default function Home() {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
   const signalAppReady = useContext(AppReadyContext);
   const readySignaled = useRef(false);
 
@@ -28,9 +27,8 @@ export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [roadmapOpen, setRoadmapOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(56);
+  const [headerHeight, setHeaderHeight] = useState(160);
 
   useEffect(() => {
     const el = headerRef.current;
@@ -44,16 +42,22 @@ export default function Home() {
 
   const balance = Math.floor(parseFloat((user as any)?.balance || "0"));
 
+  const handleComingSoon = () => {
+    showNotification("Coming Soon!", "info");
+  };
+
   return (
     <Layout>
-      {!roadmapOpen && (
-        <Header
-          ref={headerRef}
-          onMenuOpen={() => setMenuOpen(true)}
-          onInviteOpen={() => setInviteOpen(true)}
-          onWithdrawOpen={() => setWithdrawPopupOpen(true)}
-        />
-      )}
+      <Header
+        ref={headerRef}
+        onMenuOpen={() => setMenuOpen(true)}
+        onInviteOpen={() => setInviteOpen(true)}
+        onWithdrawOpen={() => setWithdrawPopupOpen(true)}
+        onSettingsOpen={() => setSettingsOpen(true)}
+        onTransactionsOpen={() => setWithdrawPopupOpen(true)}
+        onPromoOpen={handleComingSoon}
+        onShareOpen={handleComingSoon}
+      />
 
       <main
         className="w-full"
@@ -63,15 +67,12 @@ export default function Home() {
           left: 0,
           right: 0,
           bottom: 0,
-          paddingTop: headerHeight,
-          overflow: "hidden",
+          paddingTop: headerHeight + 10,
+          overflowY: "auto",
+          overflowX: "hidden",
         }}
       >
-        <FarmingPanel
-          onWalletOpen={() => setWithdrawPopupOpen(true)}
-          onInviteOpen={() => setInviteOpen(true)}
-          onRoadmapChange={setRoadmapOpen}
-        />
+        <AdsList />
       </main>
 
       {settingsOpen && <SettingsPopup onClose={() => setSettingsOpen(false)} />}
