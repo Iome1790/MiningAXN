@@ -622,6 +622,22 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_invite_claimed BOOLEAN DEFAULT FALSE`);
     console.log('✅ [MIGRATION] Mission system columns ensured');
 
+    // User Ad Watches table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_ad_watches (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR NOT NULL REFERENCES users(id),
+        ad_slot INTEGER NOT NULL,
+        watched_count INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, ad_slot)
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_user_ad_watches_user ON user_ad_watches(user_id)`);
+    await db.execute(sql`ALTER TABLE user_ad_watches ADD COLUMN IF NOT EXISTS last_watched_at TIMESTAMP`);
+    console.log('✅ [MIGRATION] user_ad_watches table ensured');
+
     console.log('✅ [MIGRATION] All tables and indexes created successfully');
     
   } catch (error) {

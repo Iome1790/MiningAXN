@@ -911,6 +911,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Ad Slots API ───
+  const AD_SLOTS = [
+    { id: 1, reward: 10, maxWatches: 40, network: "monetag" },
+    { id: 2, reward: 15, maxWatches: 35, network: "monetag" },
+    { id: 3, reward: 20, maxWatches: 25, network: "adsgram" },
+    { id: 4, reward: 8,  maxWatches: 50, network: "monetag" },
+    { id: 5, reward: 25, maxWatches: 15, network: "adsgram" },
+    { id: 6, reward: 12, maxWatches: 30, network: "monetag" },
+    { id: 7, reward: 18, maxWatches: 25, network: "adsgram" },
+  ];
+
+  app.get("/api/ad-slots", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const { pool } = await import("./db");
+      const result = await pool.query(
+        `SELECT ad_slot, watched_count FROM user_ad_watches WHERE user_id = $1`,
+        [user.id]
+      );
+      const watchMap: Record<number, number> = {};
+      result.rows.forEach((r: any) => { watchMap[r.ad_slot] = r.watched_count; });
+      const slots = AD_SLOTS.map(s => ({
+        ...s,
+        watchedCount: watchMap[s.id] ?? 0,
+        totalAxn: s.reward * s.maxWatches,
+      }));
+      res.json({ slots });
+    } catch (error) {
+      console.error("Ad slots error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/ad-slots/:slotId/watch", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const slotId = parseInt(req.params.slotId);
+      const slot = AD_SLOTS.find(s => s.id === slotId);
+      if (!slot) return res.status(404).json({ message: "Ad slot not found" });
+
+      // Require client to send verified background seconds
+      const { backgroundSeconds } = req.body;
+      if (!backgroundSeconds || typeof backgroundSeconds !== "number" || backgroundSeconds < 5) {
+        return res.status(400).json({
+          message: "Ad not counted",
+          reason: "insufficient_background",
+          notCounted: true,
+        });
+      }
+
+      const { pool } = await import("./db");
+      // Get or create watch record + cooldown check
+      const existing = await pool.query(
+        `SELECT watched_count, last_watched_at FROM user_ad_watches WHERE user_id = $1 AND ad_slot = $2`,
+        [user.id, slotId]
+      );
+      const row = existing.rows[0];
+      const currentCount = row?.watched_count ?? 0;
+
+      if (currentCount >= slot.maxWatches) {
+        return res.status(400).json({ message: "Max watches reached for this ad", maxReached: true });
+      }
+
+      // Cooldown: 30 seconds between watches on same slot
+      if (row?.last_watched_at) {
+        const secsSinceLast = (Date.now() - new Date(row.last_watched_at).getTime()) / 1000;
+        if (secsSinceLast < 30) {
+          return res.status(429).json({
+            message: "Please wait before watching this ad again",
+            cooldownSeconds: Math.ceil(30 - secsSinceLast),
+            tooFast: true,
+          });
+        }
+      }
+
+      // Upsert watch count + last_watched_at
+      await pool.query(
+        `INSERT INTO user_ad_watches (user_id, ad_slot, watched_count, last_watched_at, updated_at)
+         VALUES ($1, $2, 1, NOW(), NOW())
+         ON CONFLICT (user_id, ad_slot)
+         DO UPDATE SET
+           watched_count = user_ad_watches.watched_count + 1,
+           last_watched_at = NOW(),
+           updated_at = NOW()`,
+        [user.id, slotId]
+      );
+      // Add AXN reward to balance
+      await pool.query(
+        `UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1 WHERE id = $2`,
+        [slot.reward, user.id]
+      );
+      const newCount = currentCount + 1;
+      res.json({ success: true, earned: slot.reward, watchedCount: newCount, maxWatches: slot.maxWatches });
+    } catch (error) {
+      console.error("Ad slot watch error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Debug route to check database columns
   app.get('/api/debug/db-schema', async (req: any, res) => {
     try {
