@@ -7,7 +7,7 @@ import {
   transactions,
   adminSettings,
   banLogs,
-  userMachines,
+  userFarming,
   type User,
   type UpsertUser,
   type InsertEarning,
@@ -20,26 +20,15 @@ import {
   type InsertUserBalance,
   type Transaction,
   type InsertTransaction,
-  type UserMachine,
   type AdminSetting,
   type BanLog,
 } from "../shared/schema";
-import { MINING_LEVELS, getMiningLevel } from "../shared/miningLevels";
 import { db } from "./db";
 import { eq, desc, and, gte, lt, sql } from "drizzle-orm";
 import crypto from "crypto";
-// Telegram notifications for mining machine are disabled
 
-// CPU time reduction penalty per 2-min interval when antivirus is OFF
-function getVirusPenaltyMinutes(cpuLevel: number): number {
-  if (cpuLevel <= 5) return 5;
-  if (cpuLevel <= 10) return 8;
-  if (cpuLevel <= 15) return 12;
-  if (cpuLevel <= 20) return 16;
-  return 20; // Lv 21-25
-}
-
-const CPU_REDUCTION_INTERVAL = 120; // 2 minutes in seconds
+const FARMING_RATE = 0.01; // AXN per second
+const FARMING_DURATION = 2 * 60 * 60; // 2 hours in seconds
 
 // Payment system configuration
 export interface PaymentSystem {
@@ -155,32 +144,26 @@ export interface IStorage {
   }>;
   checkAndActivateReferralOnChannelJoin(userId: string): Promise<void>;
 
-  // Mining operations
-  getMiningState(userId: string): Promise<{
-    currentMining: string;
-    miningRate: string;
-    lastClaim: Date;
-    maxMining: string;
-  }>;
-  claimMining(userId: string): Promise<{
-    success: boolean;
-    amount: string;
-    message: string;
-  }>;
-  hasEverBoughtBoost(userId: string): Promise<boolean>;
-  
   // Deposit operations (deposits table dropped - use any)
   getPendingDeposit(userId: string): Promise<any | undefined>;
   createDeposit(deposit: any): Promise<any>;
   getUserDeposits(userId: string): Promise<any[]>;
   getDeposit(depositId: string): Promise<any | undefined>;
 
-  // New Mining operations (miningBoosts table dropped - use any)
-  // getMiningBoosts / addMiningBoost already declared above
-  
   // Referral Tasks (userReferralTasks table dropped)
   getUserReferralTasks(userId: string): Promise<any[]>;
   claimReferralTask(userId: string, taskId: string): Promise<{ success: boolean; message: string; rewardAXN?: string; miningBoost?: string }>;
+
+  // Farming operations
+  getFarmingState(userId: string): Promise<{
+    isActive: boolean;
+    startedAt: string | null;
+    minedAxn: number;
+    remainingSeconds: number;
+    elapsedSeconds: number;
+  }>;
+  startFarming(userId: string): Promise<{ success: boolean; message: string }>;
+  claimFarming(userId: string): Promise<{ success: boolean; amount: number; message: string }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -557,496 +540,80 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ============================================================
-  // AXN MINING MACHINE SYSTEM
+  // FARMING SYSTEM
   // ============================================================
 
-  async getOrCreateMachine(userId: string): Promise<UserMachine> {
-    const [existing] = await db.select().from(userMachines).where(eq(userMachines.userId, userId));
-    if (existing) return existing;
+  async getFarmingState(userId: string): Promise<{
+    isActive: boolean;
+    startedAt: string | null;
+    minedAxn: number;
+    remainingSeconds: number;
+    elapsedSeconds: number;
+  }> {
+    const [row] = await db.select().from(userFarming).where(eq(userFarming.userId, userId));
+    if (!row || !row.startedAt) {
+      return { isActive: false, startedAt: null, minedAxn: 0, remainingSeconds: FARMING_DURATION, elapsedSeconds: 0 };
+    }
     const now = new Date();
-    const [created] = await db.insert(userMachines).values({
-      userId,
-      miningLevel: 1,
-      capacityLevel: 1,
-      cpuLevel: 1,
-      hasEnergy: true,
-      antivirusActive: false,
-      machineHealth: 100,
-      lastClaimTime: now,
-      lastVirusAttack: now,
-      lastHealthDecay: now,
-    }).returning();
-    return created;
-  }
-
-  async getAxnMachineState(userId: string) {
-    const machine = await this.getOrCreateMachine(userId);
-    const user = await this.getUser(userId);
-    const now = new Date();
-
-    const mLvl = getMiningLevel(machine.miningLevel);
-    const cLvl = getMiningLevel(machine.capacityLevel);
-    const cpuLvl = getMiningLevel(machine.cpuLevel);
-
-    const miningRate = mLvl.rate;          // AXN/s
-    const capacity = cLvl.capacity;        // max AXN stored
-    const cpuDurationSec = cpuLvl.cpuMin * 60;
-
-    // Determine CPU running state
-    const cpuRunning = !!(machine.cpuEndTime && machine.cpuEndTime > now);
-    const cpuRemainingSeconds = cpuRunning
-      ? Math.max(0, Math.floor((machine.cpuEndTime!.getTime() - now.getTime()) / 1000))
-      : 0;
-
-    // Compute mined AXN (capped at capacity, only while CPU running and health > 0)
-    // accumulated_axn holds mining from previous runs that haven't been claimed yet
-    const accumulatedAxn = parseFloat(machine.accumulatedAxn || '0');
-    let minedAxn = accumulatedAxn;
-    if (machine.machineHealth > 0 && machine.cpuStartTime && machine.lastClaimTime) {
-      const mineFrom = machine.lastClaimTime > machine.cpuStartTime
-        ? machine.lastClaimTime
-        : machine.cpuStartTime;
-      const mineUntil = machine.cpuEndTime && machine.cpuEndTime < now ? machine.cpuEndTime : now;
-      if (mineUntil > mineFrom) {
-        const seconds = Math.floor((mineUntil.getTime() - mineFrom.getTime()) / 1000);
-        minedAxn = Math.min(capacity, accumulatedAxn + seconds * miningRate);
-      }
-    }
-
-    // ── SERVER-SIDE ANTIVIRUS EXPIRY ──
-    // Compute AV duration from mining level (matches frontend formula)
-    const avDurationMs = (machine.miningLevel * 10 + 10) * 60 * 1000;
-    let antivirusActive = machine.antivirusActive;
-    let avSecondsLeft = 0;
-
-    if (antivirusActive && machine.antivirusActivatedAt) {
-      const elapsedMs = now.getTime() - machine.antivirusActivatedAt.getTime();
-      const remainingMs = avDurationMs - elapsedMs;
-      if (remainingMs <= 0) {
-        // AV expired — auto-deactivate in DB (fire and forget, don't block state response)
-        antivirusActive = false;
-        db.update(userMachines).set({
-          antivirusActive: false,
-          antivirusActivatedAt: null,
-          lastVirusAttack: now,
-          updatedAt: now,
-        }).where(eq(userMachines.userId, userId)).catch(() => {});
-      } else {
-        avSecondsLeft = Math.ceil(remainingMs / 1000);
-      }
-    } else if (antivirusActive && !machine.antivirusActivatedAt) {
-      // Legacy active AV without timestamp: stamp it now so it gets a full duration from today
-      const stamp = now;
-      avSecondsLeft = Math.ceil(avDurationMs / 1000);
-      db.update(userMachines).set({
-        antivirusActivatedAt: stamp,
-        updatedAt: now,
-      }).where(eq(userMachines.userId, userId)).catch(() => {});
-    }
-
-    // CPU reduction info — when AV is OFF and CPU running
-    let cpuReductionPerTick = 0; // penalty minutes per 2-min interval
-    let nextReductionIn = CPU_REDUCTION_INTERVAL;
-    if (!antivirusActive) {
-      cpuReductionPerTick = getVirusPenaltyMinutes(machine.cpuLevel);
-      if (machine.lastVirusAttack) {
-        const secSince = Math.floor((now.getTime() - machine.lastVirusAttack.getTime()) / 1000);
-        nextReductionIn = CPU_REDUCTION_INTERVAL - (secSince % CPU_REDUCTION_INTERVAL);
-      }
-    }
-
-    const balance = parseFloat(user?.balance || '0');
-
+    const elapsedSeconds = Math.floor((now.getTime() - row.startedAt.getTime()) / 1000);
+    const cappedElapsed = Math.min(elapsedSeconds, FARMING_DURATION);
+    const remainingSeconds = Math.max(0, FARMING_DURATION - cappedElapsed);
+    const minedAxn = parseFloat((cappedElapsed * FARMING_RATE).toFixed(4));
     return {
-      miningLevel: machine.miningLevel,
-      capacityLevel: machine.capacityLevel,
-      cpuLevel: machine.cpuLevel,
-      miningRate,
-      capacity,
-      cpuDurationSec,
-      minedAxn: parseFloat(minedAxn.toFixed(4)),
-      cpuRunning,
-      cpuRemainingSeconds,
-      hasEnergy: machine.hasEnergy,
-      antivirusActive,
-      avSecondsLeft,
-      machineHealth: machine.machineHealth,
-      energyCost: mLvl.energyCost,
-      repairCost: mLvl.repairCost,
-      antivirusCost: mLvl.antivirusCost,
-      upgMining: mLvl.upgMining,
-      upgCapacity: cLvl.upgCapacity,
-      upgCpu: cpuLvl.upgCpu,
-      isMaxLevel: machine.miningLevel >= 25,
-      balance,
-      pendingVirusDamage: cpuReductionPerTick,
-      nextVirusIn: nextReductionIn,
-      lastVirusAttack: machine.lastVirusAttack,
+      isActive: true,
+      startedAt: row.startedAt.toISOString(),
+      minedAxn,
+      remainingSeconds,
+      elapsedSeconds: cappedElapsed,
     };
   }
 
-  async startCpu(userId: string): Promise<{ success: boolean; message: string }> {
-    const machine = await this.getOrCreateMachine(userId);
+  async startFarming(userId: string): Promise<{ success: boolean; message: string }> {
+    const [existing] = await db.select().from(userFarming).where(eq(userFarming.userId, userId));
     const now = new Date();
-
-    if (!machine.hasEnergy) {
-      return { success: false, message: 'No energy! Refill energy to start mining.' };
-    }
-    if (machine.machineHealth <= 0) {
-      return { success: false, message: 'Machine is broken! Repair it first.' };
-    }
-    if (machine.cpuEndTime && machine.cpuEndTime > now) {
-      return { success: false, message: 'CPU is already running!' };
-    }
-
-    // Preserve any unclaimed AXN from the previous CPU run before starting a new one
-    // This prevents unclaimed mining from being wiped when energy is refilled and CPU restarted
-    let carryOver = parseFloat(machine.accumulatedAxn || '0');
-    if (machine.machineHealth > 0 && machine.cpuStartTime && machine.lastClaimTime) {
-      const mLvl = getMiningLevel(machine.miningLevel);
-      const cLvl = getMiningLevel(machine.capacityLevel);
-      const miningRate = mLvl.rate;
-      const capacity = cLvl.capacity;
-      const mineFrom = machine.lastClaimTime > machine.cpuStartTime
-        ? machine.lastClaimTime
-        : machine.cpuStartTime;
-      const mineUntil = machine.cpuEndTime && machine.cpuEndTime < now ? machine.cpuEndTime : now;
-      if (mineUntil > mineFrom) {
-        const seconds = Math.floor((mineUntil.getTime() - mineFrom.getTime()) / 1000);
-        carryOver = Math.min(capacity, carryOver + seconds * miningRate);
+    if (existing) {
+      if (existing.startedAt) {
+        const elapsedSeconds = Math.floor((now.getTime() - existing.startedAt.getTime()) / 1000);
+        if (elapsedSeconds < FARMING_DURATION) {
+          return { success: false, message: 'Farming is already active.' };
+        }
+        return { success: false, message: 'Farming complete! Claim your AXN first.' };
       }
+      await db.update(userFarming).set({ startedAt: now, updatedAt: now }).where(eq(userFarming.userId, userId));
+    } else {
+      await db.insert(userFarming).values({ userId, startedAt: now });
     }
-
-    const cpuLvl = getMiningLevel(machine.cpuLevel);
-    const cpuDurationMs = cpuLvl.cpuMin * 60 * 1000;
-    const cpuEndTime = new Date(now.getTime() + cpuDurationMs);
-
-    await db.update(userMachines).set({
-      hasEnergy: false,
-      cpuStartTime: now,
-      cpuEndTime,
-      lastClaimTime: now,
-      accumulatedAxn: carryOver.toFixed(4),
-      updatedAt: now,
-    }).where(eq(userMachines.userId, userId));
-
-    return { success: true, message: 'CPU started! Mining is now active.' };
+    return { success: true, message: 'Farming started! You will earn 0.01 AXN/sec for 2 hours.' };
   }
 
-  async claimAxnMining(userId: string): Promise<{ success: boolean; amount: number; message: string }> {
-    const machine = await this.getOrCreateMachine(userId);
-    const state = await this.getAxnMachineState(userId);
-
-    if (state.minedAxn < 0.01) {
-      return { success: false, amount: 0, message: 'Nothing to claim yet. Start CPU and let it mine.' };
+  async claimFarming(userId: string): Promise<{ success: boolean; amount: number; message: string }> {
+    const [row] = await db.select().from(userFarming).where(eq(userFarming.userId, userId));
+    if (!row || !row.startedAt) {
+      return { success: false, amount: 0, message: 'No active farming session. Start farming first.' };
     }
-
-    const amount = state.minedAxn;
     const now = new Date();
-
+    const elapsedSeconds = Math.floor((now.getTime() - row.startedAt.getTime()) / 1000);
+    const cappedElapsed = Math.min(elapsedSeconds, FARMING_DURATION);
+    const amount = parseFloat((cappedElapsed * FARMING_RATE).toFixed(4));
+    if (amount < 0.01) {
+      return { success: false, amount: 0, message: 'Nothing to claim yet.' };
+    }
     await db.transaction(async (tx) => {
       await tx.update(users).set({
         balance: sql`COALESCE(${users.balance}, 0) + ${amount.toString()}`,
         updatedAt: now,
       }).where(eq(users.id, userId));
-
-      await tx.update(userMachines).set({
-        lastClaimTime: now,
-        accumulatedAxn: '0',
-        updatedAt: now,
-      }).where(eq(userMachines.userId, userId));
-
+      await tx.update(userFarming).set({ startedAt: null, updatedAt: now }).where(eq(userFarming.userId, userId));
       await tx.insert(earnings).values({
         userId,
         amount: amount.toString(),
-        source: 'axn_mining',
-        description: `AXN Mining claim - Level ${machine.miningLevel}`,
+        source: 'farming',
+        description: `AXN Farming claim: ${amount} AXN`,
       });
     });
-
-    return { success: true, amount, message: `Claimed ${amount.toFixed(4)} AXN` };
+    return { success: true, amount, message: `Claimed ${amount} AXN!` };
   }
 
-  async refillEnergy(userId: string): Promise<{ success: boolean; message: string }> {
-    const machine = await this.getOrCreateMachine(userId);
-    if (machine.hasEnergy) {
-      return { success: false, message: 'Energy tank is already full!' };
-    }
-    const mLvl = getMiningLevel(machine.miningLevel);
-    const cost = mLvl.energyCost;
-    const user = await this.getUser(userId);
-    const balance = parseFloat(user?.balance || '0');
-
-    if (balance < cost) {
-      return { success: false, message: `Not enough AXN. Need ${cost} AXN to refill energy.` };
-    }
-
-    const now = new Date();
-    await db.transaction(async (tx) => {
-      await tx.update(users).set({
-        balance: sql`COALESCE(${users.balance}, 0) - ${cost.toString()}`,
-        updatedAt: now,
-      }).where(eq(users.id, userId));
-      await tx.update(userMachines).set({
-        hasEnergy: true,
-        updatedAt: now,
-      }).where(eq(userMachines.userId, userId));
-    });
-
-    return { success: true, message: `Energy refilled! Spent ${cost} AXN.` };
-  }
-
-  async repairMachine(userId: string): Promise<{ success: boolean; message: string }> {
-    const machine = await this.getOrCreateMachine(userId);
-    if (machine.machineHealth >= 100) {
-      return { success: false, message: 'Machine is already at full health!' };
-    }
-    const mLvl = getMiningLevel(machine.miningLevel);
-    const cost = mLvl.repairCost;
-    const user = await this.getUser(userId);
-    const balance = parseFloat(user?.balance || '0');
-
-    if (balance < cost) {
-      return { success: false, message: `Not enough AXN. Need ${cost} AXN to repair.` };
-    }
-
-    const now = new Date();
-    await db.transaction(async (tx) => {
-      await tx.update(users).set({
-        balance: sql`COALESCE(${users.balance}, 0) - ${cost.toString()}`,
-        updatedAt: now,
-      }).where(eq(users.id, userId));
-      await tx.update(userMachines).set({
-        machineHealth: 100,
-        updatedAt: now,
-      }).where(eq(userMachines.userId, userId));
-    });
-
-    return { success: true, message: `Machine repaired to 100% health! Spent ${cost} AXN.` };
-  }
-
-  async repairMachineFree(userId: string): Promise<{ success: boolean; message: string }> {
-    const machine = await this.getOrCreateMachine(userId);
-    if (machine.machineHealth >= 100) {
-      return { success: false, message: 'Machine is already at full health!' };
-    }
-    const now = new Date();
-    await db.update(userMachines).set({
-      machineHealth: 100,
-      updatedAt: now,
-    }).where(eq(userMachines.userId, userId));
-    return { success: true, message: 'Machine repaired to 100% health!' };
-  }
-
-  async refillEnergyFree(userId: string): Promise<{ success: boolean; message: string }> {
-    const machine = await this.getOrCreateMachine(userId);
-    if (machine.hasEnergy) {
-      return { success: false, message: 'Energy tank is already full!' };
-    }
-    const now = new Date();
-    await db.update(userMachines).set({
-      hasEnergy: true,
-      updatedAt: now,
-    }).where(eq(userMachines.userId, userId));
-    return { success: true, message: 'Energy Refilled' };
-  }
-
-  async toggleAntivirus(userId: string): Promise<{ success: boolean; active: boolean; message: string }> {
-    const machine = await this.getOrCreateMachine(userId);
-    const now = new Date();
-
-    // Turning ON costs AXN
-    if (!machine.antivirusActive) {
-      const mLvl = getMiningLevel(machine.miningLevel);
-      const cost = mLvl.antivirusCost;
-      const user = await this.getUser(userId);
-      const balance = parseFloat(user?.balance || '0');
-      if (balance < cost) {
-        return { success: false, active: false, message: `Need ${cost} AXN to activate antivirus.` };
-      }
-      await db.transaction(async (tx) => {
-        await tx.update(users).set({
-          balance: sql`COALESCE(${users.balance}, 0) - ${cost.toString()}`,
-          updatedAt: now,
-        }).where(eq(users.id, userId));
-        await tx.update(userMachines).set({
-          antivirusActive: true,
-          antivirusActivatedAt: now,
-          lastVirusAttack: null,
-          updatedAt: now,
-        }).where(eq(userMachines.userId, userId));
-      });
-      return { success: true, active: true, message: `Antivirus activated! Spent ${cost} AXN.` };
-    } else {
-      // Manual deactivation by user
-      await db.update(userMachines).set({
-        antivirusActive: false,
-        antivirusActivatedAt: null,
-        lastVirusAttack: now,
-        updatedAt: now,
-      }).where(eq(userMachines.userId, userId));
-      return { success: true, active: false, message: 'Antivirus deactivated. Watch out for viruses!' };
-    }
-  }
-
-  async activateAntivirusFree(userId: string): Promise<{ success: boolean; active: boolean; message: string }> {
-    const machine = await this.getOrCreateMachine(userId);
-    if (machine.antivirusActive) {
-      return { success: false, active: true, message: 'Antivirus is already active.' };
-    }
-    const now = new Date();
-    await db.update(userMachines).set({
-      antivirusActive: true,
-      antivirusActivatedAt: now,
-      lastVirusAttack: null,
-      updatedAt: now,
-    }).where(eq(userMachines.userId, userId));
-    return { success: true, active: true, message: 'Antivirus activated for free!' };
-  }
-
-  async upgradeSubsystem(userId: string, type: 'mining' | 'capacity' | 'cpu'): Promise<{ success: boolean; newLevel: number; message: string }> {
-    const machine = await this.getOrCreateMachine(userId);
-    const currentLevel = type === 'mining' ? machine.miningLevel
-      : type === 'capacity' ? machine.capacityLevel
-      : machine.cpuLevel;
-
-    if (currentLevel >= 25) {
-      return { success: false, newLevel: currentLevel, message: 'Already at maximum level!' };
-    }
-
-    const levelData = getMiningLevel(currentLevel);
-    const cost = type === 'mining' ? levelData.upgMining
-      : type === 'capacity' ? levelData.upgCapacity
-      : levelData.upgCpu;
-
-    const user = await this.getUser(userId);
-    const balance = parseFloat(user?.balance || '0');
-    if (balance < cost) {
-      return { success: false, newLevel: currentLevel, message: `Need ${cost.toLocaleString()} AXN to upgrade.` };
-    }
-
-    const newLevel = currentLevel + 1;
-    const now = new Date();
-
-    await db.transaction(async (tx) => {
-      await tx.update(users).set({
-        balance: sql`COALESCE(${users.balance}, 0) - ${cost.toString()}`,
-        updatedAt: now,
-      }).where(eq(users.id, userId));
-
-      const updateData: any = { updatedAt: now };
-      if (type === 'mining') updateData.miningLevel = newLevel;
-      else if (type === 'capacity') updateData.capacityLevel = newLevel;
-      else updateData.cpuLevel = newLevel;
-
-      await tx.update(userMachines).set(updateData).where(eq(userMachines.userId, userId));
-    });
-
-    const subsystemName = type === 'mining' ? 'Mining' : type === 'capacity' ? 'Capacity' : 'CPU';
-
-    // Check level-parity referral reward: if all 3 subsystems are now equal, give referrer 50 AXN
-    try {
-      const updatedMachine = await this.getOrCreateMachine(userId);
-      const mLvl = updatedMachine.miningLevel;
-      const cLvl = updatedMachine.capacityLevel;
-      const cpuLvl = updatedMachine.cpuLevel;
-
-      if (mLvl === cLvl && cLvl === cpuLvl && mLvl > 1) {
-        const equalLevel = mLvl;
-
-        // Check referral exists and is completed
-        const [referralInfo] = await db
-          .select({ referrerId: referrals.referrerId })
-          .from(referrals)
-          .where(and(
-            eq(referrals.refereeId, userId),
-            eq(referrals.status, 'completed')
-          ))
-          .limit(1);
-
-        if (referralInfo) {
-          // Check this exact level was not already rewarded for this referee
-          const [alreadyRewarded] = await db
-            .select({ id: earnings.id })
-            .from(earnings)
-            .where(and(
-              eq(earnings.userId, referralInfo.referrerId),
-              eq(earnings.source, 'referral_upgrade_bonus'),
-              sql`${earnings.description} LIKE ${'%level ' + equalLevel + '%'} AND ${earnings.description} LIKE ${'%' + userId + '%'}`
-            ))
-            .limit(1);
-
-          if (!alreadyRewarded) {
-            const UPGRADE_REWARD_AXN = 50;
-            await db.execute(sql`
-              UPDATE users
-              SET referral_well_balance = COALESCE(referral_well_balance, 0) + ${UPGRADE_REWARD_AXN},
-                  referral_well_total_earned = COALESCE(referral_well_total_earned, 0) + ${UPGRADE_REWARD_AXN},
-                  updated_at = NOW()
-              WHERE id = ${referralInfo.referrerId}
-            `);
-            // Record earning for dedup tracking
-            await db.insert(earnings).values({
-              userId: referralInfo.referrerId,
-              amount: String(UPGRADE_REWARD_AXN),
-              source: 'referral_upgrade_bonus',
-              description: `Friend reached level ${equalLevel} equally (Mining=${mLvl}, Capacity=${cLvl}, CPU=${cpuLvl}) — referee: ${userId}`,
-            });
-            console.log(`⭐ Upgrade well reward: +${UPGRADE_REWARD_AXN} AXN to ${referralInfo.referrerId} (friend ${userId} hit equal level ${equalLevel})`);
-          }
-        }
-      }
-    } catch (upgradeRewardError) {
-      console.error('Error processing upgrade referral reward:', upgradeRewardError);
-    }
-
-    return { success: true, newLevel, message: `${subsystemName} upgraded to level ${newLevel}!` };
-  }
-
-  async applyVirusDamage(userId: string): Promise<void> {
-    const machine = await this.getOrCreateMachine(userId);
-    const now = new Date();
-    const HEALTH_DECAY_INTERVAL = 300; // 5 minutes for health decay
-
-    const machineUpdates: Record<string, any> = { updatedAt: now };
-
-    // ── HEALTH DECAY — always, every 5 min regardless of antivirus ──
-    if (!machine.lastHealthDecay) {
-      machineUpdates.lastHealthDecay = now;
-    } else {
-      const secSinceDecay = Math.floor((now.getTime() - machine.lastHealthDecay.getTime()) / 1000);
-      const decayTicks = Math.floor(secSinceDecay / HEALTH_DECAY_INTERVAL);
-      if (decayTicks > 0) {
-        const healthLoss = Math.min(machine.machineHealth, decayTicks * 5);
-        machineUpdates.machineHealth = Math.max(0, machine.machineHealth - healthLoss);
-        machineUpdates.lastHealthDecay = now;
-      }
-    }
-
-    // ── CPU TIME REDUCTION — only when antivirus is OFF and CPU is running ──
-    if (!machine.antivirusActive) {
-      const cpuRunning = !!(machine.cpuEndTime && machine.cpuEndTime > now);
-      if (!machine.lastVirusAttack) {
-        machineUpdates.lastVirusAttack = now;
-      } else if (cpuRunning) {
-        const secSinceLastReduction = Math.floor((now.getTime() - machine.lastVirusAttack.getTime()) / 1000);
-        const reductionTicks = Math.floor(secSinceLastReduction / CPU_REDUCTION_INTERVAL);
-        if (reductionTicks > 0) {
-          const penaltyMinutes = getVirusPenaltyMinutes(machine.cpuLevel);
-          const totalPenaltyMs = reductionTicks * penaltyMinutes * 60 * 1000;
-          const newCpuEndTime = new Date(machine.cpuEndTime!.getTime() - totalPenaltyMs);
-          machineUpdates.cpuEndTime = newCpuEndTime < now ? now : newCpuEndTime;
-          machineUpdates.lastVirusAttack = now;
-        }
-      }
-    }
-
-    // Skip DB write if nothing changed
-    const hasChanges = Object.keys(machineUpdates).length > 1; // more than just updatedAt
-    if (!hasChanges) return;
-
-    await db.update(userMachines).set(machineUpdates).where(eq(userMachines.userId, userId));
-  }
 
   // Transaction operations
   async addTransaction(transaction: InsertTransaction): Promise<Transaction> {
@@ -1672,25 +1239,28 @@ export class DatabaseStorage implements IStorage {
       const [referralInfo] = await db
         .select({ referrerId: referrals.referrerId })
         .from(referrals)
-        .where(and(
-          eq(referrals.refereeId, refereeId),
-          eq(referrals.status, 'completed')
-        ))
+        .where(eq(referrals.refereeId, refereeId))
         .limit(1);
 
       if (!referralInfo) return;
 
-      const commission = (withdrawalAmount * 0.10).toFixed(2);
+      const commission = parseFloat((withdrawalAmount * 0.10).toFixed(2));
 
-      await db.execute(sql`
-        UPDATE users
-        SET referral_well_balance = COALESCE(referral_well_balance, 0) + ${parseFloat(commission)},
-            referral_well_total_earned = COALESCE(referral_well_total_earned, 0) + ${parseFloat(commission)},
-            updated_at = NOW()
-        WHERE id = ${referralInfo.referrerId}
-      `);
+      await db.transaction(async (tx) => {
+        await tx.update(users).set({
+          balance: sql`COALESCE(${users.balance}, 0) + ${commission.toString()}`,
+          updatedAt: new Date(),
+        }).where(eq(users.id, referralInfo.referrerId));
 
-      console.log(`💰 Referral well: +${commission} AXN to ${referralInfo.referrerId} from ${refereeId}'s withdrawal of ${withdrawalAmount}`);
+        await tx.insert(earnings).values({
+          userId: referralInfo.referrerId,
+          amount: commission.toString(),
+          source: 'referral_commission',
+          description: `10% referral commission from friend's ${withdrawalAmount} AXN withdrawal`,
+        });
+      });
+
+      console.log(`💰 Referral commission: +${commission} AXN to ${referralInfo.referrerId} from ${refereeId}'s withdrawal of ${withdrawalAmount}`);
     } catch (error) {
       console.error('Error processing withdrawal commission:', error);
     }

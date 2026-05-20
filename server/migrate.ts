@@ -592,68 +592,22 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_withdrawals_user_id ON withdrawals(user_id)`);
     // promotions/task_completions indexes removed (tables dropped)
     
-    // User machines table for AXN mining machine system
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS user_machines (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id VARCHAR UNIQUE NOT NULL REFERENCES users(id),
-        mining_level INTEGER DEFAULT 1 NOT NULL,
-        capacity_level INTEGER DEFAULT 1 NOT NULL,
-        cpu_level INTEGER DEFAULT 1 NOT NULL,
-        has_energy BOOLEAN DEFAULT true NOT NULL,
-        antivirus_active BOOLEAN DEFAULT false NOT NULL,
-        machine_health INTEGER DEFAULT 100 NOT NULL,
-        cpu_start_time TIMESTAMP,
-        cpu_end_time TIMESTAMP,
-        last_claim_time TIMESTAMP DEFAULT NOW(),
-        last_virus_attack TIMESTAMP,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-    console.log('✅ [MIGRATION] user_machines table created');
-
-    // Add last_health_decay column if missing (health degrades always, separate from AXN theft)
-    await db.execute(sql`
-      ALTER TABLE user_machines ADD COLUMN IF NOT EXISTS last_health_decay TIMESTAMP
-    `);
-    console.log('✅ [MIGRATION] last_health_decay column ensured on user_machines');
-
-    // Add antivirus_activated_at for server-side AV expiry tracking
-    await db.execute(sql`
-      ALTER TABLE user_machines ADD COLUMN IF NOT EXISTS antivirus_activated_at TIMESTAMP
-    `);
-    console.log('✅ [MIGRATION] antivirus_activated_at column ensured on user_machines');
-
-    // Add accumulated_axn to preserve unclaimed mining across energy refill cycles
-    await db.execute(sql`
-      ALTER TABLE user_machines ADD COLUMN IF NOT EXISTS accumulated_axn NUMERIC DEFAULT 0
-    `);
-    console.log('✅ [MIGRATION] accumulated_axn column ensured on user_machines');
-
     // Add indexes for referral performance
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_referrals_referee_id ON referrals(referee_id)`);
 
-    // Mining sessions table — per-CPU-cycle analytics & fraud detection
+    // User farming table — simple 2-hour farming sessions
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS mining_sessions (
+      CREATE TABLE IF NOT EXISTS user_farming (
         id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id VARCHAR NOT NULL REFERENCES users(id),
-        mining_level INTEGER NOT NULL,
-        capacity_level INTEGER NOT NULL,
-        cpu_level INTEGER NOT NULL,
-        cpu_start_time TIMESTAMP NOT NULL,
-        cpu_expected_end_time TIMESTAMP NOT NULL,
-        expected_duration_sec INTEGER NOT NULL,
-        theoretical_max_axn NUMERIC(20, 8) NOT NULL,
-        axn_mined NUMERIC(20, 8) DEFAULT 0,
-        claimed_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT NOW()
+        user_id VARCHAR UNIQUE NOT NULL REFERENCES users(id),
+        started_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_mining_sessions_user_id ON mining_sessions(user_id)`);
-    console.log('✅ [MIGRATION] mining_sessions table ensured');
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_user_farming_user_id ON user_farming(user_id)`);
+    console.log('✅ [MIGRATION] user_farming table ensured');
 
     // Mission system columns
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_last_date TIMESTAMP`);

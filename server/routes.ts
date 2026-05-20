@@ -870,142 +870,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================
-  // AXN MINING MACHINE ROUTES
+  // FARMING ROUTES
   // ============================================================
 
-  app.get("/api/axn-mining/state", authenticateTelegram, async (req: any, res) => {
+  app.get("/api/farming/state", authenticateTelegram, async (req: any, res) => {
     try {
       const user = req.user?.user;
       if (!user) return res.status(401).json({ message: "Not authenticated" });
-      // Apply virus damage before returning state
-      await storage.applyVirusDamage(user.id);
-      const state = await storage.getAxnMachineState(user.id);
+      const state = await storage.getFarmingState(user.id);
       res.json(state);
     } catch (error) {
-      console.error("AXN machine state error:", error);
+      console.error("Farming state error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
 
-  app.post("/api/axn-mining/start-cpu", authenticateTelegram, async (req: any, res) => {
+  app.post("/api/farming/start", authenticateTelegram, async (req: any, res) => {
     try {
       const user = req.user?.user;
       if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const result = await storage.startCpu(user.id);
+      const result = await storage.startFarming(user.id);
       if (!result.success) return res.status(400).json(result);
       res.json(result);
     } catch (error) {
-      console.error("AXN start CPU error:", error);
+      console.error("Farming start error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
 
-  app.post("/api/axn-mining/claim", authenticateTelegram, async (req: any, res) => {
+  app.post("/api/farming/claim", authenticateTelegram, async (req: any, res) => {
     try {
       const user = req.user?.user;
       if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const result = await storage.claimAxnMining(user.id);
+      const result = await storage.claimFarming(user.id);
       if (!result.success) return res.status(400).json(result);
       res.json(result);
     } catch (error) {
-      console.error("AXN claim error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/axn-mining/refill-energy", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const result = await storage.refillEnergy(user.id);
-      if (!result.success) return res.status(400).json(result);
-      res.json(result);
-    } catch (error) {
-      console.error("AXN refill energy error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/axn-mining/refill-energy-free", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const result = await storage.refillEnergyFree(user.id);
-      if (!result.success) return res.status(400).json(result);
-      res.json(result);
-    } catch (error) {
-      console.error("AXN free energy refill error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/axn-mining/repair", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const result = await storage.repairMachine(user.id);
-      if (!result.success) return res.status(400).json(result);
-      res.json(result);
-    } catch (error) {
-      console.error("AXN repair error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Free repair (after watching an ad) — no AXN cost
-  app.post("/api/axn-mining/repair-free", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const result = await storage.repairMachineFree(user.id);
-      if (!result.success) return res.status(400).json(result);
-      res.json(result);
-    } catch (error) {
-      console.error("AXN free repair error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/axn-mining/toggle-antivirus", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const result = await storage.toggleAntivirus(user.id);
-      if (!result.success) return res.status(400).json(result);
-      res.json(result);
-    } catch (error) {
-      console.error("AXN antivirus toggle error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Free antivirus activation (after watching an ad) — no AXN cost
-  app.post("/api/axn-mining/antivirus-free", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const result = await storage.activateAntivirusFree(user.id);
-      if (!result.success) return res.status(400).json(result);
-      res.json(result);
-    } catch (error) {
-      console.error("AXN free antivirus error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/axn-mining/upgrade", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const { type } = req.body;
-      if (!['mining', 'capacity', 'cpu'].includes(type)) {
-        return res.status(400).json({ message: "Invalid upgrade type. Use: mining, capacity, or cpu" });
-      }
-      const result = await storage.upgradeSubsystem(user.id, type);
-      if (!result.success) return res.status(400).json(result);
-      res.json(result);
-    } catch (error) {
-      console.error("AXN upgrade error:", error);
+      console.error("Farming claim error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -1990,7 +1891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           referralStatus: row.status,
           channelMember,
           isActive,
-          miningBoost: isActive ? 0.02 : 0,
+          commissionRate: 10,
         };
       });
 
@@ -7893,33 +7794,21 @@ ${walletAddress}
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
-      const rows = await db.execute(sql`SELECT referral_well_balance, referral_well_total_earned FROM users WHERE id = ${userId}`);
-      const row = (rows as any).rows?.[0] || {};
+      // Total commission earned from earnings table (source = referral_commission)
+      const commissionRows = await db.execute(sql`
+        SELECT COALESCE(SUM(amount::numeric), 0) as total
+        FROM earnings
+        WHERE user_id = ${userId} AND source = 'referral_commission'
+      `);
+      const totalEarned = parseFloat((commissionRows as any).rows?.[0]?.total || '0');
       const refCountRows = await db.execute(sql`SELECT COUNT(*) as cnt FROM referrals WHERE referrer_id = ${userId}`);
       const totalFriends = parseInt((refCountRows as any).rows?.[0]?.cnt || '0');
       return res.json({
-        wellBalance: parseFloat(row.referral_well_balance ?? '0'),
-        totalEarned: parseFloat(row.referral_well_total_earned ?? '0'),
+        totalEarned,
         totalFriends,
-        totalWithdrawalCommission: parseFloat(row.referral_well_balance ?? '0'),
       });
     } catch (e) {
       return res.status(500).json({ message: "Failed" });
-    }
-  });
-
-  app.post('/api/referrals/well/claim', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) return res.status(401).json({ message: "Unauthorized" });
-      const rows = await db.execute(sql`SELECT referral_well_balance FROM users WHERE id = ${userId}`);
-      const row = (rows as any).rows?.[0];
-      const wellBalance = parseFloat(row?.referral_well_balance ?? '0');
-      if (wellBalance <= 0) return res.status(400).json({ message: "Your Well is empty" });
-      await db.execute(sql`UPDATE users SET balance = COALESCE(balance,0) + ${wellBalance}, referral_well_balance = 0 WHERE id = ${userId}`);
-      return res.json({ success: true, amount: wellBalance });
-    } catch (e) {
-      return res.status(500).json({ message: "Failed to claim" });
     }
   });
 
