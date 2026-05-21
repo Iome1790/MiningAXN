@@ -64,7 +64,7 @@ export default function Friends() {
         <div style={{ padding: '14px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
             <h1 style={{ color: '#fff', fontWeight: 900, fontSize: 22, margin: 0, letterSpacing: 0.5 }}>Invite Friends</h1>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 3 }}>Earn 10% AXN on every withdrawal</p>
+            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 3 }}>Earn 15 🔑 Keys per verified referral</p>
           </div>
           <button onClick={() => setShowHow(true)} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, cursor: 'pointer' }}>
             <HelpCircle style={{ width: 16, height: 16, color: 'rgba(255,255,255,0.4)' }} />
@@ -81,12 +81,12 @@ export default function Friends() {
               <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 3 }}>Friends</p>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(59,130,246,0.14)', borderRadius: 12, padding: '12px 8px', textAlign: 'center' }}>
-              <p style={{ color: '#F5C542', fontWeight: 900, fontSize: 20, margin: 0 }}>10%</p>
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 3 }}>Rate</p>
+              <p style={{ color: '#FFD700', fontWeight: 900, fontSize: 18, margin: 0 }}>15 🔑</p>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 3 }}>Per Ref</p>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(59,130,246,0.14)', borderRadius: 12, padding: '12px 8px', textAlign: 'center' }}>
               <p style={{ color: '#60a5fa', fontWeight: 900, fontSize: 20, margin: 0 }}>{totalEarned.toLocaleString(undefined, { maximumFractionDigits: 1 })}</p>
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 3 }}>Earned</p>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 3 }}>Keys Earned</p>
             </div>
           </div>
 
@@ -162,9 +162,9 @@ export default function Friends() {
                 <p style={{ color: '#fff', fontWeight: 900, fontSize: 16, marginBottom: 4 }}>How It Works</p>
                 {[
                   { icon: "🔗", title: "1. Invite friends", desc: "Share your unique invite link. Friends join Axionet via your link." },
-                  { icon: "⛏️", title: "2. They farm & withdraw", desc: "Your friends farm AXN. When their withdrawal is approved, you earn." },
-                  { icon: "💰", title: "3. You earn 10% instantly", desc: "10% of their withdrawal amount is added directly to your AXN balance." },
-                  { icon: "🚀", title: "More friends = more AXN", desc: "No limit. The more active friends, the more passive income you earn." },
+                  { icon: "🎯", title: "2. They complete 10 tasks", desc: "Your friend must complete at least 10 bounty tasks to be verified." },
+                  { icon: "🔑", title: "3. You earn 15 Keys instantly", desc: "Once verified, 15 Keys are added to your balance automatically." },
+                  { icon: "🚀", title: "More friends = more Keys", desc: "No limit. Each verified friend earns you 15 Keys." },
                 ].map((item, i) => (
                   <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(59,130,246,0.1)', borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 10 }}>
                     <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.3 }}>{item.icon}</span>

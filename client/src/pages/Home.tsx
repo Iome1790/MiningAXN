@@ -8,7 +8,7 @@ import InvitePopup from "@/components/InvitePopup";
 import Header from "@/components/Header";
 import WithdrawalPopup from "@/components/WithdrawalPopup";
 import MenuPopup from "@/components/MenuPopup";
-import AdsList from "@/components/AdsList";
+import HomeContent from "@/components/HomeContent";
 import { showNotification } from "@/components/AppNotification";
 
 export default function Home() {
@@ -72,7 +72,7 @@ export default function Home() {
           overflowX: "hidden",
         }}
       >
-        <AdsList />
+        <HomeContent />
       </main>
 
       {settingsOpen && <SettingsPopup onClose={() => setSettingsOpen(false)} />}
