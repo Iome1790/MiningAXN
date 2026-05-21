@@ -115,6 +115,12 @@ export const users = pgTable("users", {
   missionBonusClaimed: boolean("mission_bonus_claimed").default(false),
   missionAppTimeSeconds: integer("mission_app_time_seconds").default(0),
   missionInviteClaimed: boolean("mission_invite_claimed").default(false),
+  keyBalance: integer("key_balance").default(0),
+  tasksCompleted: integer("tasks_completed").default(0),
+  dailyCheckinClaimed: boolean("daily_checkin_claimed").default(false),
+  dailyInviteClaimed: boolean("daily_invite_claimed").default(false),
+  dailyUpdatesClaimed: boolean("daily_updates_claimed").default(false),
+  dailyTasksDate: timestamp("daily_tasks_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
