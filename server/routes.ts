@@ -999,16 +999,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
            updated_at = NOW()`,
         [user.id, slotId]
       );
-      // Add AXN reward to balance
+      // Give 1 Key instead of AXN for watching an ad
       await pool.query(
-        `UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1 WHERE id = $2`,
-        [slot.reward, user.id]
+        `UPDATE users SET key_balance = COALESCE(key_balance, 0) + 1 WHERE id = $1`,
+        [user.id]
       );
       const newCount = currentCount + 1;
-      res.json({ success: true, earned: slot.reward, watchedCount: newCount, maxWatches: slot.maxWatches });
+      res.json({ success: true, earned: 1, keysEarned: 1, watchedCount: newCount, maxWatches: slot.maxWatches });
     } catch (error) {
       console.error("Ad slot watch error:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // ─── Daily Tasks API ───
+  app.post("/api/daily-tasks/claim/:taskType", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const { taskType } = req.params;
+      if (!["checkin", "invite", "updates"].includes(taskType)) {
+        return res.status(400).json({ message: "Invalid task type" });
+      }
+
+      const { pool } = await import("./db");
+      const userRow = await pool.query(`SELECT daily_tasks_date, daily_checkin_claimed, daily_invite_claimed, daily_updates_claimed, friends_invited FROM users WHERE id = $1`, [user.id]);
+      const u = userRow.rows[0];
+      if (!u) return res.status(404).json({ message: "User not found" });
+
+      // Reset daily flags if last claim was not today
+      const lastDate = u.daily_tasks_date ? new Date(u.daily_tasks_date) : null;
+      const today = new Date();
+      const isNewDay = !lastDate ||
+        lastDate.getUTCFullYear() !== today.getUTCFullYear() ||
+        lastDate.getUTCMonth() !== today.getUTCMonth() ||
+        lastDate.getUTCDate() !== today.getUTCDate();
+
+      if (isNewDay) {
+        await pool.query(`UPDATE users SET daily_checkin_claimed = FALSE, daily_invite_claimed = FALSE, daily_updates_claimed = FALSE, daily_tasks_date = NOW() WHERE id = $1`, [user.id]);
+        u.daily_checkin_claimed = false;
+        u.daily_invite_claimed = false;
+        u.daily_updates_claimed = false;
+      }
+
+      const claimedField: Record<string, string> = {
+        checkin: "daily_checkin_claimed",
+        invite: "daily_invite_claimed",
+        updates: "daily_updates_claimed",
+      };
+      const keysMap: Record<string, number> = { checkin: 5, invite: 15, updates: 3 };
+
+      const fieldName = claimedField[taskType];
+      if (u[fieldName]) {
+        return res.status(400).json({ success: false, message: "Already claimed today. Come back tomorrow!" });
+      }
+
+      // Extra check: invite task requires at least 1 friend invited
+      if (taskType === "invite" && (!u.friends_invited || parseInt(u.friends_invited) < 1)) {
+        return res.status(400).json({ success: false, message: "You need to invite at least 1 friend first!" });
+      }
+
+      const keysEarned = keysMap[taskType];
+      await pool.query(
+        `UPDATE users SET ${fieldName} = TRUE, key_balance = COALESCE(key_balance, 0) + $1, daily_tasks_date = NOW() WHERE id = $2`,
+        [keysEarned, user.id]
+      );
+
+      return res.json({ success: true, keysEarned, message: `+${keysEarned} Keys earned!` });
+    } catch (error) {
+      console.error("Daily task claim error:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // ─── Bounty Tasks API ───
+  app.get("/api/bounty-tasks", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const { pool } = await import("./db");
+      const [tasksRes, completedRes] = await Promise.all([
+        pool.query(`SELECT id, title, description, reward_axn, key_cost, url FROM bounty_tasks WHERE is_active = TRUE ORDER BY id ASC`),
+        pool.query(`SELECT task_id FROM bounty_task_completions WHERE user_id = $1`, [user.id]),
+      ]);
+      const completedIds = new Set(completedRes.rows.map((r: any) => r.task_id));
+      const tasks = tasksRes.rows.map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        rewardAxn: t.reward_axn,
+        keyCost: t.key_cost,
+        url: t.url,
+        completed: completedIds.has(t.id),
+      }));
+      return res.json({ tasks });
+    } catch (error) {
+      console.error("Bounty tasks list error:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/bounty-tasks/:taskId/complete", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const taskId = parseInt(req.params.taskId);
+      if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task ID" });
+
+      const { pool } = await import("./db");
+
+      // Get task
+      const taskRes = await pool.query(`SELECT id, reward_axn, key_cost FROM bounty_tasks WHERE id = $1 AND is_active = TRUE`, [taskId]);
+      if (!taskRes.rows[0]) return res.status(404).json({ message: "Task not found" });
+      const task = taskRes.rows[0];
+
+      // Check not already completed
+      const alreadyRes = await pool.query(`SELECT 1 FROM bounty_task_completions WHERE user_id = $1 AND task_id = $2`, [user.id, taskId]);
+      if (alreadyRes.rows.length > 0) return res.status(400).json({ message: "Task already completed" });
+
+      // Check key balance
+      const userRes = await pool.query(`SELECT key_balance FROM users WHERE id = $1`, [user.id]);
+      const currentKeys = parseInt(userRes.rows[0]?.key_balance || "0");
+      if (currentKeys < task.key_cost) {
+        return res.status(400).json({ success: false, message: `Not enough Keys. You need ${task.key_cost} Keys.` });
+      }
+
+      // Deduct keys, add AXN reward, increment tasks_completed
+      await pool.query(
+        `UPDATE users SET key_balance = COALESCE(key_balance, 0) - $1, balance = COALESCE(balance::numeric, 0) + $2, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $3`,
+        [task.key_cost, task.reward_axn, user.id]
+      );
+      await pool.query(`INSERT INTO bounty_task_completions (user_id, task_id) VALUES ($1, $2)`, [user.id, taskId]);
+
+      // Check referral verification: if invited user has completed 10+ tasks, mark referral active + give referrer 15 Keys
+      const userInfoRes = await pool.query(`SELECT tasks_completed, referred_by FROM users WHERE id = $1`, [user.id]);
+      const tasksNow = parseInt(userInfoRes.rows[0]?.tasks_completed || "0");
+      const referredBy = userInfoRes.rows[0]?.referred_by;
+      if (tasksNow >= 10 && referredBy) {
+        // Check if referral is still pending
+        const refRes = await pool.query(`SELECT id, status FROM referrals WHERE referee_id = $1 AND referrer_id = $2 AND status = 'pending'`, [user.id, referredBy]);
+        if (refRes.rows.length > 0) {
+          await pool.query(`UPDATE referrals SET status = 'completed' WHERE id = $1`, [refRes.rows[0].id]);
+          // Give referrer 15 Keys
+          await pool.query(`UPDATE users SET key_balance = COALESCE(key_balance, 0) + 15 WHERE id = $1`, [referredBy]);
+          console.log(`✅ Referral verified: user ${user.id} completed 10 tasks. Referrer ${referredBy} received 15 Keys.`);
+        }
+      }
+
+      return res.json({ success: true, axnEarned: task.reward_axn, message: `+${task.reward_axn} AXN earned!` });
+    } catch (error) {
+      console.error("Bounty task complete error:", error);
+      return res.status(500).json({ message: "Internal server error" });
     }
   });
 

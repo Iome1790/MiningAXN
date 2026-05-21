@@ -622,6 +622,63 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mission_invite_claimed BOOLEAN DEFAULT FALSE`);
     console.log('✅ [MIGRATION] Mission system columns ensured');
 
+    // Key system columns
+    try {
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS key_balance INTEGER DEFAULT 0`);
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS tasks_completed INTEGER DEFAULT 0`);
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_checkin_claimed BOOLEAN DEFAULT FALSE`);
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_invite_claimed BOOLEAN DEFAULT FALSE`);
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_updates_claimed BOOLEAN DEFAULT FALSE`);
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_tasks_date TIMESTAMP`);
+      console.log('✅ [MIGRATION] Key system columns ensured');
+    } catch (e) {
+      console.log('ℹ️ [MIGRATION] Key system columns already exist');
+    }
+
+    // Bounty tasks table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS bounty_tasks (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        reward_axn INTEGER NOT NULL DEFAULT 50,
+        key_cost INTEGER NOT NULL DEFAULT 5,
+        url TEXT,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    // Seed default bounty tasks if empty
+    await db.execute(sql`
+      INSERT INTO bounty_tasks (title, description, url, reward_axn, key_cost)
+      SELECT 'Join Axionet Channel', 'Join our official Telegram channel', 'https://t.me/axionet', 50, 5
+      WHERE NOT EXISTS (SELECT 1 FROM bounty_tasks LIMIT 1)
+    `);
+    await db.execute(sql`
+      INSERT INTO bounty_tasks (title, description, url, reward_axn, key_cost)
+      SELECT 'Follow on Twitter/X', 'Follow Axionet on Twitter/X', 'https://x.com/axionet', 50, 5
+      WHERE NOT EXISTS (SELECT 1 FROM bounty_tasks WHERE title = 'Follow on Twitter/X')
+    `);
+    await db.execute(sql`
+      INSERT INTO bounty_tasks (title, description, url, reward_axn, key_cost)
+      SELECT 'Share Axionet App', 'Share the Axionet app with your friends', NULL, 50, 5
+      WHERE NOT EXISTS (SELECT 1 FROM bounty_tasks WHERE title = 'Share Axionet App')
+    `);
+    console.log('✅ [MIGRATION] bounty_tasks table ensured');
+
+    // Bounty task completions table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS bounty_task_completions (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR NOT NULL REFERENCES users(id),
+        task_id INTEGER NOT NULL,
+        completed_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, task_id)
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_btc_user ON bounty_task_completions(user_id)`);
+    console.log('✅ [MIGRATION] bounty_task_completions table ensured');
+
     // User Ad Watches table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS user_ad_watches (
