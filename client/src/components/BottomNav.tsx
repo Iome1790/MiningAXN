@@ -32,9 +32,7 @@ const NAV_ICONS: Record<string, (color: string) => JSX.Element> = {
 };
 
 const TABS = [
-  { label: "Mission", path: "/missions" },
   { label: "Home",    path: "/" },
-  { label: "Friends", path: "/friends" },
   { label: "Wallet",  path: "/wallet" },
   { label: "Roadmap", path: "/roadmap" },
 ];

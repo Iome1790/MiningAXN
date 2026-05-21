@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { forwardRef } from "react";
 import { AXNIcon } from "@/components/AXNIcon";
-import { RiSettings3Fill, RiCoupon3Fill, RiArrowUpCircleFill } from "react-icons/ri";
+import { RiSettings3Fill, RiCoupon3Fill, RiArrowUpCircleFill, RiKey2Fill } from "react-icons/ri";
 
 interface HeaderProps {
   onMenuOpen?: () => void;
@@ -43,7 +43,7 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
           }}
         >
           {/* Row 1: profile + name | settings */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
               <button
                 onClick={onMenuOpen}
@@ -74,12 +74,12 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {/* Key balance pill */}
               <div style={{
-                display: "flex", alignItems: "center", gap: 4,
+                display: "flex", alignItems: "center", gap: 5,
                 background: "rgba(255,215,0,0.15)",
                 border: "1px solid rgba(255,215,0,0.35)",
-                borderRadius: 50, padding: "5px 10px",
+                borderRadius: 50, padding: "5px 11px",
               }}>
-                <span style={{ fontSize: 13 }}>🔑</span>
+                <RiKey2Fill size={13} color="#FFD700" />
                 <span style={{ color: "#FFD700", fontSize: 12, fontWeight: 800 }}>{keyBalance}</span>
               </div>
 
@@ -99,41 +99,26 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
             </div>
           </div>
 
-          {/* Row 2: AXN icon + big amount | ≈USD value + withdraw icon */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <AXNIcon size={30} />
+          {/* Row 2: AXN icon + balance (stacked) */}
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 14 }}>
+            <AXNIcon size={28} />
+            <div style={{ marginLeft: 10 }}>
               <span
                 style={{
                   color: "#fff",
-                  fontSize: 38,
+                  fontSize: 26,
                   fontWeight: 900,
                   letterSpacing: "-0.03em",
                   lineHeight: 1,
                   textShadow: "0 2px 16px rgba(0,0,0,0.25)",
+                  display: "block",
                 }}
               >
                 {axnBalance.toLocaleString()}
               </span>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
+              <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, fontWeight: 600, display: "block", marginTop: 2 }}>
                 ≈${usdValue} USD
               </span>
-              <button
-                onClick={onWithdrawOpen}
-                className="active:scale-95 transition-transform"
-                style={{
-                  width: 38, height: 38, borderRadius: 12,
-                  background: "rgba(255,255,255,0.22)",
-                  border: "1px solid rgba(255,255,255,0.3)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-                }}
-              >
-                <RiArrowUpCircleFill size={20} color="#fff" />
-              </button>
             </div>
           </div>
 
