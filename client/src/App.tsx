@@ -26,8 +26,6 @@ const Home = lazy(() => import("@/pages/Home"));
 const Landing = lazy(() => import("@/pages/Landing"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const CountryControls = lazy(() => import("@/pages/CountryControls"));
-const Missions = lazy(() => import("@/pages/Missions"));
-const Friends = lazy(() => import("@/pages/Friends"));
 const WalletPage = lazy(() => import("@/pages/Wallet"));
 const ProfilePage = lazy(() => import("@/pages/Profile"));
 const RoadmapPage = lazy(() => import("@/pages/Roadmap"));
@@ -96,7 +94,7 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
   );
 }
 
-const NAV_ROUTES = new Set(["/", "/missions", "/friends", "/wallet", "/roadmap"]);
+const NAV_ROUTES = new Set(["/", "/wallet", "/roadmap"]);
 
 function Router() {
   const [location] = useLocation();
@@ -110,8 +108,6 @@ function Router() {
           <Route path="/landing" component={Landing} />
           <Route path="/admin" component={Admin} />
           <Route path="/admin/country-controls" component={CountryControls} />
-          <Route path="/missions" component={Missions} />
-          <Route path="/friends" component={Friends} />
           <Route path="/wallet" component={WalletPage} />
           <Route path="/roadmap" component={RoadmapPage} />
           <Route path="/profile" component={ProfilePage} />
