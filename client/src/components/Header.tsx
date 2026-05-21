@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { forwardRef } from "react";
 import { AXNIcon } from "@/components/AXNIcon";
-import { RiSettings3Fill, RiExchangeFill, RiCoupon3Fill, RiShareFill, RiArrowUpCircleFill } from "react-icons/ri";
+import { RiSettings3Fill, RiCoupon3Fill, RiArrowUpCircleFill } from "react-icons/ri";
 
 interface HeaderProps {
   onMenuOpen?: () => void;
@@ -14,11 +14,12 @@ interface HeaderProps {
 }
 
 const Header = forwardRef<HTMLDivElement, HeaderProps>(
-  ({ onMenuOpen, onWithdrawOpen, onSettingsOpen, onTransactionsOpen, onPromoOpen, onShareOpen }, ref) => {
+  ({ onMenuOpen, onWithdrawOpen, onSettingsOpen, onPromoOpen }, ref) => {
     const { data: user } = useQuery<any>({ queryKey: ["/api/auth/user"], retry: false });
 
     const axnBalance = Math.floor(parseFloat((user as any)?.balance || "0"));
     const usdValue = (axnBalance * 0.001).toFixed(2);
+    const keyBalance = (user as any)?.keyBalance ?? (user as any)?.key_balance ?? 0;
     const firstName: string = user?.firstName || user?.username || "You";
     const profileImageUrl: string | null =
       user?.profileImageUrl ||
@@ -41,7 +42,7 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
             boxShadow: "0 8px 40px rgba(60,20,220,0.55), 0 2px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15)",
           }}
         >
-          {/* Row 1: profile + name | settings only */}
+          {/* Row 1: profile + name | settings */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
               <button
@@ -70,24 +71,36 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
               </div>
             </div>
 
-            {/* Settings only */}
-            <button
-              onClick={onSettingsOpen}
-              className="active:scale-95 transition-transform"
-              style={{
-                width: 34, height: 34, borderRadius: "50%",
-                background: "rgba(255,255,255,0.16)",
-                border: "1px solid rgba(255,255,255,0.22)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}
-            >
-              <RiSettings3Fill size={16} color="#fff" />
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {/* Key balance pill */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 4,
+                background: "rgba(255,215,0,0.15)",
+                border: "1px solid rgba(255,215,0,0.35)",
+                borderRadius: 50, padding: "5px 10px",
+              }}>
+                <span style={{ fontSize: 13 }}>🔑</span>
+                <span style={{ color: "#FFD700", fontSize: 12, fontWeight: 800 }}>{keyBalance}</span>
+              </div>
+
+              {/* Settings */}
+              <button
+                onClick={onSettingsOpen}
+                className="active:scale-95 transition-transform"
+                style={{
+                  width: 34, height: 34, borderRadius: "50%",
+                  background: "rgba(255,255,255,0.16)",
+                  border: "1px solid rgba(255,255,255,0.22)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <RiSettings3Fill size={16} color="#fff" />
+              </button>
+            </div>
           </div>
 
-          {/* Row 2: AXN icon + big amount | ≈USD value + withdraw button */}
+          {/* Row 2: AXN icon + big amount | ≈USD value + withdraw icon */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            {/* Left: icon + amount */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <AXNIcon size={30} />
               <span
@@ -104,7 +117,6 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
               </span>
             </div>
 
-            {/* Right: approx value + withdraw button */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
                 ≈${usdValue} USD
@@ -125,56 +137,41 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
             </div>
           </div>
 
-          {/* Row 3: Transactions left | Promo Code + Share right */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          {/* Row 3: Withdraw (left) | Promo Code (right) */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
-              onClick={onTransactionsOpen}
+              onClick={onWithdrawOpen}
               className="active:scale-95 transition-transform"
               style={{
-                display: "flex", alignItems: "center", gap: 6,
+                flex: 1,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                 background: "rgba(255,255,255,0.13)",
-                borderRadius: 50, padding: "7px 14px",
+                borderRadius: 50, padding: "9px 14px",
                 border: "1px solid rgba(255,255,255,0.18)",
               }}
             >
-              <RiExchangeFill size={14} color="rgba(255,255,255,0.9)" />
-              <span style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
-                Transactions
+              <RiArrowUpCircleFill size={14} color="rgba(255,255,255,0.9)" />
+              <span style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 700 }}>
+                Withdraw
               </span>
             </button>
 
-            <div style={{ display: "flex", gap: 7 }}>
-              <button
-                onClick={onPromoOpen}
-                className="active:scale-95 transition-transform"
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  background: "rgba(255,255,255,0.13)",
-                  borderRadius: 50, padding: "7px 13px",
-                  border: "1px solid rgba(255,255,255,0.18)",
-                }}
-              >
-                <RiCoupon3Fill size={14} color="rgba(255,255,255,0.9)" />
-                <span style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
-                  Promo Code
-                </span>
-              </button>
-              <button
-                onClick={onShareOpen}
-                className="active:scale-95 transition-transform"
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  background: "rgba(255,255,255,0.13)",
-                  borderRadius: 50, padding: "7px 13px",
-                  border: "1px solid rgba(255,255,255,0.18)",
-                }}
-              >
-                <RiShareFill size={14} color="rgba(255,255,255,0.9)" />
-                <span style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
-                  Share
-                </span>
-              </button>
-            </div>
+            <button
+              onClick={onPromoOpen}
+              className="active:scale-95 transition-transform"
+              style={{
+                flex: 1,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                background: "rgba(255,255,255,0.13)",
+                borderRadius: 50, padding: "9px 14px",
+                border: "1px solid rgba(255,255,255,0.18)",
+              }}
+            >
+              <RiCoupon3Fill size={14} color="rgba(255,255,255,0.9)" />
+              <span style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 700 }}>
+                Promo Code
+              </span>
+            </button>
           </div>
         </div>
       </div>
