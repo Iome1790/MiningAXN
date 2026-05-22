@@ -7,12 +7,12 @@ const TABS = [
     label: "Games",
     path: "/game",
     icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#fff" : "rgba(255,255,255,0.4)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={active ? "#fff" : "rgba(255,255,255,0.4)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="6" width="20" height="12" rx="4"/>
         <line x1="8" y1="12" x2="12" y2="12"/>
         <line x1="10" y1="10" x2="10" y2="14"/>
-        <circle cx="16" cy="11" r="0.9" fill={active ? "#fff" : "rgba(255,255,255,0.4)"} stroke="none"/>
-        <circle cx="18" cy="13" r="0.9" fill={active ? "#fff" : "rgba(255,255,255,0.4)"} stroke="none"/>
+        <circle cx="16" cy="11" r="1" fill={active ? "#fff" : "rgba(255,255,255,0.4)"} stroke="none"/>
+        <circle cx="18" cy="13" r="1" fill={active ? "#fff" : "rgba(255,255,255,0.4)"} stroke="none"/>
       </svg>
     ),
   },
@@ -20,7 +20,7 @@ const TABS = [
     label: "Offers",
     path: "/offers",
     icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#fff" : "rgba(255,255,255,0.4)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={active ? "#fff" : "rgba(255,255,255,0.4)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 12 20 22 4 22 4 12"/>
         <rect x="2" y="7" width="20" height="5"/>
         <line x1="12" y1="22" x2="12" y2="7"/>
@@ -50,9 +50,9 @@ export default function BottomNav() {
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 600,
         display: "flex", justifyContent: "space-around", alignItems: "center",
-        height: 64, paddingBottom: "max(calc(env(safe-area-inset-bottom) + 4px), 8px)",
+        height: 72, paddingBottom: "max(calc(env(safe-area-inset-bottom) + 4px), 8px)",
         background: "#111111",
-        borderTop: "1px solid rgba(255,255,255,0.07)",
+        borderTop: "1px solid rgba(255,255,255,0.08)",
       }}>
         {TABS.map(({ label, path, icon }) => {
           const active = label === "Games" ? location.startsWith("/game") : false;
@@ -63,19 +63,19 @@ export default function BottomNav() {
               style={{
                 flex: 1, height: "100%", border: "none", background: "transparent",
                 cursor: "pointer", display: "flex", flexDirection: "column",
-                alignItems: "center", justifyContent: "center", gap: 4,
+                alignItems: "center", justifyContent: "center", gap: 5,
               }}
             >
               <div style={{
-                width: 44, height: 32, borderRadius: 10,
-                background: active ? "rgba(255,255,255,0.12)" : "transparent",
+                width: 52, height: 36, borderRadius: 12,
+                background: active ? "rgba(255,255,255,0.14)" : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "background 0.2s",
               }}>
                 {icon(active)}
               </div>
               <span style={{
-                fontSize: 11, fontWeight: active ? 700 : 500,
+                fontSize: 12, fontWeight: active ? 700 : 500,
                 color: active ? "#fff" : "rgba(255,255,255,0.38)",
                 letterSpacing: 0.2,
               }}>
@@ -94,7 +94,7 @@ export default function BottomNav() {
             exit={{ opacity: 0, y: 16 }}
             transition={{ type: "spring", damping: 22, stiffness: 300 }}
             style={{
-              position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)",
+              position: "fixed", bottom: 88, left: "50%", transform: "translateX(-50%)",
               background: "#1e1e1e", border: "1px solid rgba(255,255,255,0.1)",
               borderRadius: 14, padding: "12px 28px", zIndex: 700,
               boxShadow: "0 8px 32px rgba(0,0,0,0.6)", whiteSpace: "nowrap",
