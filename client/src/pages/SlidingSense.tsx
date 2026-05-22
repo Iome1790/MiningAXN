@@ -3,6 +3,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { AXNIcon } from "@/components/AXNIcon";
+
+declare global {
+  interface Window {
+    show_10401872?: (opts?: any) => Promise<void>;
+  }
+}
 
 /* ─── Audio ─── */
 function playTone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.15) {
@@ -32,14 +39,13 @@ const PUZZLE_SEQ = [
 ];
 
 const TOTAL_TIME = 90;
+const REWARD_PER_SOLVE = 10;
 
-/* ─── Tile color per puzzle index ─── */
 const TILE_COLORS = [
   "#f7931a", "#627eea", "#22c55e",
   "#9945ff", "#ef4444", "#f0b90b",
 ];
 
-/* ─── Puzzle helpers ─── */
 type Tiles = (number | null)[];
 
 function getNeighbors(idx: number, rows: number, cols: number): number[] {
@@ -78,21 +84,38 @@ function isSolved(tiles: Tiles): boolean {
   return tiles[tiles.length - 1] === null;
 }
 
-/* ─── Megaphone SVG ─── */
+/* ─── Megaphone: full float animation ─── */
 function MegaphoneIllustration() {
   return (
-    <svg width="160" height="140" viewBox="0 0 160 140" fill="none">
-      <rect x="46" y="52" width="32" height="38" rx="5" fill="#8a9199"/>
-      <path d="M78 46 L132 22 L132 118 L78 94 Z" fill="#6e7680"/>
-      <path d="M78 46 L132 22 L132 38 L78 60 Z" fill="#5b7de8"/>
-      <rect x="48" y="60" width="28" height="4" rx="2" fill="#6e7680"/>
-      <rect x="48" y="68" width="28" height="4" rx="2" fill="#6e7680"/>
-      <rect x="48" y="76" width="28" height="4" rx="2" fill="#6e7680"/>
-      <rect x="58" y="90" width="12" height="22" rx="5" fill="#8a9199"/>
-      <circle cx="132" cy="70" r="10" fill="none" stroke="#5b7de8" strokeWidth="3"/>
-      <path d="M138 64 L144 56" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"/>
-      <path d="M142 71 L150 71" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"/>
-      <path d="M138 77 L144 84" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"/>
+    <svg width="160" height="160" viewBox="0 0 160 160" fill="none" style={{ overflow: "visible" }}>
+      <motion.g
+        animate={{ y: [0, -10, 0] }}
+        transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
+      >
+        {/* Body */}
+        <rect x="46" y="52" width="32" height="38" rx="5" fill="#8a9199"/>
+        <rect x="48" y="60" width="28" height="4" rx="2" fill="#6e7680"/>
+        <rect x="48" y="68" width="28" height="4" rx="2" fill="#6e7680"/>
+        <rect x="48" y="76" width="28" height="4" rx="2" fill="#6e7680"/>
+        <rect x="58" y="90" width="12" height="22" rx="5" fill="#8a9199"/>
+        {/* Horn */}
+        <path d="M78 46 L132 22 L132 118 L78 94 Z" fill="#6e7680"/>
+        <path d="M78 46 L132 22 L132 38 L78 60 Z" fill="#5b7de8"/>
+        <circle cx="132" cy="70" r="10" fill="none" stroke="#5b7de8" strokeWidth="3"/>
+        {/* Sound waves */}
+        <motion.path d="M138 64 L144 56" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"
+          animate={{ opacity: [0.2, 1, 0.2] }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0 }}
+        />
+        <motion.path d="M142 71 L150 71" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"
+          animate={{ opacity: [0.2, 1, 0.2] }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0.3 }}
+        />
+        <motion.path d="M138 77 L144 84" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"
+          animate={{ opacity: [0.2, 1, 0.2] }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0.6 }}
+        />
+      </motion.g>
     </svg>
   );
 }
@@ -124,44 +147,144 @@ function DemoGrid({ solved, color }: { solved: boolean; color: string }) {
 }
 
 /* ─── Top nav bar ─── */
-function TopBar({ onBack, muted, onMute, onHelp }: { onBack: () => void; muted: boolean; onMute: () => void; onHelp: () => void }) {
+function TopBar() {
   return (
-    <div style={{ display: "flex", alignItems: "center", padding: "12px 14px 10px", gap: 10 }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "white", padding: 0, display: "flex", alignItems: "center", flexShrink: 0 }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
-        </svg>
-      </button>
-      <div style={{ flex: 1 }}>
-        <p style={{ color: "white", fontSize: 15, fontWeight: 700, margin: 0 }}>Sliding Sense</p>
-        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, margin: 0 }}>Slide tiles and finish the puzzle</p>
-      </div>
-      <button onClick={onMute} style={{ background: "rgba(255,255,255,0.08)", border: "none", cursor: "pointer", width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        {muted
-          ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-          : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-        }
-      </button>
-      <button onClick={onHelp} style={{ background: "rgba(255,255,255,0.08)", border: "none", cursor: "pointer", width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <span style={{ color: "white", fontSize: 15, fontWeight: 700 }}>?</span>
-      </button>
+    <div style={{ padding: "12px 14px 10px", background: "linear-gradient(180deg,#1e1e1e 0%,#181818 100%)", borderBottom: "1px solid rgba(255,255,255,0.09)", boxShadow: "0 2px 12px rgba(0,0,0,0.4)" }}>
+      <p style={{ color: "white", fontSize: 16, fontWeight: 900, margin: 0, letterSpacing: 0.2 }}>Sliding Axionet</p>
+      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, margin: 0 }}>Slide tiles and finish the puzzle</p>
     </div>
   );
 }
 
-/* ─── Popup ─── */
 interface Popup { id: number; text: string; }
+
+/* ─── Results screen ─── */
+function ResultsScreen({ score, onPlayAgain, onHome }: { score: number; onPlayAgain: () => void; onHome: () => void }) {
+  const CONFETTI = [
+    { x: -90, y: -65, color: "#22d3ee", w: 10, h: 7, rot: 140, d: 0.28 },
+    { x: 65, y: -85, color: "#f59e0b", w: 8, h: 8, rot: 220, d: 0.38 },
+    { x: 105, y: -35, color: "#ef4444", w: 12, h: 6, rot: 180, d: 0.24 },
+    { x: -110, y: 8, color: "#3b82f6", w: 9, h: 9, rot: -80, d: 0.33 },
+    { x: -65, y: 85, color: "#a855f7", w: 7, h: 11, rot: 100, d: 0.42 },
+    { x: 95, y: 75, color: "#22c55e", w: 10, h: 6, rot: -150, d: 0.20 },
+    { x: -125, y: -42, color: "#f97316", w: 8, h: 8, rot: 240, d: 0.46 },
+    { x: 125, y: 52, color: "#ec4899", w: 11, h: 7, rot: -200, d: 0.36 },
+    { x: 32, y: 105, color: "#facc15", w: 9, h: 6, rot: 300, d: 0.26 },
+    { x: -28, y: -105, color: "#34d399", w: 7, h: 10, rot: -120, d: 0.44 },
+  ];
+  return (
+    <div style={{ minHeight: "100vh", background: "#111111", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", overflow: "hidden" }}>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {CONFETTI.map((c, i) => (
+          <motion.div key={i}
+            initial={{ x: 0, y: 0, opacity: 1, rotate: 0 }}
+            animate={{ x: c.x, y: c.y, opacity: 0, rotate: c.rot }}
+            transition={{ duration: 1.3, delay: c.d, ease: "easeOut" }}
+            style={{ position: "absolute", width: c.w, height: c.h, background: c.color, borderRadius: 2, pointerEvents: "none", zIndex: 2 }}
+          />
+        ))}
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", damping: 14, stiffness: 180, delay: 0.1 }}
+          style={{ position: "relative", zIndex: 1 }}
+        >
+          <svg width="160" height="200" viewBox="0 0 160 200" fill="none">
+            <defs>
+              <linearGradient id="ssBadgeGold" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#fde68a"/><stop offset="60%" stopColor="#f59e0b"/><stop offset="100%" stopColor="#d97706"/>
+              </linearGradient>
+              <linearGradient id="ssBadgeInner" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#fbbf24"/><stop offset="100%" stopColor="#b45309"/>
+              </linearGradient>
+            </defs>
+            <circle cx="140" cy="78" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="132" cy="108" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="110" cy="130" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="80" cy="138" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="50" cy="130" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="28" cy="108" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="20" cy="78" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="28" cy="48" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="50" cy="26" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="80" cy="18" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="110" cy="26" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="132" cy="48" r="14" fill="url(#ssBadgeGold)"/>
+            <circle cx="80" cy="78" r="54" fill="url(#ssBadgeGold)"/>
+            <circle cx="80" cy="78" r="42" fill="url(#ssBadgeInner)"/>
+            <path d="M54 54 Q80 42 106 54" stroke="rgba(255,255,255,0.3)" strokeWidth="4" strokeLinecap="round" fill="none"/>
+            <polyline points="62,78 75,93 102,65" stroke="white" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            <path d="M63,132 L55,176 L80,160 L80,132 Z" fill="#dc2626"/>
+            <path d="M97,132 L105,176 L80,160 L80,132 Z" fill="#ef4444"/>
+            <rect x="57" y="128" width="46" height="14" rx="4" fill="#b91c1c"/>
+          </svg>
+        </motion.div>
+      </div>
+
+      <motion.p
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        style={{ color: "white", fontSize: 64, fontWeight: 900, margin: "4px 0 4px", letterSpacing: -2, lineHeight: 1 }}
+      >
+        {score}
+      </motion.p>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, textAlign: "center", margin: "0 0 8px" }}
+      >
+        AXN earned
+      </motion.p>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.45 }}
+        style={{ color: "rgba(255,255,255,0.38)", fontSize: 13, textAlign: "center", margin: "0 0 36px" }}
+      >
+        Congratulations! Rewarded to your balance.
+      </motion.p>
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        style={{ display: "flex", gap: 16 }}
+      >
+        <button
+          onClick={onHome}
+          style={{ width: 58, height: 58, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </button>
+        <button
+          onClick={onPlayAgain}
+          style={{ width: 58, height: 58, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
+          </svg>
+        </button>
+      </motion.div>
+    </div>
+  );
+}
 
 export default function SlidingSense() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
 
-  type Phase = "intro" | "sheet" | "countdown" | "playing" | "over" | "done";
+  type Phase = "intro" | "sheet" | "countdown" | "playing" | "over" | "done" | "results";
   const [phase, setPhase] = useState<Phase>("intro");
   const [muted, setMuted] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [countVal, setCountVal] = useState(3);
 
-  /* game state */
   const [puzzleIdx, setPuzzleIdx] = useState(0);
   const [tiles, setTiles] = useState<Tiles>([]);
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
@@ -170,11 +293,22 @@ export default function SlidingSense() {
   const [popupId, setPopupId] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const rewardSent = useRef(false);
+  const adShown = useRef(false);
+
+  const [highScore, setHighScore] = useState(() => parseInt(localStorage.getItem("hs_sliding") || "0"));
+  useEffect(() => {
+    if (phase === "results" || phase === "over" || phase === "done") {
+      setHighScore(prev => {
+        const next = Math.max(prev, score);
+        if (next > prev) localStorage.setItem("hs_sliding", String(next));
+        return next;
+      });
+    }
+  }, [phase]);
 
   const currentPuzzle = PUZZLE_SEQ[puzzleIdx] ?? PUZZLE_SEQ[PUZZLE_SEQ.length - 1];
   const tileColor = TILE_COLORS[puzzleIdx % TILE_COLORS.length];
 
-  /* init puzzle */
   const loadPuzzle = useCallback((idx: number) => {
     const p = PUZZLE_SEQ[idx] ?? PUZZLE_SEQ[PUZZLE_SEQ.length - 1];
     const solved = makeSolved(p.rows, p.cols);
@@ -186,6 +320,7 @@ export default function SlidingSense() {
     setScore(0);
     setTimeLeft(TOTAL_TIME);
     rewardSent.current = false;
+    adShown.current = false;
     loadPuzzle(0);
     setCountVal(3);
     setPhase("countdown");
@@ -211,13 +346,23 @@ export default function SlidingSense() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase]);
 
-  /* reward */
+  /* reward + ad + results */
   useEffect(() => {
-    if ((phase === "over" || phase === "done") && !rewardSent.current && score > 0) {
-      rewardSent.current = true;
-      apiRequest("POST", "/api/game/sliding-sense/reward", { score })
-        .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/user"] }))
-        .catch(() => {});
+    if ((phase === "over" || phase === "done") && !adShown.current) {
+      adShown.current = true;
+      if (score > 0 && !rewardSent.current) {
+        rewardSent.current = true;
+        apiRequest("POST", "/api/game/sliding-sense/reward", { score })
+          .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/user"] }))
+          .catch(() => {});
+      }
+      const goToResults = () => setPhase("results");
+      const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
+      if (!isDevMode && typeof window.show_10401872 === "function") {
+        window.show_10401872({ type: "interstitial" }).then(goToResults).catch(goToResults);
+      } else {
+        setTimeout(goToResults, 300);
+      }
     }
   }, [phase, score, qc]);
 
@@ -228,7 +373,6 @@ export default function SlidingSense() {
     setTimeout(() => setPopups(p => p.filter(pp => pp.id !== id)), 1000);
   }, [popupId]);
 
-  /* tile tap */
   const handleTileTap = useCallback((idx: number) => {
     if (phase !== "playing") return;
     const { rows, cols } = currentPuzzle;
@@ -241,8 +385,7 @@ export default function SlidingSense() {
     setTiles(next);
 
     if (isSolved(next)) {
-      const bonus = Math.max(1, Math.ceil(timeLeft / 30));
-      const gain = 1 + bonus;
+      const gain = REWARD_PER_SOLVE;
       setScore(s => s + gain);
       if (!muted) solveChime();
       vib([40, 30, 60]);
@@ -258,82 +401,101 @@ export default function SlidingSense() {
         }, 600);
       }
     }
-  }, [phase, tiles, currentPuzzle, muted, timeLeft, puzzleIdx, showPopup, loadPuzzle]);
+  }, [phase, tiles, currentPuzzle, muted, puzzleIdx, showPopup, loadPuzzle]);
 
   const { rows, cols } = currentPuzzle;
   const timerPct = timeLeft / TOTAL_TIME;
-  const finished = phase === "over" || phase === "done";
 
-  /* tile size */
   const GRID_W = Math.min(340, typeof window !== "undefined" ? window.innerWidth - 48 : 300);
   const GAP = 8;
   const tileW = Math.floor((GRID_W - GAP * (cols - 1)) / cols);
   const tileH = Math.floor((GRID_W * 0.8 - GAP * (rows - 1)) / rows);
 
-  /* ─── INTRO screen ─── */
+  /* ─── RESULTS ─── */
+  if (phase === "results") {
+    return (
+      <ResultsScreen
+        score={score}
+        onHome={() => setLocation("/game")}
+        onPlayAgain={() => { adShown.current = false; rewardSent.current = false; startGame(); }}
+      />
+    );
+  }
+
+  /* ─── INTRO ─── */
   if (phase === "intro" || phase === "sheet") {
     return (
       <div style={{ minHeight: "100vh", background: "#111111", display: "flex", flexDirection: "column" }}>
-        <TopBar onBack={() => setLocation("/game")} muted={muted} onMute={() => setMuted(m => !m)} onHelp={() => setPhase("sheet")} />
+        <TopBar />
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px" }}>
-          <motion.div
-            animate={{ y: [0, -12, 0], rotate: [-4, 4, -4] }}
-            transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
-            style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
             <MegaphoneIllustration />
-          </motion.div>
+          </div>
           <p style={{ color: "white", fontSize: 16, textAlign: "center", marginTop: 28, lineHeight: 1.55, fontWeight: 500 }}>
             You are about to start the puzzle.<br/>As soon as you are ready,<br/>click the start button!
           </p>
+          {highScore > 0 && (
+            <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 8, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.25)", borderRadius: 12, padding: "8px 20px" }}>
+              <span style={{ fontSize: 17 }}>🏆</span>
+              <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 600 }}>Best: <span style={{ color: "#06b6d4", fontWeight: 900 }}>{highScore} AXN</span></span>
+            </div>
+          )}
         </div>
-
-        <div style={{ display: "flex", justifyContent: "center", paddingBottom: 52, paddingTop: 12 }}>
-          <button
-            onClick={() => setPhase("sheet")}
-            style={{ width: 68, height: 68, borderRadius: "50%", background: "#1e1e1e", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.5)" }}
-          >
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <div style={{ padding: "0 24px 36px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button onClick={() => setMuted(m => !m)} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {muted
+                ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              }
+            </button>
+            <button onClick={() => setPhase("sheet")} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "white", fontSize: 16, fontWeight: 700 }}>?</span>
+            </button>
+          </div>
+          <button onClick={startGame} style={{ width: "100%", padding: "15px 0", borderRadius: 14, background: "linear-gradient(90deg,#0891b2,#06b6d4)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5 }}>
+            START GAME
+          </button>
+          <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+            Back
           </button>
         </div>
 
         <AnimatePresence>
           {phase === "sheet" && (
-            <motion.div
-              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#222222", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
-            >
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", margin: "0 auto 16px" }}/>
-              <p style={{ color: "white", fontSize: 18, fontWeight: 700, textAlign: "center", margin: "0 0 8px" }}>Sliding Sense</p>
-              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, textAlign: "center", margin: "0 0 22px" }}>You have 90 seconds to slide tiles...</p>
-
-              <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 14 }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                  <DemoGrid solved={false} color="#f7931a"/>
-                  <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Scrambled</span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                  <DemoGrid solved={true} color="#f7931a"/>
-                  <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Solved</span>
-                </div>
-              </div>
-
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, textAlign: "center", margin: "0 0 8px", lineHeight: 1.6 }}>
-                Your goal is to slide the tiles and fix the puzzle.
-              </p>
-              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, textAlign: "center", margin: "0 0 24px", lineHeight: 1.6 }}>
-                The more puzzles you can solve in the available time,<br/>the more AXN you will earn!
-              </p>
-
-              <button
-                onClick={startGame}
-                style={{ width: "100%", padding: "15px 0", borderRadius: 14, background: "linear-gradient(90deg,#0891b2,#06b6d4)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5 }}
+            <>
+              <div
+                onClick={() => setPhase("intro")}
+                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 49 }}
+              />
+              <motion.div
+                initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#222222", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
               >
-                START GAME
-              </button>
-            </motion.div>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", margin: "0 auto 16px" }}/>
+                <p style={{ color: "white", fontSize: 18, fontWeight: 700, textAlign: "center", margin: "0 0 8px" }}>Sliding Axionet</p>
+                <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, textAlign: "center", margin: "0 0 22px" }}>You have 90 seconds to slide tiles...</p>
+                <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 14 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                    <DemoGrid solved={false} color="#f7931a"/>
+                    <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Scrambled</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                    <DemoGrid solved={true} color="#f7931a"/>
+                    <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Solved</span>
+                  </div>
+                </div>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, textAlign: "center", margin: "0 0 8px", lineHeight: 1.6 }}>
+                  Your goal is to slide the tiles and fix the puzzle.
+                </p>
+                <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, textAlign: "center", margin: "0 0 8px", lineHeight: 1.6 }}>
+                  Each solved puzzle earns +{REWARD_PER_SOLVE} AXN!
+                </p>
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
       </div>
@@ -362,26 +524,24 @@ export default function SlidingSense() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#111111", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      {/* Timer progress bar */}
-      <div style={{ height: 4, background: "#2a2a2a", flexShrink: 0 }}>
-        <motion.div
-          animate={{ width: `${timerPct * 100}%` }}
-          transition={{ duration: 0.4 }}
-          style={{ height: "100%", background: timerPct > 0.4 ? "#fff" : timerPct > 0.2 ? "#f59e0b" : "#ef4444", borderRadius: 2 }}
-        />
-      </div>
-
-      <TopBar onBack={() => setLocation("/game")} muted={muted} onMute={() => setMuted(m => !m)} onHelp={() => {}} />
+      <TopBar />
 
       {/* Score row */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 20px 8px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#0891b2", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "white", fontSize: 13, fontWeight: 900 }}>A</span>
-          </div>
+          <AXNIcon size={28} />
           <span style={{ color: "white", fontSize: 28, fontWeight: 900, letterSpacing: -1 }}>{score}</span>
         </div>
         <span style={{ color: "white", fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>{timeLeft}</span>
+      </div>
+
+      {/* Timer bar — below score row */}
+      <div style={{ height: 4, background: "#2a2a2a", flexShrink: 0, margin: "0 0 6px" }}>
+        <motion.div
+          animate={{ width: `${timerPct * 100}%` }}
+          transition={{ duration: 0.4 }}
+          style={{ height: "100%", background: timerPct > 0.4 ? "#06b6d4" : timerPct > 0.2 ? "#f59e0b" : "#ef4444", borderRadius: 2 }}
+        />
       </div>
 
       {/* Puzzle dots */}
@@ -435,21 +595,56 @@ export default function SlidingSense() {
         ))}
       </AnimatePresence>
 
-      {/* Game over */}
+      {/* Bottom controls during game */}
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40, padding: "20px 20px 28px", background: "linear-gradient(0deg,rgba(17,17,17,1) 60%,rgba(17,17,17,0) 100%)", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button onClick={() => setMuted(m => !m)} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {muted
+              ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            }
+          </button>
+          <button onClick={() => setShowHelp(true)} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "white", fontSize: 16, fontWeight: 700 }}>?</span>
+          </button>
+        </div>
+        <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
+      </div>
+
+      {/* Help overlay during game */}
       <AnimatePresence>
-        {finished && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 200, gap: 12 }}
-          >
-            <p style={{ color: "white", fontSize: 18, fontWeight: 800, margin: 0 }}>{phase === "done" ? "All Solved!" : "Time's up!"}</p>
-            <p style={{ color: "#06b6d4", fontSize: 28, fontWeight: 900, margin: 0 }}>{score} AXN</p>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, margin: 0 }}>Rewarded to your balance</p>
-            <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
-              <button onClick={() => { setPhase("intro"); setScore(0); setTimeLeft(TOTAL_TIME); setPuzzleIdx(0); }} style={{ padding: "13px 28px", borderRadius: 12, background: "#0891b2", border: "none", color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Play Again</button>
-              <button onClick={() => setLocation("/game")} style={{ padding: "13px 28px", borderRadius: 12, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Back</button>
-            </div>
-          </motion.div>
+        {showHelp && (
+          <>
+            <div onClick={() => setShowHelp(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 49 }} />
+            <motion.div
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#222222", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
+            >
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", margin: "0 auto 16px" }}/>
+              <p style={{ color: "white", fontSize: 18, fontWeight: 700, textAlign: "center", margin: "0 0 8px" }}>Sliding Axionet</p>
+              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, textAlign: "center", margin: "0 0 22px" }}>You have 90 seconds to slide tiles...</p>
+              <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 14 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                  <DemoGrid solved={false} color="#f7931a"/>
+                  <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Scrambled</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                  <DemoGrid solved={true} color="#f7931a"/>
+                  <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Solved</span>
+                </div>
+              </div>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, textAlign: "center", margin: "0 0 8px", lineHeight: 1.6 }}>
+                Your goal is to slide the tiles and fix the puzzle.
+              </p>
+              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, textAlign: "center", margin: "0 0 8px", lineHeight: 1.6 }}>
+                Each solved puzzle earns +{REWARD_PER_SOLVE} AXN!
+              </p>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

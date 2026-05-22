@@ -3,6 +3,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { AXNIcon } from "@/components/AXNIcon";
+
+declare global {
+  interface Window {
+    show_10401872?: (opts?: any) => Promise<void>;
+  }
+}
 
 /* ─── Audio ─── */
 function playTone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.18) {
@@ -38,20 +45,26 @@ function CoinBadge({ coinId, size }: { coinId: string; size: number }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%",
-      background: coin.bg,
+      background: `radial-gradient(circle at 35% 35%, ${coin.bg}ee, ${coin.bg}99)`,
       display: "flex", alignItems: "center", justifyContent: "center",
-      boxShadow: `0 4px 18px ${coin.bg}66, 0 0 0 3px rgba(255,255,255,0.12)`,
+      boxShadow: `0 4px 20px ${coin.bg}55, 0 0 0 2px rgba(255,255,255,0.15), inset 0 1px 0 rgba(255,255,255,0.3)`,
     }}>
-      <span style={{ color: coin.fg, fontSize: size * 0.4, fontWeight: 900, lineHeight: 1 }}>{coin.symbol}</span>
+      <span style={{ color: coin.fg, fontSize: size * 0.42, fontWeight: 900, lineHeight: 1 }}>{coin.symbol}</span>
     </div>
   );
 }
 
 function CardBack({ size }: { size: number }) {
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#1e1e1e" }}>
-      <div style={{ width: size * 0.52, height: size * 0.52, borderRadius: "50%", background: "linear-gradient(135deg,#2a2a2a,#111)", border: "2px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ color: "rgba(255,255,255,0.25)", fontSize: size * 0.22, fontWeight: 900 }}>AXN</span>
+    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(145deg, #1e1e2e, #16161e)" }}>
+      <div style={{
+        width: size * 0.54, height: size * 0.54, borderRadius: "50%",
+        background: "linear-gradient(135deg, #2a2a3a, #111118)",
+        border: "2px solid rgba(255,255,255,0.14)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: "inset 0 2px 8px rgba(0,0,0,0.4)",
+      }}>
+        <span style={{ color: "rgba(255,255,255,0.22)", fontSize: size * 0.2, fontWeight: 900 }}>AXN</span>
       </div>
     </div>
   );
@@ -106,21 +119,38 @@ function getGrid(total: number) {
   return { cols: 4, rows: 4 };
 }
 
-/* ─── Megaphone SVG ─── */
+/* ─── Megaphone: full float animation ─── */
 function MegaphoneIllustration() {
   return (
-    <svg width="160" height="140" viewBox="0 0 160 140" fill="none">
-      <rect x="46" y="52" width="32" height="38" rx="5" fill="#8a9199"/>
-      <path d="M78 46 L132 22 L132 118 L78 94 Z" fill="#6e7680"/>
-      <path d="M78 46 L132 22 L132 38 L78 60 Z" fill="#5b7de8"/>
-      <rect x="48" y="60" width="28" height="4" rx="2" fill="#6e7680"/>
-      <rect x="48" y="68" width="28" height="4" rx="2" fill="#6e7680"/>
-      <rect x="48" y="76" width="28" height="4" rx="2" fill="#6e7680"/>
-      <rect x="58" y="90" width="12" height="22" rx="5" fill="#8a9199"/>
-      <circle cx="132" cy="70" r="10" fill="none" stroke="#5b7de8" strokeWidth="3"/>
-      <path d="M138 64 L144 56" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"/>
-      <path d="M142 71 L150 71" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"/>
-      <path d="M138 77 L144 84" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"/>
+    <svg width="160" height="160" viewBox="0 0 160 160" fill="none" style={{ overflow: "visible" }}>
+      <motion.g
+        animate={{ y: [0, -10, 0] }}
+        transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
+      >
+        {/* Body */}
+        <rect x="46" y="52" width="32" height="38" rx="5" fill="#8a9199"/>
+        <rect x="48" y="60" width="28" height="4" rx="2" fill="#6e7680"/>
+        <rect x="48" y="68" width="28" height="4" rx="2" fill="#6e7680"/>
+        <rect x="48" y="76" width="28" height="4" rx="2" fill="#6e7680"/>
+        <rect x="58" y="90" width="12" height="22" rx="5" fill="#8a9199"/>
+        {/* Horn */}
+        <path d="M78 46 L132 22 L132 118 L78 94 Z" fill="#6e7680"/>
+        <path d="M78 46 L132 22 L132 38 L78 60 Z" fill="#5b7de8"/>
+        <circle cx="132" cy="70" r="10" fill="none" stroke="#5b7de8" strokeWidth="3"/>
+        {/* Sound waves */}
+        <motion.path d="M138 64 L144 56" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"
+          animate={{ opacity: [0.2, 1, 0.2] }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0 }}
+        />
+        <motion.path d="M142 71 L150 71" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"
+          animate={{ opacity: [0.2, 1, 0.2] }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0.3 }}
+        />
+        <motion.path d="M138 77 L144 84" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"
+          animate={{ opacity: [0.2, 1, 0.2] }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0.6 }}
+        />
+      </motion.g>
     </svg>
   );
 }
@@ -143,27 +173,11 @@ function DemoCard({ coinId, bad }: { coinId: string; bad?: boolean }) {
 }
 
 /* ─── Top nav bar ─── */
-function TopBar({ onBack, muted, onMute, onHelp }: { onBack: () => void; muted: boolean; onMute: () => void; onHelp: () => void }) {
+function TopBar() {
   return (
-    <div style={{ display: "flex", alignItems: "center", padding: "12px 14px 10px", gap: 10 }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "white", padding: 0, display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
-        </svg>
-      </button>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ color: "white", fontSize: 15, fontWeight: 700, margin: 0 }}>Flip Sense</p>
-        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, margin: 0 }}>Match cards to earn some AXN</p>
-      </div>
-      <button onClick={onMute} style={{ background: "rgba(255,255,255,0.08)", border: "none", cursor: "pointer", width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        {muted
-          ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-          : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-        }
-      </button>
-      <button onClick={onHelp} style={{ background: "rgba(255,255,255,0.08)", border: "none", cursor: "pointer", width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <span style={{ color: "white", fontSize: 15, fontWeight: 700 }}>?</span>
-      </button>
+    <div style={{ padding: "12px 14px 10px", background: "linear-gradient(180deg,#1e1e1e 0%,#181818 100%)", borderBottom: "1px solid rgba(255,255,255,0.09)", boxShadow: "0 2px 12px rgba(0,0,0,0.4)" }}>
+      <p style={{ color: "white", fontSize: 16, fontWeight: 900, margin: 0, letterSpacing: 0.2 }}>Flip Axionet</p>
+      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, margin: 0 }}>Match cards to earn some AXN</p>
     </div>
   );
 }
@@ -171,16 +185,133 @@ function TopBar({ onBack, muted, onMute, onHelp }: { onBack: () => void; muted: 
 /* ─── Floating popup ─── */
 interface Popup { id: number; text: string; x: number; y: number; }
 
+/* ─── Results screen ─── */
+function ResultsScreen({ score, onPlayAgain, onHome }: { score: number; onPlayAgain: () => void; onHome: () => void }) {
+  const CONFETTI = [
+    { x: -90, y: -65, color: "#22d3ee", w: 10, h: 7, rot: 140, d: 0.28 },
+    { x: 65, y: -85, color: "#f59e0b", w: 8, h: 8, rot: 220, d: 0.38 },
+    { x: 105, y: -35, color: "#ef4444", w: 12, h: 6, rot: 180, d: 0.24 },
+    { x: -110, y: 8, color: "#3b82f6", w: 9, h: 9, rot: -80, d: 0.33 },
+    { x: -65, y: 85, color: "#a855f7", w: 7, h: 11, rot: 100, d: 0.42 },
+    { x: 95, y: 75, color: "#22c55e", w: 10, h: 6, rot: -150, d: 0.20 },
+    { x: -125, y: -42, color: "#f97316", w: 8, h: 8, rot: 240, d: 0.46 },
+    { x: 125, y: 52, color: "#ec4899", w: 11, h: 7, rot: -200, d: 0.36 },
+    { x: 32, y: 105, color: "#facc15", w: 9, h: 6, rot: 300, d: 0.26 },
+    { x: -28, y: -105, color: "#34d399", w: 7, h: 10, rot: -120, d: 0.44 },
+  ];
+  return (
+    <div style={{ minHeight: "100vh", background: "#111111", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", overflow: "hidden" }}>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {CONFETTI.map((c, i) => (
+          <motion.div key={i}
+            initial={{ x: 0, y: 0, opacity: 1, rotate: 0 }}
+            animate={{ x: c.x, y: c.y, opacity: 0, rotate: c.rot }}
+            transition={{ duration: 1.3, delay: c.d, ease: "easeOut" }}
+            style={{ position: "absolute", width: c.w, height: c.h, background: c.color, borderRadius: 2, pointerEvents: "none", zIndex: 2 }}
+          />
+        ))}
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", damping: 14, stiffness: 180, delay: 0.1 }}
+          style={{ position: "relative", zIndex: 1 }}
+        >
+          <svg width="160" height="200" viewBox="0 0 160 200" fill="none">
+            <defs>
+              <linearGradient id="fsBadgeGold" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#fde68a"/><stop offset="60%" stopColor="#f59e0b"/><stop offset="100%" stopColor="#d97706"/>
+              </linearGradient>
+              <linearGradient id="fsBadgeInner" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#fbbf24"/><stop offset="100%" stopColor="#b45309"/>
+              </linearGradient>
+            </defs>
+            <circle cx="140" cy="78" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="132" cy="108" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="110" cy="130" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="80" cy="138" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="50" cy="130" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="28" cy="108" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="20" cy="78" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="28" cy="48" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="50" cy="26" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="80" cy="18" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="110" cy="26" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="132" cy="48" r="14" fill="url(#fsBadgeGold)"/>
+            <circle cx="80" cy="78" r="54" fill="url(#fsBadgeGold)"/>
+            <circle cx="80" cy="78" r="42" fill="url(#fsBadgeInner)"/>
+            <path d="M54 54 Q80 42 106 54" stroke="rgba(255,255,255,0.3)" strokeWidth="4" strokeLinecap="round" fill="none"/>
+            <polyline points="62,78 75,93 102,65" stroke="white" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            <path d="M63,132 L55,176 L80,160 L80,132 Z" fill="#dc2626"/>
+            <path d="M97,132 L105,176 L80,160 L80,132 Z" fill="#ef4444"/>
+            <rect x="57" y="128" width="46" height="14" rx="4" fill="#b91c1c"/>
+          </svg>
+        </motion.div>
+      </div>
+
+      <motion.p
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        style={{ color: "white", fontSize: 64, fontWeight: 900, margin: "4px 0 4px", letterSpacing: -2, lineHeight: 1 }}
+      >
+        {score}
+      </motion.p>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, textAlign: "center", margin: "0 0 8px", lineHeight: 1.5 }}
+      >
+        AXN earned
+      </motion.p>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.45 }}
+        style={{ color: "rgba(255,255,255,0.38)", fontSize: 13, textAlign: "center", margin: "0 0 36px" }}
+      >
+        Congratulations! Rewarded to your balance.
+      </motion.p>
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        style={{ display: "flex", gap: 16 }}
+      >
+        <button
+          onClick={onHome}
+          style={{ width: 58, height: 58, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </button>
+        <button
+          onClick={onPlayAgain}
+          style={{ width: 58, height: 58, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
+          </svg>
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function FlipSense() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
 
-  type Phase = "intro" | "sheet" | "countdown" | "playing" | "over" | "done";
+  type Phase = "intro" | "sheet" | "countdown" | "playing" | "over" | "done" | "results";
   const [phase, setPhase] = useState<Phase>("intro");
   const [muted, setMuted] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [countVal, setCountVal] = useState(3);
 
-  /* game state */
   const [roundIdx, setRoundIdx] = useState(0);
   const [cards, setCards] = useState<Card[]>([]);
   const [flippedIds, setFlippedIds] = useState<number[]>([]);
@@ -191,10 +322,21 @@ export default function FlipSense() {
   const [locked, setLocked] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const rewardSent = useRef(false);
+  const adShown = useRef(false);
+
+  const [highScore, setHighScore] = useState(() => parseInt(localStorage.getItem("hs_flip") || "0"));
+  useEffect(() => {
+    if (phase === "results" || phase === "over" || phase === "done") {
+      setHighScore(prev => {
+        const next = Math.max(prev, score);
+        if (next > prev) localStorage.setItem("hs_flip", String(next));
+        return next;
+      });
+    }
+  }, [phase]);
 
   const currentRound = ROUND_SEQ[roundIdx] ?? ROUND_SEQ[ROUND_SEQ.length - 1];
 
-  /* start a round */
   const startRound = useCallback((idx: number) => {
     const r = ROUND_SEQ[idx] ?? ROUND_SEQ[ROUND_SEQ.length - 1];
     setCards(makeCards(r.totalCards, r.pairs, r.hasWild));
@@ -202,12 +344,12 @@ export default function FlipSense() {
     setLocked(false);
   }, []);
 
-  /* begin countdown then play */
   const startGame = useCallback(() => {
     setRoundIdx(0);
     setScore(0);
     setTimeLeft(TOTAL_TIME);
     rewardSent.current = false;
+    adShown.current = false;
     startRound(0);
     setCountVal(3);
     setPhase("countdown");
@@ -226,28 +368,33 @@ export default function FlipSense() {
     if (phase !== "playing") { if (timerRef.current) clearInterval(timerRef.current); return; }
     timerRef.current = setInterval(() => {
       setTimeLeft(t => {
-        if (t <= 1) {
-          clearInterval(timerRef.current!);
-          setPhase("over");
-          return 0;
-        }
+        if (t <= 1) { clearInterval(timerRef.current!); setPhase("over"); return 0; }
         return t - 1;
       });
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase]);
 
-  /* send reward when game ends */
+  /* reward + ad + results */
   useEffect(() => {
-    if ((phase === "over" || phase === "done") && !rewardSent.current && score > 0) {
-      rewardSent.current = true;
-      apiRequest("POST", "/api/game/flip-sense/reward", { score })
-        .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/user"] }))
-        .catch(() => {});
+    if ((phase === "over" || phase === "done") && !adShown.current) {
+      adShown.current = true;
+      if (score > 0 && !rewardSent.current) {
+        rewardSent.current = true;
+        apiRequest("POST", "/api/game/flip-sense/reward", { score })
+          .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/user"] }))
+          .catch(() => {});
+      }
+      const goToResults = () => setPhase("results");
+      const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
+      if (!isDevMode && typeof window.show_10401872 === "function") {
+        window.show_10401872({ type: "interstitial" }).then(goToResults).catch(goToResults);
+      } else {
+        setTimeout(goToResults, 300);
+      }
     }
   }, [phase, score, qc]);
 
-  /* show popup */
   const showPopup = useCallback((text: string, cardEl?: HTMLElement) => {
     const x = cardEl ? cardEl.getBoundingClientRect().left + cardEl.offsetWidth / 2 : window.innerWidth / 2;
     const y = cardEl ? cardEl.getBoundingClientRect().top + cardEl.offsetHeight / 2 : window.innerHeight / 2;
@@ -257,7 +404,6 @@ export default function FlipSense() {
     setTimeout(() => setPopups(p => p.filter(pp => pp.id !== id)), 900);
   }, [popupId]);
 
-  /* card click */
   const handleCardClick = useCallback((cardId: number, el?: HTMLElement) => {
     if (locked || phase !== "playing") return;
     const card = cards.find(c => c.id === cardId);
@@ -266,7 +412,7 @@ export default function FlipSense() {
     if (card.wild) {
       if (!muted) ding();
       vib([30, 20, 40]);
-      const gain = 3;
+      const gain = 4;
       setScore(s => s + gain);
       showPopup(`+${gain} AXN`);
       setCards(cs => cs.map(c => c.id === cardId ? { ...c, matched: true, glow: true } : c));
@@ -283,14 +429,13 @@ export default function FlipSense() {
       if (a.coinId === b.coinId) {
         if (!muted) ding();
         vib([30, 20, 40]);
-        const gain = 2;
+        const gain = 4;
         setScore(s => s + gain);
         showPopup(`+${gain} AXN`);
         setCards(cs => cs.map(c => newFlipped.includes(c.id) ? { ...c, matched: true, glow: true } : c));
         setFlippedIds([]);
         setLocked(false);
 
-        /* check round complete */
         setTimeout(() => {
           setCards(cs => {
             const allMatched = cs.every(c => c.matched || c.wild);
@@ -320,77 +465,93 @@ export default function FlipSense() {
   }, [cards, flippedIds, locked, phase, muted, roundIdx, showPopup, startRound]);
 
   const { cols } = getGrid(currentRound.totalCards);
-  const totalRounds = ROUND_SEQ.length;
   const timerPct = timeLeft / TOTAL_TIME;
+
+  /* ─── RESULTS screen ─── */
+  if (phase === "results") {
+    return (
+      <ResultsScreen
+        score={score}
+        onHome={() => setLocation("/game")}
+        onPlayAgain={() => { adShown.current = false; rewardSent.current = false; startGame(); }}
+      />
+    );
+  }
 
   /* ─── INTRO screen ─── */
   if (phase === "intro" || phase === "sheet") {
     return (
       <div style={{ minHeight: "100vh", background: "#111111", display: "flex", flexDirection: "column" }}>
-        <TopBar onBack={() => setLocation("/game")} muted={muted} onMute={() => setMuted(m => !m)} onHelp={() => setPhase("sheet")} />
+        <TopBar />
 
-        {/* Megaphone area */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px" }}>
-          <motion.div
-            animate={{ y: [0, -12, 0], rotate: [-4, 4, -4] }}
-            transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
-            style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
             <MegaphoneIllustration />
-          </motion.div>
+          </div>
           <p style={{ color: "white", fontSize: 16, textAlign: "center", marginTop: 28, lineHeight: 1.55, fontWeight: 500 }}>
             You are about to start the match.<br/>As soon as you are ready,<br/>click the start button!
           </p>
+          {highScore > 0 && (
+            <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, padding: "8px 20px" }}>
+              <span style={{ fontSize: 17 }}>🏆</span>
+              <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 600 }}>Best: <span style={{ color: "#f59e0b", fontWeight: 900 }}>{highScore} AXN</span></span>
+            </div>
+          )}
         </div>
-
-        {/* Play button */}
-        <div style={{ display: "flex", justifyContent: "center", paddingBottom: 52, paddingTop: 12 }}>
-          <button
-            onClick={() => setPhase("sheet")}
-            style={{ width: 68, height: 68, borderRadius: "50%", background: "#1e1e1e", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.5)" }}
-          >
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <div style={{ padding: "0 24px 36px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button onClick={() => setMuted(m => !m)} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {muted
+                ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              }
+            </button>
+            <button onClick={() => setPhase("sheet")} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "white", fontSize: 16, fontWeight: 700 }}>?</span>
+            </button>
+          </div>
+          <button onClick={startGame} style={{ width: "100%", padding: "15px 0", borderRadius: 14, background: "linear-gradient(90deg,#e67e00,#f59e0b)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5 }}>
+            START GAME
+          </button>
+          <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+            Back
           </button>
         </div>
 
-        {/* Instructions bottom sheet */}
+        {/* Instructions bottom sheet — only shown when ? clicked */}
         <AnimatePresence>
           {phase === "sheet" && (
-            <motion.div
-              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#222222", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
-            >
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", margin: "0 auto 16px" }}/>
-              <p style={{ color: "white", fontSize: 18, fontWeight: 700, textAlign: "center", margin: "0 0 8px" }}>Flip Sense</p>
-              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, textAlign: "center", margin: "0 0 20px" }}>You have 60 seconds to flip cards...</p>
-
-              {/* Wrong match demo */}
-              <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 8 }}>
-                <DemoCard coinId="BTC" bad={true} />
-                <DemoCard coinId="ETH" bad={true} />
-              </div>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, textAlign: "center", margin: "0 0 18px" }}>
-                Your goal is to find the matching card pairs and complete the board.
-              </p>
-
-              {/* Correct match demo */}
-              <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 20 }}>
-                <DemoCard coinId="BTC" bad={false} />
-                <DemoCard coinId="BTC" bad={false} />
-              </div>
-
-              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, textAlign: "center", margin: "0 0 24px", lineHeight: 1.6 }}>
-                The more cards you can match in the available time,<br/>the more AXN you will earn!
-              </p>
-
-              <button
-                onClick={startGame}
-                style={{ width: "100%", padding: "15px 0", borderRadius: 14, background: "linear-gradient(90deg,#e67e00,#f59e0b)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5 }}
+            <>
+              {/* Backdrop — tap outside to close */}
+              <div
+                onClick={() => setPhase("intro")}
+                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 49 }}
+              />
+              <motion.div
+                initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#222222", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
               >
-                START GAME
-              </button>
-            </motion.div>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", margin: "0 auto 16px" }}/>
+                <p style={{ color: "white", fontSize: 18, fontWeight: 700, textAlign: "center", margin: "0 0 8px" }}>Flip Axionet</p>
+                <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, textAlign: "center", margin: "0 0 20px" }}>You have 60 seconds to flip cards...</p>
+                <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 8 }}>
+                  <DemoCard coinId="BTC" bad={true} />
+                  <DemoCard coinId="ETH" bad={true} />
+                </div>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, textAlign: "center", margin: "0 0 18px" }}>
+                  Your goal is to find the matching card pairs and complete the board.
+                </p>
+                <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 20 }}>
+                  <DemoCard coinId="BTC" bad={false} />
+                  <DemoCard coinId="BTC" bad={false} />
+                </div>
+                <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, textAlign: "center", margin: "0 0 8px", lineHeight: 1.6 }}>
+                  Each matched pair earns you +4 AXN.<br/>The more you match, the more you earn!
+                </p>
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
       </div>
@@ -418,31 +579,27 @@ export default function FlipSense() {
   }
 
   /* ─── PLAYING / OVER / DONE ─── */
-  const finished = phase === "over" || phase === "done";
-
   return (
     <div style={{ minHeight: "100vh", background: "#111111", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      {/* Timer progress bar — very top */}
-      <div style={{ height: 4, background: "#2a2a2a", flexShrink: 0 }}>
+      {/* Top bar */}
+      <TopBar />
+
+      {/* Score + time row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 20px 8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <AXNIcon size={28} />
+          <span style={{ color: "white", fontSize: 28, fontWeight: 900, letterSpacing: -1 }}>{score}</span>
+        </div>
+        <span style={{ color: "white", fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>{timeLeft}</span>
+      </div>
+
+      {/* Timer progress bar — below score row */}
+      <div style={{ height: 4, background: "#2a2a2a", flexShrink: 0, margin: "0 0 6px" }}>
         <motion.div
           animate={{ width: `${timerPct * 100}%` }}
           transition={{ duration: 0.4 }}
           style={{ height: "100%", background: timerPct > 0.4 ? "#fff" : timerPct > 0.2 ? "#f59e0b" : "#ef4444", borderRadius: 2 }}
         />
-      </div>
-
-      {/* Top bar */}
-      <TopBar onBack={() => setLocation("/game")} muted={muted} onMute={() => setMuted(m => !m)} onHelp={() => {}} />
-
-      {/* Score row */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 20px 8px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#e67e00", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "white", fontSize: 13, fontWeight: 900 }}>A</span>
-          </div>
-          <span style={{ color: "white", fontSize: 28, fontWeight: 900, letterSpacing: -1 }}>{score}</span>
-        </div>
-        <span style={{ color: "white", fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>{timeLeft}</span>
       </div>
 
       {/* Round dots */}
@@ -457,7 +614,7 @@ export default function FlipSense() {
         <div style={{
           display: "grid",
           gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gap: cols === 4 ? 7 : cols === 3 ? 9 : 12,
+          gap: cols === 4 ? 7 : cols === 3 ? 9 : 14,
           width: "100%",
           maxWidth: 380,
         }}>
@@ -477,24 +634,25 @@ export default function FlipSense() {
                 {/* Back face */}
                 <div style={{
                   position: "absolute", inset: 0,
-                  borderRadius: cols === 4 ? 10 : cols === 3 ? 12 : 14,
-                  border: "2px solid rgba(255,255,255,0.13)",
-                  background: "#1e1e1e",
+                  borderRadius: cols === 4 ? 10 : cols === 3 ? 12 : 16,
+                  border: "1.5px solid rgba(255,255,255,0.1)",
+                  background: "linear-gradient(145deg, #1e1e2e, #16161e)",
                   backfaceVisibility: "hidden",
                   display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)",
                 }}>
                   <CardBack size={cols === 4 ? 60 : cols === 3 ? 80 : 110} />
                 </div>
                 {/* Front face */}
                 <div style={{
                   position: "absolute", inset: 0,
-                  borderRadius: cols === 4 ? 10 : cols === 3 ? 12 : 14,
-                  border: card.matched ? "2px solid #22c55e" : "2px solid rgba(255,255,255,0.2)",
-                  background: card.matched ? "rgba(34,197,94,0.06)" : "#1e1e1e",
+                  borderRadius: cols === 4 ? 10 : cols === 3 ? 12 : 16,
+                  border: card.matched ? "2px solid #22c55e" : "1.5px solid rgba(255,255,255,0.18)",
+                  background: card.matched ? "linear-gradient(145deg, rgba(34,197,94,0.12), rgba(34,197,94,0.04))" : "linear-gradient(145deg, #242430, #1a1a22)",
                   backfaceVisibility: "hidden",
                   transform: "rotateY(180deg)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: card.glow ? `0 0 18px ${COINS.find(c => c.id === card.coinId)?.bg ?? "#fff"}44` : undefined,
+                  boxShadow: card.glow ? `0 0 20px ${COINS.find(c => c.id === card.coinId)?.bg ?? "#fff"}55` : "0 2px 10px rgba(0,0,0,0.4)",
                 }}>
                   <CoinBadge coinId={card.coinId} size={cols === 4 ? 44 : cols === 3 ? 60 : 82} />
                   {card.wild && (
@@ -525,21 +683,54 @@ export default function FlipSense() {
         </motion.div>
       ))}
 
-      {/* Game over overlay */}
+      {/* Bottom controls during game */}
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40, padding: "20px 20px 28px", background: "linear-gradient(0deg,rgba(17,17,17,1) 60%,rgba(17,17,17,0) 100%)", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button onClick={() => setMuted(m => !m)} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {muted
+              ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            }
+          </button>
+          <button onClick={() => setShowHelp(true)} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "white", fontSize: 16, fontWeight: 700 }}>?</span>
+          </button>
+        </div>
+        <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
+      </div>
+
+      {/* Help overlay during game */}
       <AnimatePresence>
-        {finished && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 200, gap: 12 }}
-          >
-            <p style={{ color: "white", fontSize: 18, fontWeight: 800, margin: 0 }}>{phase === "done" ? "Completed!" : "Time's up!"}</p>
-            <p style={{ color: "#f59e0b", fontSize: 28, fontWeight: 900, margin: 0 }}>{score} AXN</p>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, margin: 0 }}>Rewarded to your balance</p>
-            <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
-              <button onClick={() => { setPhase("intro"); setScore(0); setTimeLeft(TOTAL_TIME); setRoundIdx(0); }} style={{ padding: "13px 28px", borderRadius: 12, background: "#e67e00", border: "none", color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Play Again</button>
-              <button onClick={() => setLocation("/game")} style={{ padding: "13px 28px", borderRadius: 12, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Back</button>
-            </div>
-          </motion.div>
+        {showHelp && (
+          <>
+            <div onClick={() => setShowHelp(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 49 }} />
+            <motion.div
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#222222", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
+            >
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", margin: "0 auto 16px" }}/>
+              <p style={{ color: "white", fontSize: 18, fontWeight: 700, textAlign: "center", margin: "0 0 8px" }}>Flip Axionet</p>
+              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, textAlign: "center", margin: "0 0 20px" }}>You have 60 seconds to flip cards...</p>
+              <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 8 }}>
+                <DemoCard coinId="BTC" bad={true} />
+                <DemoCard coinId="ETH" bad={true} />
+              </div>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, textAlign: "center", margin: "0 0 18px" }}>
+                Your goal is to find the matching card pairs and complete the board.
+              </p>
+              <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 20 }}>
+                <DemoCard coinId="BTC" bad={false} />
+                <DemoCard coinId="BTC" bad={false} />
+              </div>
+              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, textAlign: "center", margin: "0 0 8px", lineHeight: 1.6 }}>
+                Each matched pair earns you +4 AXN.<br/>The more you match, the more you earn!
+              </p>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>
