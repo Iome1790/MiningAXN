@@ -8357,5 +8357,68 @@ ${walletAddress}
     }
   });
 
+  app.post("/api/game/sliding-sense/reward", authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      const raw = req.body.amount ?? req.body.score;
+      const parsed = parseFloat(raw);
+      if (!raw || isNaN(parsed) || parsed <= 0 || parsed > 60) {
+        return res.status(400).json({ error: 'Invalid reward amount' });
+      }
+      await db.execute(sql`
+        UPDATE users
+        SET balance = COALESCE(balance::numeric, 0) + ${parsed}
+        WHERE id = ${userId}
+      `);
+      const updatedUser = await storage.getUser(userId);
+      res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to credit reward' });
+    }
+  });
+
+  app.post("/api/game/flip-sense/reward", authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      const raw = req.body.amount ?? req.body.score;
+      const parsed = parseFloat(raw);
+      if (!raw || isNaN(parsed) || parsed <= 0 || parsed > 50) {
+        return res.status(400).json({ error: 'Invalid reward amount' });
+      }
+      await db.execute(sql`
+        UPDATE users
+        SET balance = COALESCE(balance::numeric, 0) + ${parsed}
+        WHERE id = ${userId}
+      `);
+      const updatedUser = await storage.getUser(userId);
+      res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to credit reward' });
+    }
+  });
+
+  app.post("/api/game/calculus-fest/reward", authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      const raw = req.body.amount ?? req.body.score;
+      const parsed = parseFloat(raw);
+      if (!raw || isNaN(parsed) || parsed <= 0 || parsed > 60) {
+        return res.status(400).json({ error: 'Invalid reward amount' });
+      }
+      await db.execute(sql`
+        UPDATE users
+        SET balance = COALESCE(balance::numeric, 0) + ${parsed}
+        WHERE id = ${userId}
+      `);
+      const updatedUser = await storage.getUser(userId);
+      res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to credit reward' });
+    }
+  });
+
   return httpServer;
 }
