@@ -68,7 +68,26 @@ function CardBack({ size }: { size: number }) {
       {corners.map((s, i) => (
         <div key={i} style={{ position: "absolute", width: cw, height: cw, border: "2px solid rgba(255,255,255,0.3)", ...s }} />
       ))}
-      <img src="/axn-logo.svg" alt="AXN" style={{ width: size * 0.62, height: size * 0.62, opacity: 0.82, filter: "drop-shadow(0 0 8px rgba(230,126,0,0.5))" }} />
+      {/* AXN logo — ensure visibility with chrome style */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: size * 0.62, height: size * 0.62,
+        background: "radial-gradient(circle at 40% 35%, rgba(230,126,0,0.25), rgba(230,126,0,0.08))",
+        borderRadius: "50%",
+        boxShadow: "0 0 16px rgba(230,126,0,0.4), 0 0 0 1px rgba(230,126,0,0.2)",
+      }}>
+        <img
+          src="/axn-coin.jpg"
+          alt="AXN"
+          style={{
+            width: size * 0.46,
+            height: size * 0.46,
+            borderRadius: "50%",
+            objectFit: "cover",
+            filter: "drop-shadow(0 0 6px rgba(230,126,0,0.8)) brightness(1.15)",
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -122,36 +141,82 @@ function getGrid(total: number) {
   return { cols: 4, rows: 4 };
 }
 
-/* ─── Megaphone: full float animation ─── */
-function MegaphoneIllustration() {
+/* ─── Animated Game Controller (replaces megaphone) ─── */
+function AnimatedGameController() {
   return (
     <svg width="160" height="160" viewBox="0 0 160 160" fill="none" style={{ overflow: "visible" }}>
+      <defs>
+        <linearGradient id="fsCtrlGrad" x1="30" y1="58" x2="130" y2="118" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.12)"/>
+          <stop offset="100%" stopColor="rgba(255,255,255,0)"/>
+        </linearGradient>
+        <filter id="fsGlow">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
       <motion.g
         animate={{ y: [0, -10, 0] }}
         transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
       >
-        {/* Body */}
-        <rect x="46" y="52" width="32" height="38" rx="5" fill="#8a9199"/>
-        <rect x="48" y="60" width="28" height="4" rx="2" fill="#6e7680"/>
-        <rect x="48" y="68" width="28" height="4" rx="2" fill="#6e7680"/>
-        <rect x="48" y="76" width="28" height="4" rx="2" fill="#6e7680"/>
-        <rect x="58" y="90" width="12" height="22" rx="5" fill="#8a9199"/>
-        {/* Horn */}
-        <path d="M78 46 L132 22 L132 118 L78 94 Z" fill="#6e7680"/>
-        <path d="M78 46 L132 22 L132 38 L78 60 Z" fill="#5b7de8"/>
-        <circle cx="132" cy="70" r="10" fill="none" stroke="#5b7de8" strokeWidth="3"/>
-        {/* Sound waves */}
-        <motion.path d="M138 64 L144 56" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"
-          animate={{ opacity: [0.2, 1, 0.2] }}
-          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0 }}
+        {/* Shadow glow under controller */}
+        <ellipse cx="80" cy="125" rx="38" ry="6" fill="rgba(230,126,0,0.18)" filter="url(#fsGlow)"/>
+        {/* Controller body */}
+        <rect x="28" y="55" width="104" height="62" rx="20" fill="#1e1e2a"/>
+        <rect x="28" y="55" width="104" height="62" rx="20" fill="url(#fsCtrlGrad)"/>
+        <rect x="28" y="55" width="104" height="62" rx="20" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" fill="none"/>
+        {/* Chrome top highlight */}
+        <path d="M48 57 Q80 54 112 57" stroke="rgba(255,255,255,0.22)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+        {/* Left grip */}
+        <rect x="28" y="88" width="22" height="32" rx="11" fill="#181820"/>
+        <rect x="28" y="88" width="22" height="32" rx="11" stroke="rgba(255,255,255,0.08)" strokeWidth="1" fill="none"/>
+        {/* Right grip */}
+        <rect x="110" y="88" width="22" height="32" rx="11" fill="#181820"/>
+        <rect x="110" y="88" width="22" height="32" rx="11" stroke="rgba(255,255,255,0.08)" strokeWidth="1" fill="none"/>
+        {/* Left joystick */}
+        <circle cx="56" cy="95" r="11" fill="#2a2a38"/>
+        <circle cx="56" cy="95" r="7" fill="#333344"/>
+        <circle cx="56" cy="95" r="3.5" fill="#444458"/>
+        {/* D-pad */}
+        <rect x="42" y="72" width="7" height="20" rx="2.5" fill="rgba(255,255,255,0.2)"/>
+        <rect x="36" y="78" width="19" height="7" rx="2.5" fill="rgba(255,255,255,0.2)"/>
+        {/* Right joystick */}
+        <circle cx="100" cy="83" r="9" fill="#2a2a38"/>
+        <circle cx="100" cy="83" r="5.5" fill="#333344"/>
+        <circle cx="100" cy="83" r="2.5" fill="#444458"/>
+        {/* Buttons */}
+        <motion.circle cx="110" cy="70" r="7" fill="#ef4444" filter="url(#fsGlow)"
+          animate={{ scale: [1, 1.15, 1], opacity: [1, 0.8, 1] }}
+          transition={{ repeat: Infinity, duration: 1.4, delay: 0 }}
         />
-        <motion.path d="M142 71 L150 71" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"
-          animate={{ opacity: [0.2, 1, 0.2] }}
-          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0.3 }}
+        <motion.circle cx="124" cy="79" r="7" fill="#3b82f6" filter="url(#fsGlow)"
+          animate={{ scale: [1, 1.15, 1], opacity: [1, 0.8, 1] }}
+          transition={{ repeat: Infinity, duration: 1.4, delay: 0.35 }}
         />
-        <motion.path d="M138 77 L144 84" stroke="#5b7de8" strokeWidth="2.5" strokeLinecap="round"
-          animate={{ opacity: [0.2, 1, 0.2] }}
-          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0.6 }}
+        <motion.circle cx="110" cy="88" r="7" fill="#22c55e" filter="url(#fsGlow)"
+          animate={{ scale: [1, 1.15, 1], opacity: [1, 0.8, 1] }}
+          transition={{ repeat: Infinity, duration: 1.4, delay: 0.7 }}
+        />
+        <motion.circle cx="96" cy="79" r="7" fill="#f59e0b" filter="url(#fsGlow)"
+          animate={{ scale: [1, 1.15, 1], opacity: [1, 0.8, 1] }}
+          transition={{ repeat: Infinity, duration: 1.4, delay: 1.05 }}
+        />
+        {/* Button symbols */}
+        <text x="110" y="73.5" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="7" fontWeight="900">✕</text>
+        <text x="124" y="82.5" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="7" fontWeight="900">○</text>
+        <text x="110" y="91.5" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="7" fontWeight="900">△</text>
+        <text x="96" y="82.5" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="7" fontWeight="900">□</text>
+        {/* Center button */}
+        <circle cx="80" cy="86" r="9" fill="#1a1a28" stroke="rgba(255,255,255,0.15)" strokeWidth="1"/>
+        <circle cx="80" cy="86" r="6" fill="#222230"/>
+        {/* Start/Select */}
+        <rect x="67" y="71" width="7" height="4" rx="2" fill="rgba(255,255,255,0.18)"/>
+        <rect x="86" y="71" width="7" height="4" rx="2" fill="rgba(255,255,255,0.18)"/>
+        {/* Pulse ring on red button */}
+        <motion.circle cx="110" cy="70" fill="none" stroke="#ef4444" strokeWidth="1"
+          initial={{ r: 9, opacity: 0.5 }}
+          animate={{ r: [9, 14, 9], opacity: [0.5, 0, 0.5] }}
+          transition={{ repeat: Infinity, duration: 1.4, delay: 0 }}
         />
       </motion.g>
     </svg>
@@ -176,26 +241,27 @@ function DemoCard({ coinId, bad }: { coinId: string; bad?: boolean }) {
 }
 
 const CUT_SM = 'polygon(10px 0%,calc(100% - 10px) 0%,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0% calc(100% - 10px),0% 10px)';
-const CARD_CUT = 'polygon(7px 0%,calc(100% - 7px) 0%,100% 7px,100% calc(100% - 7px),calc(100% - 7px) 100%,7px 100%,0% calc(100% - 7px),0% 7px)';
 const BTN_CORNERS = [
   {top:'1px',left:'12px',width:'18px',height:'1.5px'},{top:'12px',left:'1px',width:'1.5px',height:'18px'},
   {top:'1px',right:'12px',width:'18px',height:'1.5px'},{top:'12px',right:'1px',width:'1.5px',height:'18px'},
   {bottom:'1px',left:'12px',width:'18px',height:'1.5px'},{bottom:'12px',left:'1px',width:'1.5px',height:'18px'},
   {bottom:'1px',right:'12px',width:'18px',height:'1.5px'},{bottom:'12px',right:'1px',width:'1.5px',height:'18px'},
 ] as const;
-const CARD_CORNERS = [
-  {top:'1px',left:'9px',width:'12px',height:'1.5px'},{top:'9px',left:'1px',width:'1.5px',height:'12px'},
-  {top:'1px',right:'9px',width:'12px',height:'1.5px'},{top:'9px',right:'1px',width:'1.5px',height:'12px'},
-  {bottom:'1px',left:'9px',width:'12px',height:'1.5px'},{bottom:'9px',left:'1px',width:'1.5px',height:'12px'},
-  {bottom:'1px',right:'9px',width:'12px',height:'1.5px'},{bottom:'9px',right:'1px',width:'1.5px',height:'12px'},
-] as const;
 
 /* ─── Top nav bar ─── */
 function TopBar() {
   return (
-    <div style={{ padding: "12px 14px 10px", background: "linear-gradient(180deg,#1e1e1e 0%,#181818 100%)", borderBottom: "1px solid rgba(255,255,255,0.09)", boxShadow: "0 2px 12px rgba(0,0,0,0.4)" }}>
-      <p style={{ color: "white", fontSize: 16, fontWeight: 900, margin: 0, letterSpacing: 0.2 }}>Flip Axionet</p>
-      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, margin: 0 }}>Match cards to earn some AXN</p>
+    <div style={{
+      padding: "12px 14px 10px",
+      background: "linear-gradient(180deg, #1a1a1e 0%, #141416 100%)",
+      borderBottom: "1px solid rgba(255,255,255,0.07)",
+      boxShadow: "0 2px 16px rgba(0,0,0,0.5)",
+      position: "relative",
+    }}>
+      {/* Chrome shimmer */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)", pointerEvents: "none" }} />
+      <p style={{ color: "white", fontSize: 16, fontWeight: 900, margin: 0, letterSpacing: 0.3 }}>Flip Axionet</p>
+      <p style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, margin: 0 }}>Match cards to earn some AXN</p>
     </div>
   );
 }
@@ -233,7 +299,7 @@ function ResultsScreen({ score, onPlayAgain, onHome, onClaim }: {
     { x: -28, y: -105, color: "#34d399", w: 7, h: 10, rot: -120, d: 0.44 },
   ];
   return (
-    <div style={{ minHeight: "100vh", background: "#111111", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", overflow: "hidden" }}>
       <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {CONFETTI.map((c, i) => (
           <motion.div key={i}
@@ -332,14 +398,16 @@ function ResultsScreen({ score, onPlayAgain, onHome, onClaim }: {
               cursor: claimState === "loading" ? "default" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               letterSpacing: 0.3,
+              touchAction: "manipulation",
             }}
           >
             {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.45)", borderRadius:1, ...s }} />)}
             {claimState === "loading" ? (
               <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" style={{position:"relative",zIndex:1}}>
+                <motion.svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" style={{position:"relative",zIndex:1}}
+                  animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}>
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-                </svg>
+                </motion.svg>
                 <span style={{position:"relative",zIndex:1}}>Claiming...</span>
               </>
             ) : (
@@ -371,7 +439,7 @@ function ResultsScreen({ score, onPlayAgain, onHome, onClaim }: {
         >
           <button
             onClick={onHome}
-            style={{ position:"relative", width: 58, height: 58, clipPath: CUT_SM, background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ position:"relative", width: 58, height: 58, clipPath: CUT_SM, background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation" }}
           >
             {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.25)", borderRadius:1, ...s }} />)}
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{position:"relative",zIndex:1}}>
@@ -381,7 +449,7 @@ function ResultsScreen({ score, onPlayAgain, onHome, onClaim }: {
           </button>
           <button
             onClick={onPlayAgain}
-            style={{ position:"relative", width: 58, height: 58, clipPath: CUT_SM, background: "linear-gradient(135deg,#e67e00,#f59e0b)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ position:"relative", width: 58, height: 58, clipPath: CUT_SM, background: "linear-gradient(135deg,#e67e00,#f59e0b)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation" }}
           >
             {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.4)", borderRadius:1, ...s }} />)}
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{position:"relative",zIndex:1}}>
@@ -582,14 +650,12 @@ export default function FlipSense() {
   /* ─── INTRO screen ─── */
   if (phase === "intro" || phase === "sheet") {
     return (
-      <div style={{ minHeight: "100vh", background: "#111111", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column" }}>
         <TopBar />
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <MegaphoneIllustration />
-          </div>
-          <p style={{ color: "white", fontSize: 16, textAlign: "center", marginTop: 28, lineHeight: 1.55, fontWeight: 500 }}>
+          <AnimatedGameController />
+          <p style={{ color: "white", fontSize: 16, textAlign: "center", marginTop: 20, lineHeight: 1.55, fontWeight: 500 }}>
             You are about to start the match.<br/>As soon as you are ready,<br/>click the start button!
           </p>
           {highScore > 0 && (
@@ -601,40 +667,51 @@ export default function FlipSense() {
         </div>
         <div style={{ padding: "0 24px 36px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <button onClick={() => setMuted(m => !m)} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {/* Sound button — circular gaming style */}
+            <button onClick={() => setMuted(m => !m)} style={{
+              background: "linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04))",
+              border: "1px solid rgba(255,255,255,0.14)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)",
+              cursor: "pointer", width: 44, height: 44, borderRadius: "50%",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              touchAction: "manipulation",
+            }}>
               {muted
-                ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-                : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
               }
             </button>
-            <button onClick={() => setPhase("sheet")} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ color: "white", fontSize: 16, fontWeight: 700 }}>?</span>
+            {/* Help button — circular gaming style */}
+            <button onClick={() => setPhase("sheet")} style={{
+              background: "linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04))",
+              border: "1px solid rgba(255,255,255,0.14)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)",
+              cursor: "pointer", width: 44, height: 44, borderRadius: "50%",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              touchAction: "manipulation",
+            }}>
+              <span style={{ color: "white", fontSize: 17, fontWeight: 800, fontFamily: "monospace" }}>?</span>
             </button>
           </div>
-          <button onClick={startGame} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#e67e00,#f59e0b)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5 }}>
+          <button onClick={startGame} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#e67e00,#f59e0b)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5, touchAction: "manipulation" }}>
             {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.55)", borderRadius:1, ...s }} />)}
             START GAME
           </button>
-          <button onClick={() => setLocation("/game")} style={{ position: "relative", width: "100%", padding: "15px 0", clipPath: CUT_SM, background: "rgba(255,255,255,0.06)", border: "none", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={() => setLocation("/game")} style={{ position: "relative", width: "100%", padding: "15px 0", clipPath: CUT_SM, background: "rgba(255,255,255,0.06)", border: "none", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, touchAction: "manipulation" }}>
             {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.2)", borderRadius:1, ...s }} />)}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
             Back
           </button>
         </div>
 
-        {/* Instructions bottom sheet — only shown when ? clicked */}
         <AnimatePresence>
           {phase === "sheet" && (
             <>
-              {/* Backdrop — tap outside to close */}
-              <div
-                onClick={() => setPhase("intro")}
-                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 49 }}
-              />
+              <div onClick={() => setPhase("intro")} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 49 }} />
               <motion.div
                 initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 28, stiffness: 300 }}
-                style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#222222", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
+                style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#1a1a1e", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
               >
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", margin: "0 auto 16px" }}/>
                 <p style={{ color: "white", fontSize: 18, fontWeight: 700, textAlign: "center", margin: "0 0 8px" }}>Flip Axionet</p>
@@ -664,7 +741,7 @@ export default function FlipSense() {
   /* ─── COUNTDOWN ─── */
   if (phase === "countdown") {
     return (
-      <div style={{ minHeight: "100vh", background: "#111111", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={countVal}
@@ -683,8 +760,7 @@ export default function FlipSense() {
 
   /* ─── PLAYING / OVER / DONE ─── */
   return (
-    <div style={{ minHeight: "100vh", background: "#111111", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      {/* Top bar */}
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <TopBar />
 
       {/* Score + time row */}
@@ -697,18 +773,18 @@ export default function FlipSense() {
       </div>
 
       {/* Timer progress bar */}
-      <div style={{ height: 3, background: "#2a2a2a", flexShrink: 0, margin: "0 0 4px" }}>
+      <div style={{ height: 3, background: "rgba(255,255,255,0.06)", flexShrink: 0, margin: "0 0 4px" }}>
         <motion.div
           animate={{ width: `${timerPct * 100}%` }}
           transition={{ duration: 0.4 }}
-          style={{ height: "100%", background: timerPct > 0.4 ? "#fff" : timerPct > 0.2 ? "#f59e0b" : "#ef4444", borderRadius: 2 }}
+          style={{ height: "100%", background: timerPct > 0.4 ? "#e67e00" : timerPct > 0.2 ? "#f59e0b" : "#ef4444", borderRadius: 2, boxShadow: timerPct > 0.4 ? "0 0 8px rgba(230,126,0,0.5)" : "0 0 8px rgba(239,68,68,0.5)" }}
         />
       </div>
 
       {/* Round dots */}
       <div style={{ display: "flex", justifyContent: "center", gap: 5, paddingBottom: 6 }}>
         {ROUND_SEQ.map((_, i) => (
-          <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i < roundIdx ? "#22c55e" : i === roundIdx ? "#f59e0b" : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
+          <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i < roundIdx ? "#22c55e" : i === roundIdx ? "#f59e0b" : "rgba(255,255,255,0.12)", transition: "background 0.3s" }} />
         ))}
       </div>
 
@@ -717,72 +793,87 @@ export default function FlipSense() {
         <div style={{
           display: "grid",
           gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gap: cols === 4 ? 12 : cols === 3 ? 14 : 18,
+          gap: cols === 4 ? 10 : cols === 3 ? 12 : 16,
           width: "100%",
           maxWidth: 400,
         }}>
-          {cards.map(card => (
-            <motion.div
-              key={card.id}
-              animate={card.shake ? { x: [0, -7, 7, -5, 5, 0] } : { x: 0 }}
-              transition={{ duration: 0.35 }}
-              style={{
-                aspectRatio: "3/4",
-                perspective: 700,
-                cursor: card.matched ? "default" : "pointer",
-                borderRadius: 13,
-                background: card.matched ? "rgba(34,197,94,0.45)" : "rgba(255,255,255,0.22)",
-                padding: 3,
-                boxShadow: card.glow
-                  ? `0 0 22px ${COINS.find(c => c.id === card.coinId)?.bg ?? "#fff"}66, 0 4px 16px rgba(0,0,0,0.55)`
-                  : "0 4px 16px rgba(0,0,0,0.55)",
-                transition: "background 0.3s, box-shadow 0.3s",
-              }}
-              onClick={(e) => handleCardClick(card.id, e.currentTarget as HTMLElement)}
-            >
+          {cards.map(card => {
+            const coin = COINS.find(c => c.id === card.coinId) ?? COINS[0];
+            const symSize = cols === 4 ? 26 : cols === 3 ? 36 : 52;
+            const nameSize = cols === 4 ? 8 : cols === 3 ? 10 : 13;
+            const accentColor = card.matched ? "#22c55e" : coin.bg;
+            const bracketBorder = card.matched ? "rgba(34,197,94,0.6)" : `${coin.bg}88`;
+
+            return (
               <motion.div
-                animate={{ rotateY: card.flipped || card.matched ? 180 : 0 }}
-                transition={{ duration: 0.12, type: "tween" }}
-                style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d", borderRadius: 10 }}
+                key={card.id}
+                animate={card.shake ? { x: [0, -7, 7, -5, 5, 0] } : { x: 0 }}
+                transition={{ duration: 0.35 }}
+                style={{
+                  aspectRatio: "3/4",
+                  perspective: 600,
+                  cursor: card.matched ? "default" : "pointer",
+                  touchAction: "manipulation",
+                  WebkitTapHighlightColor: "transparent",
+                  userSelect: "none",
+                }}
+                onClick={(e) => handleCardClick(card.id, e.currentTarget as HTMLElement)}
               >
-                {/* Back face */}
+                {/* Outer glow/border wrapper */}
                 <div style={{
-                  position: "absolute", inset: 0,
-                  borderRadius: 10,
-                  background: "linear-gradient(145deg, #1d1d2a, #141420)",
-                  backfaceVisibility: "hidden",
-                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: 12,
+                  background: card.matched ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.16)",
+                  padding: 2,
+                  boxShadow: card.glow
+                    ? `0 0 24px ${COINS.find(c => c.id === card.coinId)?.bg ?? "#fff"}66, 0 4px 16px rgba(0,0,0,0.6)`
+                    : "0 4px 16px rgba(0,0,0,0.55)",
+                  transition: "background 0.3s, box-shadow 0.3s",
                 }}>
-                  <CardBack size={cols === 4 ? 58 : cols === 3 ? 76 : 108} />
-                </div>
-                {/* Front face */}
-                {(() => {
-                  const coin = COINS.find(c => c.id === card.coinId) ?? COINS[0];
-                  const symSize = cols === 4 ? 28 : cols === 3 ? 38 : 54;
-                  const nameSize = cols === 4 ? 8 : cols === 3 ? 10 : 13;
-                  const accentColor = card.matched ? "#22c55e" : coin.bg;
-                  const bracketBorder = card.matched ? "rgba(34,197,94,0.6)" : `${coin.bg}88`;
-                  return (
+                  <motion.div
+                    animate={{ rotateY: card.flipped || card.matched ? 180 : 0 }}
+                    transition={{ duration: 0.2, type: "tween", ease: "easeInOut" }}
+                    style={{
+                      width: "100%", height: "100%", position: "relative",
+                      transformStyle: "preserve-3d",
+                      borderRadius: 10,
+                    }}
+                  >
+                    {/* Back face */}
+                    <div style={{
+                      position: "absolute", inset: 0,
+                      borderRadius: 10,
+                      background: "linear-gradient(145deg, #1e1e2a, #141420)",
+                      WebkitBackfaceVisibility: "hidden",
+                      backfaceVisibility: "hidden",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      overflow: "hidden",
+                    }}>
+                      <CardBack size={cols === 4 ? 56 : cols === 3 ? 74 : 106} />
+                    </div>
+                    {/* Front face */}
                     <div style={{
                       position: "absolute", inset: 0,
                       borderRadius: 10,
                       background: card.matched
                         ? "linear-gradient(160deg, #0a2214 0%, #061509 100%)"
-                        : `linear-gradient(160deg, ${coin.bg}28 0%, ${coin.bg}0a 60%, #101018 100%)`,
+                        : `linear-gradient(160deg, ${coin.bg}30 0%, ${coin.bg}0c 60%, #0e0e18 100%)`,
+                      WebkitBackfaceVisibility: "hidden",
                       backfaceVisibility: "hidden",
                       transform: "rotateY(180deg)",
                       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                       overflow: "hidden",
                       gap: 4,
                     }}>
-                      {/* Colored top accent bar */}
-                      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: accentColor, opacity: 0.85 }} />
+                      {/* Top accent bar */}
+                      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: accentColor, opacity: 0.9 }} />
                       {/* Corner L-brackets */}
                       {[
-                        { top: 6, left: 6, borderRight: "none" as const, borderBottom: "none" as const, borderRadius: "3px 0 0 0" },
-                        { top: 6, right: 6, borderLeft: "none" as const, borderBottom: "none" as const, borderRadius: "0 3px 0 0" },
-                        { bottom: 6, left: 6, borderRight: "none" as const, borderTop: "none" as const, borderRadius: "0 0 0 3px" },
-                        { bottom: 6, right: 6, borderLeft: "none" as const, borderTop: "none" as const, borderRadius: "0 0 3px 0" },
+                        { top: 5, left: 5, borderRight: "none" as const, borderBottom: "none" as const, borderRadius: "3px 0 0 0" },
+                        { top: 5, right: 5, borderLeft: "none" as const, borderBottom: "none" as const, borderRadius: "0 3px 0 0" },
+                        { bottom: 5, left: 5, borderRight: "none" as const, borderTop: "none" as const, borderRadius: "0 0 0 3px" },
+                        { bottom: 5, right: 5, borderLeft: "none" as const, borderTop: "none" as const, borderRadius: "0 0 3px 0" },
                       ].map((s, i) => (
                         <div key={i} style={{ position: "absolute", width: 10, height: 10, border: `1.5px solid ${bracketBorder}`, ...s }} />
                       ))}
@@ -790,15 +881,15 @@ export default function FlipSense() {
                       <span style={{
                         fontSize: symSize, fontWeight: 900, lineHeight: 1,
                         color: accentColor,
-                        textShadow: `0 0 18px ${accentColor}66`,
+                        textShadow: `0 0 20px ${accentColor}77`,
                         position: "relative", zIndex: 1,
                       }}>{coin.symbol}</span>
                       {/* Coin name tag */}
                       <span style={{
                         fontSize: nameSize, fontWeight: 800, letterSpacing: 1.5,
-                        color: card.matched ? "rgba(34,197,94,0.75)" : "rgba(255,255,255,0.55)",
+                        color: card.matched ? "rgba(34,197,94,0.8)" : "rgba(255,255,255,0.6)",
                         textTransform: "uppercase", position: "relative", zIndex: 1,
-                        background: `${accentColor}18`,
+                        background: `${accentColor}20`,
                         padding: "1px 5px",
                         borderRadius: 2,
                       }}>{coin.id}</span>
@@ -813,11 +904,11 @@ export default function FlipSense() {
                         </div>
                       )}
                     </div>
-                  );
-                })()}
+                  </motion.div>
+                </div>
               </motion.div>
-            </motion.div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -835,19 +926,33 @@ export default function FlipSense() {
       ))}
 
       {/* Bottom controls during game */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40, padding: "20px 20px 28px", background: "linear-gradient(0deg,rgba(17,17,17,1) 60%,rgba(17,17,17,0) 100%)", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40, padding: "20px 20px 28px", background: "linear-gradient(0deg,rgba(13,13,15,1) 60%,rgba(13,13,15,0) 100%)", display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button onClick={() => setMuted(m => !m)} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <button onClick={() => setMuted(m => !m)} style={{
+            background: "linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04))",
+            border: "1px solid rgba(255,255,255,0.12)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
+            cursor: "pointer", width: 44, height: 44, borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            touchAction: "manipulation",
+          }}>
             {muted
-              ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
               : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
             }
           </button>
-          <button onClick={() => setShowHelp(true)} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "white", fontSize: 16, fontWeight: 700 }}>?</span>
+          <button onClick={() => setShowHelp(true)} style={{
+            background: "linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04))",
+            border: "1px solid rgba(255,255,255,0.12)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
+            cursor: "pointer", width: 44, height: 44, borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            touchAction: "manipulation",
+          }}>
+            <span style={{ color: "white", fontSize: 17, fontWeight: 800, fontFamily: "monospace" }}>?</span>
           </button>
         </div>
-        <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, touchAction: "manipulation" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
           Back
         </button>
@@ -861,7 +966,7 @@ export default function FlipSense() {
             <motion.div
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#222222", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
+              style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#1a1a1e", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
             >
               <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", margin: "0 auto 16px" }}/>
               <p style={{ color: "white", fontSize: 18, fontWeight: 700, textAlign: "center", margin: "0 0 8px" }}>Flip Axionet</p>
