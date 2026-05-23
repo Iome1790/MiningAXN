@@ -34,6 +34,7 @@ const FlipSensePage = lazy(() => import("@/pages/FlipSense"));
 const SlidingSensePage = lazy(() => import("@/pages/SlidingSense"));
 const CalculusFestPage = lazy(() => import("@/pages/CalculusFest"));
 const OffersPage = lazy(() => import("@/pages/Offers"));
+const WithdrawPage = lazy(() => import("@/pages/Withdraw"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const PageLoader = memo(function PageLoader() {
@@ -121,6 +122,7 @@ function Router() {
           <Route path="/game/calculus" component={CalculusFestPage} />
           <Route path="/offers" component={OffersPage} />
           <Route path="/profile" component={ProfilePage} />
+          <Route path="/withdraw" component={WithdrawPage} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
