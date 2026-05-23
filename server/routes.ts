@@ -8036,7 +8036,8 @@ ${walletAddress}
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
-      // Total commission earned from earnings table (source = referral_commission)
+      const user = await storage.getUser(userId);
+      const wellBalance = parseFloat((user?.pendingReferralBonus as any) || '0');
       const commissionRows = await db.execute(sql`
         SELECT COALESCE(SUM(amount::numeric), 0) as total
         FROM earnings
@@ -8046,11 +8047,33 @@ ${walletAddress}
       const refCountRows = await db.execute(sql`SELECT COUNT(*) as cnt FROM referrals WHERE referrer_id = ${userId}`);
       const totalFriends = parseInt((refCountRows as any).rows?.[0]?.cnt || '0');
       return res.json({
+        wellBalance,
         totalEarned,
         totalFriends,
       });
     } catch (e) {
       return res.status(500).json({ message: "Failed" });
+    }
+  });
+
+  app.post('/api/referrals/well/claim', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      const user = await storage.getUser(userId);
+      const pending = parseFloat((user?.pendingReferralBonus as any) || '0');
+      if (pending <= 0) return res.status(400).json({ message: "Nothing to claim" });
+      await db.execute(sql`
+        UPDATE users
+        SET
+          balance = COALESCE(balance::numeric, 0) + ${pending},
+          pending_referral_bonus = 0,
+          total_claimed_referral_bonus = COALESCE(total_claimed_referral_bonus::numeric, 0) + ${pending}
+        WHERE id = ${userId}
+      `);
+      return res.json({ success: true, amount: pending });
+    } catch (e) {
+      return res.status(500).json({ message: "Failed to claim" });
     }
   });
 
@@ -8357,6 +8380,29 @@ ${walletAddress}
     }
   });
 
+  // Helper: credit 10% of game earnings to the referrer's Well (pending_referral_bonus)
+  async function creditGameReferralBonus(playerId: string, gameEarned: number): Promise<void> {
+    try {
+      const player = await storage.getUser(playerId);
+      if (!player?.referredBy) return;
+      const referrer = await storage.getUserByReferralCode(player.referredBy);
+      if (!referrer) return;
+      const bonus = Math.round(gameEarned * 0.1 * 10000) / 10000;
+      if (bonus <= 0) return;
+      await db.execute(sql`
+        UPDATE users
+        SET pending_referral_bonus = COALESCE(pending_referral_bonus::numeric, 0) + ${bonus}
+        WHERE id = ${referrer.id}
+      `);
+      await db.execute(sql`
+        INSERT INTO earnings (user_id, amount, source, description)
+        VALUES (${referrer.id}, ${bonus}, 'referral_commission', ${'Game bonus from friend'})
+      `);
+    } catch (e) {
+      console.error('creditGameReferralBonus error:', e);
+    }
+  }
+
   app.post("/api/game/sliding-sense/reward", authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
@@ -8371,6 +8417,7 @@ ${walletAddress}
         SET balance = COALESCE(balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
+      await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
       res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
     } catch (err) {
@@ -8392,6 +8439,7 @@ ${walletAddress}
         SET balance = COALESCE(balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
+      await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
       res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
     } catch (err) {
@@ -8413,6 +8461,7 @@ ${walletAddress}
         SET balance = COALESCE(balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
+      await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
       res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
     } catch (err) {
