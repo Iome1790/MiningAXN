@@ -159,6 +159,8 @@ function AppContent() {
     inAppAdInitialized.current = true;
 
     const showInAppAd = () => {
+      // Never interrupt active gameplay
+      if (window.location.pathname.startsWith('/game/')) return;
       if (typeof window.show_10401872 === 'function') {
         console.log('🎬 Showing In-App Interstitial ad...');
         window.show_10401872({
