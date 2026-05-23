@@ -3,12 +3,7 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import InvitePopup from "@/components/InvitePopup";
 import MenuPopup from "@/components/MenuPopup";
-
-declare global {
-  interface Window {
-    show_10401872?: (opts?: any) => Promise<void>;
-  }
-}
+import { showAd } from "@/lib/showAd";
 
 const CUT_SM = 'polygon(10px 0%,calc(100% - 10px) 0%,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0% calc(100% - 10px),0% 10px)';
 
@@ -74,13 +69,7 @@ const GAMES = [
 ];
 
 async function showAdThenNavigate(path: string, navigate: (p: string) => void) {
-  try {
-    if (typeof window.show_10401872 === "function") {
-      await window.show_10401872({ type: "interstitial" });
-    }
-  } catch (_) {
-    // ad failed or skipped — still navigate
-  }
+  await showAd();
   navigate(path);
 }
 

@@ -4,12 +4,7 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { AXNIcon } from "@/components/AXNIcon";
-
-declare global {
-  interface Window {
-    show_10401872?: (opts?: any) => Promise<void>;
-  }
-}
+import { showAd } from "@/lib/showAd";
 
 const CUT_SM = 'polygon(10px 0%,calc(100% - 10px) 0%,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0% calc(100% - 10px),0% 10px)';
 const BTN_CORNERS = [
@@ -466,21 +461,13 @@ export default function SlidingSense() {
     if ((phase === "over" || phase === "done") && !adShown.current) {
       adShown.current = true;
       const goToResults = () => setPhase("results");
-      const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
-      if (!isDevMode && typeof window.show_10401872 === "function") {
-        window.show_10401872({ type: "interstitial" }).then(goToResults).catch(goToResults);
-      } else {
-        setTimeout(goToResults, 300);
-      }
+      showAd().then(goToResults).catch(goToResults);
     }
   }, [phase]);
 
   const handleClaim = useCallback(async () => {
     if (rewardSent.current) return;
-    const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
-    if (!isDevMode && typeof window.show_10401872 === "function") {
-      try { await window.show_10401872({ type: "interstitial" }); } catch {}
-    }
+    await showAd();
     if (score > 0) {
       rewardSent.current = true;
       await apiRequest("POST", "/api/game/sliding-sense/reward", { score });
@@ -589,10 +576,7 @@ export default function SlidingSense() {
               <span style={{ color: "white", fontSize: 17, fontWeight: 800, fontFamily: "monospace" }}>?</span>
             </button>
           </div>
-          <button onClick={async () => {
-            try { if (typeof window.show_10401872 === "function") await window.show_10401872({ type: "interstitial" }); } catch {}
-            startGame();
-          }} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#0891b2,#06b6d4)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5, touchAction: "manipulation" }}>
+          <button onClick={async () => { await showAd(); startGame(); }} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#0891b2,#06b6d4)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5, touchAction: "manipulation" }}>
             {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.55)", borderRadius:1, ...s }} />)}
             START GAME
           </button>
