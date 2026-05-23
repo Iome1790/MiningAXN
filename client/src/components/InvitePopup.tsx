@@ -127,7 +127,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
           {/* Header */}
           <div className="px-5 pt-5 pb-4 border-b border-[#1c1c1e] flex-shrink-0">
             <h2 className="text-white font-black text-sm uppercase tracking-wider">Invite Friends</h2>
-            <p className="text-white/30 text-[11px] mt-0.5">Earn AXN when friends mine & withdraw</p>
+            <p className="text-white/30 text-[11px] mt-0.5">Earn 10% of friends' game earnings automatically</p>
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -306,8 +306,8 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
               <div className="px-5 py-4 space-y-2.5">
                 {[
                   { icon: <RiLinkM className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#F5C542]" />, title: "Invite friends", desc: "Share your unique invite link. Friends join via your link." },
-                  { icon: <RiShareForwardFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-white/50" />, title: "They mine & withdraw", desc: "Every time a friend withdraws AXN, 10% flows into your Well." },
-                  { icon: <RiUserFollowFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-400" />, title: "Machine level-up bonus", desc: "Earn 50 AXN each time a friend upgrades their mining machine." },
+                  { icon: <RiShareForwardFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-white/50" />, title: "They play games", desc: "Every time a friend earns AXN from games, 10% of their reward flows into your Well automatically." },
+                  { icon: <RiUserFollowFill className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-400" />, title: "Game earnings only", desc: "Bonus applies to game rewards only — not withdrawals. No commission on what friends withdraw." },
                   { icon: <AXNIcon size={16} />, title: "Claim your Well", desc: "When your Well has AXN, claim it anytime to add to your balance." },
                 ].map((item, i) => (
                   <div key={i} className="bg-white/[0.06] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
