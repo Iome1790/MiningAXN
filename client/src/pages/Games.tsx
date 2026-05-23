@@ -7,7 +7,6 @@ import MenuPopup from "@/components/MenuPopup";
 declare global {
   interface Window {
     show_10401872?: (opts?: any) => Promise<void>;
-    Adsgram?: { init: (opts: { blockId: string }) => { show: () => Promise<void> } };
   }
 }
 
@@ -83,8 +82,6 @@ async function showAdThenNavigate(path: string, navigate: (p: string) => void) {
   try {
     if (typeof window.show_10401872 === "function") {
       await window.show_10401872({ type: "interstitial" });
-    } else if (typeof window.Adsgram !== "undefined") {
-      await window.Adsgram.init({ blockId: "int-29765" }).show();
     }
   } catch (_) {
     // ad failed or skipped — still navigate
@@ -196,14 +193,34 @@ export default function Games() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "linear-gradient(180deg, #0d0d0f 0%, #111114 50%, #0d0d0f 100%)",
+      background: "#000000",
       display: "flex",
       flexDirection: "column",
     }}>
-      {/* Subtle top glow */}
+      {/* Top blue glow line */}
       <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, height: 200,
-        background: "radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.12) 0%, transparent 70%)",
+        position: "fixed", top: 0, left: 0, right: 0, height: 2,
+        background: "linear-gradient(90deg, transparent, rgba(59,130,246,0.9), rgba(96,165,250,1), rgba(59,130,246,0.9), transparent)",
+        boxShadow: "0 0 24px rgba(59,130,246,0.7)",
+        pointerEvents: "none", zIndex: 10,
+      }} />
+      {/* Top blue glow orb */}
+      <div style={{
+        position: "fixed", top: 0, left: 0, right: 0, height: 180,
+        background: "radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.18) 0%, transparent 70%)",
+        pointerEvents: "none", zIndex: 0,
+      }} />
+      {/* Bottom blue glow line */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, height: 2,
+        background: "linear-gradient(90deg, transparent, rgba(59,130,246,0.9), rgba(96,165,250,1), rgba(59,130,246,0.9), transparent)",
+        boxShadow: "0 0 24px rgba(59,130,246,0.7)",
+        pointerEvents: "none", zIndex: 10,
+      }} />
+      {/* Bottom blue glow orb */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, height: 180,
+        background: "radial-gradient(ellipse at 50% 100%, rgba(59,130,246,0.18) 0%, transparent 70%)",
         pointerEvents: "none", zIndex: 0,
       }} />
 

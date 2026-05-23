@@ -173,7 +173,7 @@ function TopBar() {
   return (
     <div style={{
       padding: "12px 14px 10px",
-      background: "linear-gradient(180deg,#1a1a1e 0%,#141416 100%)",
+      background: "#000000",
       borderBottom: "1px solid rgba(255,255,255,0.07)",
       boxShadow: "0 2px 16px rgba(0,0,0,0.5)",
       position: "relative",
@@ -239,7 +239,7 @@ function ResultsScreen({ score, onPlayAgain, onHome, onClaim }: {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "#000000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", overflow: "hidden" }}>
       <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {CONFETTI.map((c, i) => (
           <motion.div key={i}
@@ -467,8 +467,8 @@ export default function CalculusFest() {
   const handleClaim = useCallback(async () => {
     if (rewardSent.current) return;
     const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
-    if (!isDevMode && typeof (window as any).Adsgram !== "undefined") {
-      try { await (window as any).Adsgram.init({ blockId: "int-29765" }).show(); } catch {}
+    if (!isDevMode && typeof window.show_10401872 === "function") {
+      try { await window.show_10401872({ type: "interstitial" }); } catch {}
     }
     if (score > 0) {
       rewardSent.current = true;
@@ -534,7 +534,7 @@ export default function CalculusFest() {
   /* ─── INTRO ─── */
   if (phase === "intro" || phase === "sheet") {
     return (
-      <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "#000000", display: "flex", flexDirection: "column" }}>
         <TopBar />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px" }}>
           <AnimatedGameController />
@@ -590,7 +590,7 @@ export default function CalculusFest() {
               <motion.div
                 initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 28, stiffness: 300 }}
-                style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#1a1a1e", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
+                style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#000000", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
               >
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", margin: "0 auto 16px" }}/>
                 <p style={{ color: "white", fontSize: 18, fontWeight: 700, textAlign: "center", margin: "0 0 8px" }}>Calculus Fest</p>
@@ -619,7 +619,7 @@ export default function CalculusFest() {
   /* ─── COUNTDOWN ─── */
   if (phase === "countdown") {
     return (
-      <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100vh", background: "#000000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={countVal}
@@ -638,7 +638,7 @@ export default function CalculusFest() {
 
   /* ─── PLAYING / OVER ─── */
   return (
-    <div style={{ height: "100dvh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ height: "100dvh", background: "#000000", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <TopBar />
 
       {/* Score row */}
@@ -828,7 +828,7 @@ export default function CalculusFest() {
             <motion.div
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#1a1a1e", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto", clipPath: "polygon(0% 22px,22px 0%,calc(100% - 22px) 0%,100% 22px,100% 100%,0% 100%)" }}
+              style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#000000", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto", clipPath: "polygon(0% 22px,22px 0%,calc(100% - 22px) 0%,100% 22px,100% 100%,0% 100%)" }}
             >
               <div style={{ width: 36, height: 4, background: "rgba(255,255,255,0.2)", margin: "8px auto 18px" }}/>
               <p style={{ color: "white", fontSize: 17, fontWeight: 700, textAlign: "center", margin: "0 0 6px" }}>Calculus Fest</p>

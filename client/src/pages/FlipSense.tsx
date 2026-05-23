@@ -308,7 +308,7 @@ function ResultsScreen({ score, onPlayAgain, onHome, onClaim }: {
     { x: -28, y: -105, color: "#34d399", w: 7, h: 10, rot: -120, d: 0.44 },
   ];
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "#000000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", overflow: "hidden" }}>
       <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {CONFETTI.map((c, i) => (
           <motion.div key={i}
@@ -659,7 +659,7 @@ export default function FlipSense() {
   /* ─── INTRO screen ─── */
   if (phase === "intro" || phase === "sheet") {
     return (
-      <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "#000000", display: "flex", flexDirection: "column" }}>
         <TopBar />
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px" }}>
@@ -756,7 +756,7 @@ export default function FlipSense() {
   /* ─── COUNTDOWN ─── */
   if (phase === "countdown") {
     return (
-      <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100vh", background: "#000000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={countVal}
@@ -775,7 +775,7 @@ export default function FlipSense() {
 
   /* ─── PLAYING / OVER / DONE ─── */
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#0d0d0f 0%,#111114 100%)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "#000000", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <TopBar />
 
       {/* Score + time row */}
