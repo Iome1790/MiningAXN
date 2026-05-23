@@ -26,9 +26,6 @@ const Home = lazy(() => import("@/pages/Home"));
 const Landing = lazy(() => import("@/pages/Landing"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const CountryControls = lazy(() => import("@/pages/CountryControls"));
-const WalletPage = lazy(() => import("@/pages/Wallet"));
-const ProfilePage = lazy(() => import("@/pages/Profile"));
-const RoadmapPage = lazy(() => import("@/pages/Roadmap"));
 const GamesPage = lazy(() => import("@/pages/Games"));
 const FlipSensePage = lazy(() => import("@/pages/FlipSense"));
 const SlidingSensePage = lazy(() => import("@/pages/SlidingSense"));
@@ -100,7 +97,7 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
   );
 }
 
-const NAV_ROUTES = new Set(["/", "/wallet", "/roadmap", "/game", "/offers"]);
+const NAV_ROUTES = new Set(["/", "/game", "/offers"]);
 
 function Router() {
   const [location] = useLocation();
@@ -114,14 +111,11 @@ function Router() {
           <Route path="/landing" component={Landing} />
           <Route path="/admin" component={Admin} />
           <Route path="/admin/country-controls" component={CountryControls} />
-          <Route path="/wallet" component={WalletPage} />
-          <Route path="/roadmap" component={RoadmapPage} />
           <Route path="/game" component={GamesPage} />
           <Route path="/game/flip" component={FlipSensePage} />
           <Route path="/game/sliding" component={SlidingSensePage} />
           <Route path="/game/calculus" component={CalculusFestPage} />
           <Route path="/offers" component={OffersPage} />
-          <Route path="/profile" component={ProfilePage} />
           <Route path="/withdraw" component={WithdrawPage} />
           <Route component={NotFound} />
         </Switch>
@@ -326,7 +320,7 @@ function App() {
   
   const isDevMode = import.meta.env.DEV || import.meta.env.MODE === 'development';
 
-  const checkMembership = useCallback(async () => {
+  const checkMembership = useCallback(async (isSilent = false) => {
     try {
       const headers: Record<string, string> = {};
       const tg = window.Telegram?.WebApp;
@@ -334,7 +328,7 @@ function App() {
         headers['x-telegram-data'] = tg.initData;
       }
       
-      const response = await fetch('/api/check-membership', { headers });
+      const response = await fetch(`/api/check-membership?t=${Date.now()}`, { headers });
       const data = await response.json();
       
       if (data.success) {
@@ -350,12 +344,20 @@ function App() {
     } catch (err) {
       console.error("Membership check error:", err);
     } finally {
-      setIsCheckingMembership(false);
+      if (!isSilent) setIsCheckingMembership(false);
     }
   }, []);
 
   useEffect(() => {
     checkMembership();
+  }, [checkMembership]);
+
+  // Periodic re-check every 30s to detect channel leave in real-time
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkMembership(true);
+    }, 30000);
+    return () => clearInterval(interval);
   }, [checkMembership]);
 
   const checkCountry = useCallback(async () => {
