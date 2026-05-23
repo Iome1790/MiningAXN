@@ -74,11 +74,6 @@ const GAMES = [
 ];
 
 async function showAdThenNavigate(path: string, navigate: (p: string) => void) {
-  const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
-  if (isDevMode) {
-    navigate(path);
-    return;
-  }
   try {
     if (typeof window.show_10401872 === "function") {
       await window.show_10401872({ type: "interstitial" });
