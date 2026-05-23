@@ -11,6 +11,21 @@ declare global {
   }
 }
 
+const CUT_SM = 'polygon(10px 0%,calc(100% - 10px) 0%,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0% calc(100% - 10px),0% 10px)';
+const TILE_CUT = 'polygon(7px 0%,calc(100% - 7px) 0%,100% 7px,100% calc(100% - 7px),calc(100% - 7px) 100%,7px 100%,0% calc(100% - 7px),0% 7px)';
+const BTN_CORNERS = [
+  {top:'1px',left:'12px',width:'18px',height:'1.5px'},{top:'12px',left:'1px',width:'1.5px',height:'18px'},
+  {top:'1px',right:'12px',width:'18px',height:'1.5px'},{top:'12px',right:'1px',width:'1.5px',height:'18px'},
+  {bottom:'1px',left:'12px',width:'18px',height:'1.5px'},{bottom:'12px',left:'1px',width:'1.5px',height:'18px'},
+  {bottom:'1px',right:'12px',width:'18px',height:'1.5px'},{bottom:'12px',right:'1px',width:'1.5px',height:'18px'},
+] as const;
+const TILE_CORNERS = [
+  {top:'1px',left:'8px',width:'10px',height:'1.5px'},{top:'8px',left:'1px',width:'1.5px',height:'10px'},
+  {top:'1px',right:'8px',width:'10px',height:'1.5px'},{top:'8px',right:'1px',width:'1.5px',height:'10px'},
+  {bottom:'1px',left:'8px',width:'10px',height:'1.5px'},{bottom:'8px',left:'1px',width:'1.5px',height:'10px'},
+  {bottom:'1px',right:'8px',width:'10px',height:'1.5px'},{bottom:'8px',right:'1px',width:'1.5px',height:'10px'},
+] as const;
+
 /* ─── Audio ─── */
 function playTone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.15) {
   try {
@@ -41,9 +56,10 @@ const PUZZLE_SEQ = [
 const TOTAL_TIME = 90;
 const REWARD_PER_SOLVE = 10;
 
-const TILE_COLORS = [
-  "#f7931a", "#627eea", "#22c55e",
-  "#9945ff", "#ef4444", "#f0b90b",
+const PUZZLE_IMG = '/axn-logo.svg';
+const PUZZLE_BG_COLORS = [
+  '#0c0c1a', '#0a140e', '#1a0c0c',
+  '#0c1616', '#160c16', '#14140a',
 ];
 
 type Tiles = (number | null)[];
@@ -159,7 +175,22 @@ function TopBar() {
 interface Popup { id: number; text: string; }
 
 /* ─── Results screen ─── */
-function ResultsScreen({ score, onPlayAgain, onHome }: { score: number; onPlayAgain: () => void; onHome: () => void }) {
+function ResultsScreen({ score, onPlayAgain, onHome, onClaim }: {
+  score: number; onPlayAgain: () => void; onHome: () => void; onClaim: () => Promise<void>;
+}) {
+  const [claimState, setClaimState] = useState<"idle" | "loading" | "done">("idle");
+
+  const handleClaim = async () => {
+    if (claimState !== "idle") return;
+    setClaimState("loading");
+    try {
+      await onClaim();
+      setClaimState("done");
+    } catch {
+      setClaimState("idle");
+    }
+  };
+
   const CONFETTI = [
     { x: -90, y: -65, color: "#22d3ee", w: 10, h: 7, rot: 140, d: 0.28 },
     { x: 65, y: -85, color: "#f59e0b", w: 8, h: 8, rot: 220, d: 0.38 },
@@ -235,42 +266,102 @@ function ResultsScreen({ score, onPlayAgain, onHome }: { score: number; onPlayAg
         transition={{ delay: 0.4 }}
         style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, textAlign: "center", margin: "0 0 8px" }}
       >
-        AXN earned
+        AXN earned this game
       </motion.p>
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.45 }}
-        style={{ color: "rgba(255,255,255,0.38)", fontSize: 13, textAlign: "center", margin: "0 0 36px" }}
+        style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, textAlign: "center", margin: "0 0 28px" }}
       >
-        Congratulations! Rewarded to your balance.
+        {claimState === "done" ? "✓ Reward added to your balance!" : "Watch an ad to claim your AXN reward"}
       </motion.p>
 
+      {/* Claim button */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        style={{ display: "flex", gap: 16 }}
+        style={{ width: "100%", maxWidth: 300, marginBottom: 20 }}
       >
-        <button
-          onClick={onHome}
-          style={{ width: 58, height: 58, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-        </button>
-        <button
-          onClick={onPlayAgain}
-          style={{ width: 58, height: 58, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="1 4 1 10 7 10"/>
-            <path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
-          </svg>
-        </button>
+        {claimState !== "done" ? (
+          <button
+            onClick={handleClaim}
+            disabled={claimState === "loading"}
+            style={{
+              position: "relative",
+              width: "100%",
+              padding: "16px 0",
+              clipPath: CUT_SM,
+              background: claimState === "loading"
+                ? "rgba(6,182,212,0.4)"
+                : "linear-gradient(90deg,#0891b2,#06b6d4)",
+              border: "none",
+              color: "white",
+              fontSize: 16,
+              fontWeight: 800,
+              cursor: claimState === "loading" ? "default" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              letterSpacing: 0.3,
+            }}
+          >
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.45)", borderRadius:1, ...s }} />)}
+            {claimState === "loading" ? (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" style={{position:"relative",zIndex:1}}>
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                <span style={{position:"relative",zIndex:1}}>Claiming...</span>
+              </>
+            ) : (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" style={{position:"relative",zIndex:1}}>
+                  <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                </svg>
+                <span style={{position:"relative",zIndex:1}}>Claim Reward</span>
+              </>
+            )}
+          </button>
+        ) : (
+          <div style={{ position:"relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "rgba(34,197,94,0.18)", color: "#22c55e", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(34,197,94,0.55)", borderRadius:1, ...s }} />)}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{position:"relative",zIndex:1}}>
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <span style={{position:"relative",zIndex:1}}>Reward Claimed!</span>
+          </div>
+        )}
       </motion.div>
+
+      {/* Home + Replay — only after claim */}
+      {claimState === "done" && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ display: "flex", gap: 16 }}
+        >
+          <button
+            onClick={onHome}
+            style={{ position:"relative", width: 58, height: 58, clipPath: CUT_SM, background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.25)", borderRadius:1, ...s }} />)}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{position:"relative",zIndex:1}}>
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </button>
+          <button
+            onClick={onPlayAgain}
+            style={{ position:"relative", width: 58, height: 58, clipPath: CUT_SM, background: "linear-gradient(135deg,#0891b2,#06b6d4)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.4)", borderRadius:1, ...s }} />)}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{position:"relative",zIndex:1}}>
+              <polyline points="1 4 1 10 7 10"/>
+              <path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
+            </svg>
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 }
@@ -307,7 +398,6 @@ export default function SlidingSense() {
   }, [phase]);
 
   const currentPuzzle = PUZZLE_SEQ[puzzleIdx] ?? PUZZLE_SEQ[PUZZLE_SEQ.length - 1];
-  const tileColor = TILE_COLORS[puzzleIdx % TILE_COLORS.length];
 
   const loadPuzzle = useCallback((idx: number) => {
     const p = PUZZLE_SEQ[idx] ?? PUZZLE_SEQ[PUZZLE_SEQ.length - 1];
@@ -346,16 +436,10 @@ export default function SlidingSense() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase]);
 
-  /* reward + ad + results */
+  /* ad + results (reward only on claim) */
   useEffect(() => {
     if ((phase === "over" || phase === "done") && !adShown.current) {
       adShown.current = true;
-      if (score > 0 && !rewardSent.current) {
-        rewardSent.current = true;
-        apiRequest("POST", "/api/game/sliding-sense/reward", { score })
-          .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/user"] }))
-          .catch(() => {});
-      }
       const goToResults = () => setPhase("results");
       const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
       if (!isDevMode && typeof window.show_10401872 === "function") {
@@ -364,7 +448,20 @@ export default function SlidingSense() {
         setTimeout(goToResults, 300);
       }
     }
-  }, [phase, score, qc]);
+  }, [phase]);
+
+  const handleClaim = useCallback(async () => {
+    if (rewardSent.current) return;
+    const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
+    if (!isDevMode && typeof (window as any).Adsgram !== "undefined") {
+      try { await (window as any).Adsgram.init({ blockId: "int-29765" }).show(); } catch {}
+    }
+    if (score > 0) {
+      rewardSent.current = true;
+      await apiRequest("POST", "/api/game/sliding-sense/reward", { score });
+      qc.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    }
+  }, [score, qc]);
 
   const showPopup = useCallback((text: string) => {
     const id = popupId + 1;
@@ -406,10 +503,15 @@ export default function SlidingSense() {
   const { rows, cols } = currentPuzzle;
   const timerPct = timeLeft / TOTAL_TIME;
 
-  const GRID_W = Math.min(340, typeof window !== "undefined" ? window.innerWidth - 48 : 300);
-  const GAP = 8;
-  const tileW = Math.floor((GRID_W - GAP * (cols - 1)) / cols);
-  const tileH = Math.floor((GRID_W * 0.8 - GAP * (rows - 1)) / rows);
+  const screenW = typeof window !== "undefined" ? window.innerWidth : 400;
+  const GRID_W = Math.min(screenW - 20, 440);
+  const GAP = 5;
+  const tileSize = Math.floor((GRID_W - GAP * (cols - 1)) / cols);
+  const PAD = 3;
+  const innerSize = tileSize - PAD * 2;
+  const imgW = innerSize * cols;
+  const imgH = innerSize * rows;
+  const puzzleBg = PUZZLE_BG_COLORS[puzzleIdx % PUZZLE_BG_COLORS.length];
 
   /* ─── RESULTS ─── */
   if (phase === "results") {
@@ -418,6 +520,7 @@ export default function SlidingSense() {
         score={score}
         onHome={() => setLocation("/game")}
         onPlayAgain={() => { adShown.current = false; rewardSent.current = false; startGame(); }}
+        onClaim={handleClaim}
       />
     );
   }
@@ -454,10 +557,12 @@ export default function SlidingSense() {
               <span style={{ color: "white", fontSize: 16, fontWeight: 700 }}>?</span>
             </button>
           </div>
-          <button onClick={startGame} style={{ width: "100%", padding: "15px 0", borderRadius: 14, background: "linear-gradient(90deg,#0891b2,#06b6d4)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5 }}>
+          <button onClick={startGame} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#0891b2,#06b6d4)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5 }}>
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.55)", borderRadius:1, ...s }} />)}
             START GAME
           </button>
-          <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={() => setLocation("/game")} style={{ position: "relative", width: "100%", padding: "15px 0", clipPath: CUT_SM, background: "rgba(255,255,255,0.06)", border: "none", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.2)", borderRadius:1, ...s }} />)}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
             Back
           </button>
@@ -527,16 +632,16 @@ export default function SlidingSense() {
       <TopBar />
 
       {/* Score row */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 20px 8px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <AXNIcon size={28} />
-          <span style={{ color: "white", fontSize: 28, fontWeight: 900, letterSpacing: -1 }}>{score}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 16px 4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <AXNIcon size={24} />
+          <span style={{ color: "white", fontSize: 24, fontWeight: 900, letterSpacing: -1 }}>{score}</span>
         </div>
-        <span style={{ color: "white", fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>{timeLeft}</span>
+        <span style={{ color: "white", fontSize: 26, fontWeight: 900, letterSpacing: -1 }}>{timeLeft}</span>
       </div>
 
-      {/* Timer bar — below score row */}
-      <div style={{ height: 4, background: "#2a2a2a", flexShrink: 0, margin: "0 0 6px" }}>
+      {/* Timer bar */}
+      <div style={{ height: 3, background: "#2a2a2a", flexShrink: 0, margin: "0 0 4px" }}>
         <motion.div
           animate={{ width: `${timerPct * 100}%` }}
           transition={{ duration: 0.4 }}
@@ -545,15 +650,15 @@ export default function SlidingSense() {
       </div>
 
       {/* Puzzle dots */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 5, paddingBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "center", gap: 5, paddingBottom: 6 }}>
         {PUZZLE_SEQ.map((_, i) => (
-          <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: i < puzzleIdx ? "#22c55e" : i === puzzleIdx ? "#06b6d4" : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
+          <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i < puzzleIdx ? "#22c55e" : i === puzzleIdx ? "#06b6d4" : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
         ))}
       </div>
 
       {/* Puzzle grid */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 0" }}>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, ${tileW}px)`, gridTemplateRows: `repeat(${rows}, ${tileH}px)`, gap: GAP }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "4px 0 130px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, ${tileSize}px)`, gridTemplateRows: `repeat(${rows}, ${tileSize}px)`, gap: GAP }}>
           {tiles.map((v, i) => (
             <motion.div
               layout
@@ -561,18 +666,29 @@ export default function SlidingSense() {
               transition={{ type: "spring", stiffness: 600, damping: 38 }}
               onClick={() => v !== null && handleTileTap(i)}
               style={{
-                width: tileW, height: tileH,
-                borderRadius: 10,
-                background: v !== null ? tileColor : "transparent",
-                border: v !== null ? "none" : "2px dashed rgba(255,255,255,0.1)",
-                display: "flex", alignItems: "center", justifyContent: "center",
+                width: tileSize, height: tileSize,
+                position: "relative",
+                borderRadius: 12,
+                background: v !== null ? "rgba(255,255,255,0.22)" : "transparent",
+                padding: v !== null ? PAD : 0,
                 cursor: v !== null ? "pointer" : "default",
-                boxShadow: v !== null ? `0 4px 14px ${tileColor}44` : undefined,
                 userSelect: "none",
+                boxSizing: "border-box" as const,
+                boxShadow: v !== null ? "0 4px 16px rgba(0,0,0,0.55)" : undefined,
               }}
             >
               {v !== null && (
-                <span style={{ color: "rgba(255,255,255,0.85)", fontSize: tileW * 0.3, fontWeight: 900, letterSpacing: -1 }}>{v + 1}</span>
+                <div style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  backgroundImage: `url('${PUZZLE_IMG}')`,
+                  backgroundSize: `${imgW}px ${imgH}px`,
+                  backgroundPosition: `-${(v % cols) * innerSize}px -${Math.floor(v / cols) * innerSize}px`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundColor: puzzleBg,
+                }} />
               )}
             </motion.div>
           ))}

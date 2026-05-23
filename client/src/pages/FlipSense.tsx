@@ -55,17 +55,20 @@ function CoinBadge({ coinId, size }: { coinId: string; size: number }) {
 }
 
 function CardBack({ size }: { size: number }) {
+  const m = Math.max(7, Math.round(size * 0.09));
+  const cw = Math.max(9, Math.round(size * 0.15));
+  const corners = [
+    { top: m, left: m, borderRight: "none" as const, borderBottom: "none" as const, borderRadius: "3px 0 0 0" },
+    { top: m, right: m, borderLeft: "none" as const, borderBottom: "none" as const, borderRadius: "0 3px 0 0" },
+    { bottom: m, left: m, borderRight: "none" as const, borderTop: "none" as const, borderRadius: "0 0 0 3px" },
+    { bottom: m, right: m, borderLeft: "none" as const, borderTop: "none" as const, borderRadius: "0 0 3px 0" },
+  ];
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(145deg, #1e1e2e, #16161e)" }}>
-      <div style={{
-        width: size * 0.54, height: size * 0.54, borderRadius: "50%",
-        background: "linear-gradient(135deg, #2a2a3a, #111118)",
-        border: "2px solid rgba(255,255,255,0.14)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "inset 0 2px 8px rgba(0,0,0,0.4)",
-      }}>
-        <span style={{ color: "rgba(255,255,255,0.22)", fontSize: size * 0.2, fontWeight: 900 }}>AXN</span>
-      </div>
+    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+      {corners.map((s, i) => (
+        <div key={i} style={{ position: "absolute", width: cw, height: cw, border: "2px solid rgba(255,255,255,0.3)", ...s }} />
+      ))}
+      <img src="/axn-logo.svg" alt="AXN" style={{ width: size * 0.62, height: size * 0.62, opacity: 0.82, filter: "drop-shadow(0 0 8px rgba(230,126,0,0.5))" }} />
     </div>
   );
 }
@@ -172,6 +175,21 @@ function DemoCard({ coinId, bad }: { coinId: string; bad?: boolean }) {
   );
 }
 
+const CUT_SM = 'polygon(10px 0%,calc(100% - 10px) 0%,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0% calc(100% - 10px),0% 10px)';
+const CARD_CUT = 'polygon(7px 0%,calc(100% - 7px) 0%,100% 7px,100% calc(100% - 7px),calc(100% - 7px) 100%,7px 100%,0% calc(100% - 7px),0% 7px)';
+const BTN_CORNERS = [
+  {top:'1px',left:'12px',width:'18px',height:'1.5px'},{top:'12px',left:'1px',width:'1.5px',height:'18px'},
+  {top:'1px',right:'12px',width:'18px',height:'1.5px'},{top:'12px',right:'1px',width:'1.5px',height:'18px'},
+  {bottom:'1px',left:'12px',width:'18px',height:'1.5px'},{bottom:'12px',left:'1px',width:'1.5px',height:'18px'},
+  {bottom:'1px',right:'12px',width:'18px',height:'1.5px'},{bottom:'12px',right:'1px',width:'1.5px',height:'18px'},
+] as const;
+const CARD_CORNERS = [
+  {top:'1px',left:'9px',width:'12px',height:'1.5px'},{top:'9px',left:'1px',width:'1.5px',height:'12px'},
+  {top:'1px',right:'9px',width:'12px',height:'1.5px'},{top:'9px',right:'1px',width:'1.5px',height:'12px'},
+  {bottom:'1px',left:'9px',width:'12px',height:'1.5px'},{bottom:'9px',left:'1px',width:'1.5px',height:'12px'},
+  {bottom:'1px',right:'9px',width:'12px',height:'1.5px'},{bottom:'9px',right:'1px',width:'1.5px',height:'12px'},
+] as const;
+
 /* ─── Top nav bar ─── */
 function TopBar() {
   return (
@@ -186,7 +204,22 @@ function TopBar() {
 interface Popup { id: number; text: string; x: number; y: number; }
 
 /* ─── Results screen ─── */
-function ResultsScreen({ score, onPlayAgain, onHome }: { score: number; onPlayAgain: () => void; onHome: () => void }) {
+function ResultsScreen({ score, onPlayAgain, onHome, onClaim }: {
+  score: number; onPlayAgain: () => void; onHome: () => void; onClaim: () => Promise<void>;
+}) {
+  const [claimState, setClaimState] = useState<"idle" | "loading" | "done">("idle");
+
+  const handleClaim = async () => {
+    if (claimState !== "idle") return;
+    setClaimState("loading");
+    try {
+      await onClaim();
+      setClaimState("done");
+    } catch {
+      setClaimState("idle");
+    }
+  };
+
   const CONFETTI = [
     { x: -90, y: -65, color: "#22d3ee", w: 10, h: 7, rot: 140, d: 0.28 },
     { x: 65, y: -85, color: "#f59e0b", w: 8, h: 8, rot: 220, d: 0.38 },
@@ -262,42 +295,102 @@ function ResultsScreen({ score, onPlayAgain, onHome }: { score: number; onPlayAg
         transition={{ delay: 0.4 }}
         style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, textAlign: "center", margin: "0 0 8px", lineHeight: 1.5 }}
       >
-        AXN earned
+        AXN earned this game
       </motion.p>
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.45 }}
-        style={{ color: "rgba(255,255,255,0.38)", fontSize: 13, textAlign: "center", margin: "0 0 36px" }}
+        style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, textAlign: "center", margin: "0 0 28px" }}
       >
-        Congratulations! Rewarded to your balance.
+        {claimState === "done" ? "✓ Reward added to your balance!" : "Watch an ad to claim your AXN reward"}
       </motion.p>
 
+      {/* Claim button */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        style={{ display: "flex", gap: 16 }}
+        style={{ width: "100%", maxWidth: 300, marginBottom: 20 }}
       >
-        <button
-          onClick={onHome}
-          style={{ width: 58, height: 58, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-        </button>
-        <button
-          onClick={onPlayAgain}
-          style={{ width: 58, height: 58, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="1 4 1 10 7 10"/>
-            <path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
-          </svg>
-        </button>
+        {claimState !== "done" ? (
+          <button
+            onClick={handleClaim}
+            disabled={claimState === "loading"}
+            style={{
+              position: "relative",
+              width: "100%",
+              padding: "16px 0",
+              clipPath: CUT_SM,
+              background: claimState === "loading"
+                ? "rgba(230,126,0,0.4)"
+                : "linear-gradient(90deg,#e67e00,#f59e0b)",
+              border: "none",
+              color: "white",
+              fontSize: 16,
+              fontWeight: 800,
+              cursor: claimState === "loading" ? "default" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              letterSpacing: 0.3,
+            }}
+          >
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.45)", borderRadius:1, ...s }} />)}
+            {claimState === "loading" ? (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" style={{position:"relative",zIndex:1}}>
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                <span style={{position:"relative",zIndex:1}}>Claiming...</span>
+              </>
+            ) : (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" style={{position:"relative",zIndex:1}}>
+                  <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                </svg>
+                <span style={{position:"relative",zIndex:1}}>Claim Reward</span>
+              </>
+            )}
+          </button>
+        ) : (
+          <div style={{ position:"relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "rgba(34,197,94,0.18)", color: "#22c55e", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(34,197,94,0.55)", borderRadius:1, ...s }} />)}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{position:"relative",zIndex:1}}>
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <span style={{position:"relative",zIndex:1}}>Reward Claimed!</span>
+          </div>
+        )}
       </motion.div>
+
+      {/* Home + Replay — only after claim */}
+      {claimState === "done" && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ display: "flex", gap: 16 }}
+        >
+          <button
+            onClick={onHome}
+            style={{ position:"relative", width: 58, height: 58, clipPath: CUT_SM, background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.25)", borderRadius:1, ...s }} />)}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{position:"relative",zIndex:1}}>
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </button>
+          <button
+            onClick={onPlayAgain}
+            style={{ position:"relative", width: 58, height: 58, clipPath: CUT_SM, background: "linear-gradient(135deg,#e67e00,#f59e0b)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.4)", borderRadius:1, ...s }} />)}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{position:"relative",zIndex:1}}>
+              <polyline points="1 4 1 10 7 10"/>
+              <path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
+            </svg>
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 }
@@ -375,16 +468,10 @@ export default function FlipSense() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase]);
 
-  /* reward + ad + results */
+  /* ad + results (reward only on claim) */
   useEffect(() => {
     if ((phase === "over" || phase === "done") && !adShown.current) {
       adShown.current = true;
-      if (score > 0 && !rewardSent.current) {
-        rewardSent.current = true;
-        apiRequest("POST", "/api/game/flip-sense/reward", { score })
-          .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/user"] }))
-          .catch(() => {});
-      }
       const goToResults = () => setPhase("results");
       const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
       if (!isDevMode && typeof window.show_10401872 === "function") {
@@ -393,7 +480,20 @@ export default function FlipSense() {
         setTimeout(goToResults, 300);
       }
     }
-  }, [phase, score, qc]);
+  }, [phase]);
+
+  const handleClaim = useCallback(async () => {
+    if (rewardSent.current) return;
+    const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
+    if (!isDevMode && typeof (window as any).Adsgram !== "undefined") {
+      try { await (window as any).Adsgram.init({ blockId: "int-29765" }).show(); } catch {}
+    }
+    if (score > 0) {
+      rewardSent.current = true;
+      await apiRequest("POST", "/api/game/flip-sense/reward", { score });
+      qc.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    }
+  }, [score, qc]);
 
   const showPopup = useCallback((text: string, cardEl?: HTMLElement) => {
     const x = cardEl ? cardEl.getBoundingClientRect().left + cardEl.offsetWidth / 2 : window.innerWidth / 2;
@@ -474,6 +574,7 @@ export default function FlipSense() {
         score={score}
         onHome={() => setLocation("/game")}
         onPlayAgain={() => { adShown.current = false; rewardSent.current = false; startGame(); }}
+        onClaim={handleClaim}
       />
     );
   }
@@ -510,10 +611,12 @@ export default function FlipSense() {
               <span style={{ color: "white", fontSize: 16, fontWeight: 700 }}>?</span>
             </button>
           </div>
-          <button onClick={startGame} style={{ width: "100%", padding: "15px 0", borderRadius: 14, background: "linear-gradient(90deg,#e67e00,#f59e0b)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5 }}>
+          <button onClick={startGame} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#e67e00,#f59e0b)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5 }}>
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.55)", borderRadius:1, ...s }} />)}
             START GAME
           </button>
-          <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={() => setLocation("/game")} style={{ position: "relative", width: "100%", padding: "15px 0", clipPath: CUT_SM, background: "rgba(255,255,255,0.06)", border: "none", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.2)", borderRadius:1, ...s }} />)}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
             Back
           </button>
@@ -585,16 +688,16 @@ export default function FlipSense() {
       <TopBar />
 
       {/* Score + time row */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 20px 8px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <AXNIcon size={28} />
-          <span style={{ color: "white", fontSize: 28, fontWeight: 900, letterSpacing: -1 }}>{score}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 16px 4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <AXNIcon size={24} />
+          <span style={{ color: "white", fontSize: 24, fontWeight: 900, letterSpacing: -1 }}>{score}</span>
         </div>
-        <span style={{ color: "white", fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>{timeLeft}</span>
+        <span style={{ color: "white", fontSize: 26, fontWeight: 900, letterSpacing: -1 }}>{timeLeft}</span>
       </div>
 
-      {/* Timer progress bar — below score row */}
-      <div style={{ height: 4, background: "#2a2a2a", flexShrink: 0, margin: "0 0 6px" }}>
+      {/* Timer progress bar */}
+      <div style={{ height: 3, background: "#2a2a2a", flexShrink: 0, margin: "0 0 4px" }}>
         <motion.div
           animate={{ width: `${timerPct * 100}%` }}
           transition={{ duration: 0.4 }}
@@ -603,67 +706,115 @@ export default function FlipSense() {
       </div>
 
       {/* Round dots */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 5, paddingBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "center", gap: 5, paddingBottom: 6 }}>
         {ROUND_SEQ.map((_, i) => (
-          <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: i < roundIdx ? "#22c55e" : i === roundIdx ? "#f59e0b" : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
+          <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i < roundIdx ? "#22c55e" : i === roundIdx ? "#f59e0b" : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
         ))}
       </div>
 
       {/* Card grid */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px" }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "4px 14px 155px" }}>
         <div style={{
           display: "grid",
           gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gap: cols === 4 ? 7 : cols === 3 ? 9 : 14,
+          gap: cols === 4 ? 12 : cols === 3 ? 14 : 18,
           width: "100%",
-          maxWidth: 380,
+          maxWidth: 400,
         }}>
           {cards.map(card => (
             <motion.div
               key={card.id}
               animate={card.shake ? { x: [0, -7, 7, -5, 5, 0] } : { x: 0 }}
               transition={{ duration: 0.35 }}
-              style={{ aspectRatio: "3/4", perspective: 600, cursor: card.matched ? "default" : "pointer" }}
+              style={{
+                aspectRatio: "3/4",
+                perspective: 700,
+                cursor: card.matched ? "default" : "pointer",
+                borderRadius: 13,
+                background: card.matched ? "rgba(34,197,94,0.45)" : "rgba(255,255,255,0.22)",
+                padding: 3,
+                boxShadow: card.glow
+                  ? `0 0 22px ${COINS.find(c => c.id === card.coinId)?.bg ?? "#fff"}66, 0 4px 16px rgba(0,0,0,0.55)`
+                  : "0 4px 16px rgba(0,0,0,0.55)",
+                transition: "background 0.3s, box-shadow 0.3s",
+              }}
               onClick={(e) => handleCardClick(card.id, e.currentTarget as HTMLElement)}
             >
               <motion.div
                 animate={{ rotateY: card.flipped || card.matched ? 180 : 0 }}
                 transition={{ duration: 0.12, type: "tween" }}
-                style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d" }}
+                style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d", borderRadius: 10 }}
               >
                 {/* Back face */}
                 <div style={{
                   position: "absolute", inset: 0,
-                  borderRadius: cols === 4 ? 10 : cols === 3 ? 12 : 16,
-                  border: "1.5px solid rgba(255,255,255,0.1)",
-                  background: "linear-gradient(145deg, #1e1e2e, #16161e)",
+                  borderRadius: 10,
+                  background: "linear-gradient(145deg, #1d1d2a, #141420)",
                   backfaceVisibility: "hidden",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 2px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)",
                 }}>
-                  <CardBack size={cols === 4 ? 60 : cols === 3 ? 80 : 110} />
+                  <CardBack size={cols === 4 ? 58 : cols === 3 ? 76 : 108} />
                 </div>
                 {/* Front face */}
-                <div style={{
-                  position: "absolute", inset: 0,
-                  borderRadius: cols === 4 ? 10 : cols === 3 ? 12 : 16,
-                  border: card.matched ? "2px solid #22c55e" : "1.5px solid rgba(255,255,255,0.18)",
-                  background: card.matched ? "linear-gradient(145deg, rgba(34,197,94,0.12), rgba(34,197,94,0.04))" : "linear-gradient(145deg, #242430, #1a1a22)",
-                  backfaceVisibility: "hidden",
-                  transform: "rotateY(180deg)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: card.glow ? `0 0 20px ${COINS.find(c => c.id === card.coinId)?.bg ?? "#fff"}55` : "0 2px 10px rgba(0,0,0,0.4)",
-                }}>
-                  <CoinBadge coinId={card.coinId} size={cols === 4 ? 44 : cols === 3 ? 60 : 82} />
-                  {card.wild && (
-                    <div style={{ position: "absolute", top: 5, right: 6, fontSize: cols === 4 ? 10 : 13, fontWeight: 900, color: "#fbbf24" }}>★</div>
-                  )}
-                  {card.matched && (
-                    <div style={{ position: "absolute", bottom: 5, right: 6 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                {(() => {
+                  const coin = COINS.find(c => c.id === card.coinId) ?? COINS[0];
+                  const symSize = cols === 4 ? 28 : cols === 3 ? 38 : 54;
+                  const nameSize = cols === 4 ? 8 : cols === 3 ? 10 : 13;
+                  const accentColor = card.matched ? "#22c55e" : coin.bg;
+                  const bracketBorder = card.matched ? "rgba(34,197,94,0.6)" : `${coin.bg}88`;
+                  return (
+                    <div style={{
+                      position: "absolute", inset: 0,
+                      borderRadius: 10,
+                      background: card.matched
+                        ? "linear-gradient(160deg, #0a2214 0%, #061509 100%)"
+                        : `linear-gradient(160deg, ${coin.bg}28 0%, ${coin.bg}0a 60%, #101018 100%)`,
+                      backfaceVisibility: "hidden",
+                      transform: "rotateY(180deg)",
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                      overflow: "hidden",
+                      gap: 4,
+                    }}>
+                      {/* Colored top accent bar */}
+                      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: accentColor, opacity: 0.85 }} />
+                      {/* Corner L-brackets */}
+                      {[
+                        { top: 6, left: 6, borderRight: "none" as const, borderBottom: "none" as const, borderRadius: "3px 0 0 0" },
+                        { top: 6, right: 6, borderLeft: "none" as const, borderBottom: "none" as const, borderRadius: "0 3px 0 0" },
+                        { bottom: 6, left: 6, borderRight: "none" as const, borderTop: "none" as const, borderRadius: "0 0 0 3px" },
+                        { bottom: 6, right: 6, borderLeft: "none" as const, borderTop: "none" as const, borderRadius: "0 0 3px 0" },
+                      ].map((s, i) => (
+                        <div key={i} style={{ position: "absolute", width: 10, height: 10, border: `1.5px solid ${bracketBorder}`, ...s }} />
+                      ))}
+                      {/* Big symbol */}
+                      <span style={{
+                        fontSize: symSize, fontWeight: 900, lineHeight: 1,
+                        color: accentColor,
+                        textShadow: `0 0 18px ${accentColor}66`,
+                        position: "relative", zIndex: 1,
+                      }}>{coin.symbol}</span>
+                      {/* Coin name tag */}
+                      <span style={{
+                        fontSize: nameSize, fontWeight: 800, letterSpacing: 1.5,
+                        color: card.matched ? "rgba(34,197,94,0.75)" : "rgba(255,255,255,0.55)",
+                        textTransform: "uppercase", position: "relative", zIndex: 1,
+                        background: `${accentColor}18`,
+                        padding: "1px 5px",
+                        borderRadius: 2,
+                      }}>{coin.id}</span>
+                      {/* Wild star */}
+                      {card.wild && (
+                        <div style={{ position: "absolute", top: 5, right: 7, fontSize: cols === 4 ? 10 : 13, fontWeight: 900, color: "#fbbf24" }}>★</div>
+                      )}
+                      {/* Match checkmark */}
+                      {card.matched && (
+                        <div style={{ position: "absolute", bottom: 5, right: 6 }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </motion.div>
             </motion.div>
           ))}

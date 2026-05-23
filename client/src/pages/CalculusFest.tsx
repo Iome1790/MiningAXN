@@ -11,6 +11,27 @@ declare global {
   }
 }
 
+const CUT_SM = 'polygon(10px 0%,calc(100% - 10px) 0%,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0% calc(100% - 10px),0% 10px)';
+const CUT_LG = 'polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px)';
+const BTN_CORNERS = [
+  {top:'1px',left:'12px',width:'18px',height:'1.5px'},{top:'12px',left:'1px',width:'1.5px',height:'18px'},
+  {top:'1px',right:'12px',width:'18px',height:'1.5px'},{top:'12px',right:'1px',width:'1.5px',height:'18px'},
+  {bottom:'1px',left:'12px',width:'18px',height:'1.5px'},{bottom:'12px',left:'1px',width:'1.5px',height:'18px'},
+  {bottom:'1px',right:'12px',width:'18px',height:'1.5px'},{bottom:'12px',right:'1px',width:'1.5px',height:'18px'},
+] as const;
+const QUEST_CORNERS = [
+  {top:'2px',left:'15px',width:'24px',height:'2px'},{top:'15px',left:'2px',width:'2px',height:'24px'},
+  {top:'2px',right:'15px',width:'24px',height:'2px'},{top:'15px',right:'2px',width:'2px',height:'24px'},
+  {bottom:'2px',left:'15px',width:'24px',height:'2px'},{bottom:'15px',left:'2px',width:'2px',height:'24px'},
+  {bottom:'2px',right:'15px',width:'24px',height:'2px'},{bottom:'15px',right:'2px',width:'2px',height:'24px'},
+] as const;
+const ANS_CORNERS = [
+  {top:'1px',left:'11px',width:'16px',height:'1.5px'},{top:'11px',left:'1px',width:'1.5px',height:'16px'},
+  {top:'1px',right:'11px',width:'16px',height:'1.5px'},{top:'11px',right:'1px',width:'1.5px',height:'16px'},
+  {bottom:'1px',left:'11px',width:'16px',height:'1.5px'},{bottom:'11px',left:'1px',width:'1.5px',height:'16px'},
+  {bottom:'1px',right:'11px',width:'16px',height:'1.5px'},{bottom:'11px',right:'1px',width:'1.5px',height:'16px'},
+] as const;
+
 /* ─── Audio ─── */
 function playTone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.15) {
   try {
@@ -109,7 +130,22 @@ function TopBar() {
 }
 
 /* ─── Results screen ─── */
-function ResultsScreen({ score, onPlayAgain, onHome }: { score: number; onPlayAgain: () => void; onHome: () => void }) {
+function ResultsScreen({ score, onPlayAgain, onHome, onClaim }: {
+  score: number; onPlayAgain: () => void; onHome: () => void; onClaim: () => Promise<void>;
+}) {
+  const [claimState, setClaimState] = useState<"idle" | "loading" | "done">("idle");
+
+  const handleClaim = async () => {
+    if (claimState !== "idle") return;
+    setClaimState("loading");
+    try {
+      await onClaim();
+      setClaimState("done");
+    } catch {
+      setClaimState("idle");
+    }
+  };
+
   const CONFETTI = [
     { x: -90, y: -65, color: "#22d3ee", w: 10, h: 7, rot: 140, d: 0.28 },
     { x: 65, y: -85, color: "#f59e0b", w: 8, h: 8, rot: 220, d: 0.38 },
@@ -185,42 +221,102 @@ function ResultsScreen({ score, onPlayAgain, onHome }: { score: number; onPlayAg
         transition={{ delay: 0.4 }}
         style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, textAlign: "center", margin: "0 0 8px" }}
       >
-        AXN earned
+        AXN earned this game
       </motion.p>
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.45 }}
-        style={{ color: "rgba(255,255,255,0.38)", fontSize: 13, textAlign: "center", margin: "0 0 36px" }}
+        style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, textAlign: "center", margin: "0 0 28px" }}
       >
-        Congratulations! Rewarded to your balance.
+        {claimState === "done" ? "✓ Reward added to your balance!" : "Watch an ad to claim your AXN reward"}
       </motion.p>
 
+      {/* Claim button */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        style={{ display: "flex", gap: 16 }}
+        style={{ width: "100%", maxWidth: 300, marginBottom: 20 }}
       >
-        <button
-          onClick={onHome}
-          style={{ width: 58, height: 58, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-        </button>
-        <button
-          onClick={onPlayAgain}
-          style={{ width: 58, height: 58, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,255,255,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="1 4 1 10 7 10"/>
-            <path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
-          </svg>
-        </button>
+        {claimState !== "done" ? (
+          <button
+            onClick={handleClaim}
+            disabled={claimState === "loading"}
+            style={{
+              position: "relative",
+              width: "100%",
+              padding: "16px 0",
+              clipPath: CUT_SM,
+              background: claimState === "loading"
+                ? "rgba(124,58,237,0.4)"
+                : "linear-gradient(90deg,#7c3aed,#9945ff)",
+              border: "none",
+              color: "white",
+              fontSize: 16,
+              fontWeight: 800,
+              cursor: claimState === "loading" ? "default" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              letterSpacing: 0.3,
+            }}
+          >
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.45)", borderRadius:1, ...s }} />)}
+            {claimState === "loading" ? (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" style={{position:"relative",zIndex:1}}>
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                <span style={{position:"relative",zIndex:1}}>Claiming...</span>
+              </>
+            ) : (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" style={{position:"relative",zIndex:1}}>
+                  <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                </svg>
+                <span style={{position:"relative",zIndex:1}}>Claim Reward</span>
+              </>
+            )}
+          </button>
+        ) : (
+          <div style={{ position:"relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "rgba(34,197,94,0.18)", color: "#22c55e", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(34,197,94,0.55)", borderRadius:1, ...s }} />)}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{position:"relative",zIndex:1}}>
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <span style={{position:"relative",zIndex:1}}>Reward Claimed!</span>
+          </div>
+        )}
       </motion.div>
+
+      {/* Home + Replay — only after claim */}
+      {claimState === "done" && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ display: "flex", gap: 16 }}
+        >
+          <button
+            onClick={onHome}
+            style={{ position:"relative", width: 58, height: 58, clipPath: CUT_SM, background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.25)", borderRadius:1, ...s }} />)}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{position:"relative",zIndex:1}}>
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </button>
+          <button
+            onClick={onPlayAgain}
+            style={{ position:"relative", width: 58, height: 58, clipPath: CUT_SM, background: "linear-gradient(135deg,#7c3aed,#9945ff)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.4)", borderRadius:1, ...s }} />)}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{position:"relative",zIndex:1}}>
+              <polyline points="1 4 1 10 7 10"/>
+              <path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
+            </svg>
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 }
@@ -245,6 +341,10 @@ export default function CalculusFest() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const rewardSent = useRef(false);
   const adShown = useRef(false);
+  const [wrongCooldown, setWrongCooldown] = useState(0);
+  const [wrongIdx, setWrongIdx] = useState<number | null>(null);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeCooldown = useRef(false);
 
   const [highScore, setHighScore] = useState(() => parseInt(localStorage.getItem("hs_calculus") || "0"));
   useEffect(() => {
@@ -294,16 +394,18 @@ export default function CalculusFest() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase]);
 
-  /* reward + ad + results */
+  /* cleanup cooldown on unmount or phase change */
+  useEffect(() => {
+    if (phase !== "playing") {
+      if (cooldownRef.current) { clearInterval(cooldownRef.current); cooldownRef.current = null; }
+      activeCooldown.current = false;
+    }
+  }, [phase]);
+
+  /* ad + results (reward only on claim) */
   useEffect(() => {
     if (phase === "over" && !adShown.current) {
       adShown.current = true;
-      if (score > 0 && !rewardSent.current) {
-        rewardSent.current = true;
-        apiRequest("POST", "/api/game/calculus-fest/reward", { score })
-          .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/user"] }))
-          .catch(() => {});
-      }
       const goToResults = () => setPhase("results");
       const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
       if (!isDevMode && typeof window.show_10401872 === "function") {
@@ -312,10 +414,23 @@ export default function CalculusFest() {
         setTimeout(goToResults, 300);
       }
     }
-  }, [phase, score, qc]);
+  }, [phase]);
+
+  const handleClaim = useCallback(async () => {
+    if (rewardSent.current) return;
+    const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
+    if (!isDevMode && typeof (window as any).Adsgram !== "undefined") {
+      try { await (window as any).Adsgram.init({ blockId: "int-29765" }).show(); } catch {}
+    }
+    if (score > 0) {
+      rewardSent.current = true;
+      await apiRequest("POST", "/api/game/calculus-fest/reward", { score });
+      qc.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    }
+  }, [score, qc]);
 
   const handleAnswer = useCallback((choice: number, idx: number) => {
-    if (feedback || phase !== "playing") return;
+    if (feedback !== null || phase !== "playing" || activeCooldown.current) return;
     const isCorrect = choice === question.answer;
     setChosenIdx(idx);
     setFeedback(isCorrect ? "correct" : "wrong");
@@ -333,7 +448,24 @@ export default function CalculusFest() {
       if (!muted) wrongSnd();
       vib(60);
       setStreak(0);
-      setTimeout(newQuestion, 700);
+      setWrongIdx(idx);
+      setWrongCooldown(3);
+      activeCooldown.current = true;
+      let count = 3;
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+      cooldownRef.current = setInterval(() => {
+        count--;
+        if (count <= 0) {
+          clearInterval(cooldownRef.current!);
+          cooldownRef.current = null;
+          activeCooldown.current = false;
+          setWrongCooldown(0);
+          setWrongIdx(null);
+          newQuestion();
+        } else {
+          setWrongCooldown(count);
+        }
+      }, 1000);
     }
   }, [feedback, phase, question, muted, streak, newQuestion]);
 
@@ -346,6 +478,7 @@ export default function CalculusFest() {
         score={score}
         onHome={() => setLocation("/game")}
         onPlayAgain={() => { adShown.current = false; rewardSent.current = false; startGame(); }}
+        onClaim={handleClaim}
       />
     );
   }
@@ -380,10 +513,12 @@ export default function CalculusFest() {
               <span style={{ color: "white", fontSize: 16, fontWeight: 700 }}>?</span>
             </button>
           </div>
-          <button onClick={startGame} style={{ width: "100%", padding: "15px 0", borderRadius: 14, background: "linear-gradient(90deg,#7c3aed,#9945ff)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5 }}>
+          <button onClick={startGame} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#7c3aed,#9945ff)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5 }}>
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.55)", borderRadius:1, ...s }} />)}
             START GAME
           </button>
-          <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={() => setLocation("/game")} style={{ position: "relative", width: "100%", padding: "15px 0", clipPath: CUT_SM, background: "rgba(255,255,255,0.06)", border: "none", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.2)", borderRadius:1, ...s }} />)}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
             Back
           </button>
@@ -447,33 +582,42 @@ export default function CalculusFest() {
 
   /* ─── PLAYING / OVER ─── */
   return (
-    <div style={{ minHeight: "100vh", background: "#111111", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ height: "100dvh", background: "#111111", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <TopBar />
 
       {/* Score row */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 20px 8px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <AXNIcon size={28} />
-          <span style={{ color: "white", fontSize: 28, fontWeight: 900, letterSpacing: -1 }}>{score}</span>
-          {streak >= 3 && (
-            <span style={{ fontSize: 13, color: "#f59e0b", fontWeight: 700 }}>🔥 ×{streak}</span>
-          )}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 16px 2px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <AXNIcon size={22} />
+          <span style={{ color: "white", fontSize: 22, fontWeight: 900, letterSpacing: -1 }}>{score}</span>
+          {streak >= 3 && <span style={{ fontSize: 13, color: "#f59e0b", fontWeight: 700 }}>🔥 ×{streak}</span>}
         </div>
-        <span style={{ color: "white", fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>{timeLeft}</span>
+        <span style={{ color: "white", fontSize: 24, fontWeight: 900, letterSpacing: -1 }}>{timeLeft}</span>
       </div>
 
-      {/* Timer bar — below score row */}
-      <div style={{ height: 4, background: "#2a2a2a", flexShrink: 0, margin: "0 0 10px" }}>
+      {/* Timer bar */}
+      <div style={{ height: 3, background: "#2a2a2a", flexShrink: 0 }}>
         <motion.div
           animate={{ width: `${timerPct * 100}%` }}
           transition={{ duration: 0.4 }}
-          style={{ height: "100%", background: timerPct > 0.4 ? "#7c3aed" : timerPct > 0.2 ? "#f59e0b" : "#ef4444", borderRadius: 2 }}
+          style={{ height: "100%", background: timerPct > 0.4 ? "#7c3aed" : timerPct > 0.2 ? "#f59e0b" : "#ef4444" }}
         />
       </div>
 
       {/* Question card */}
-      <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ width: "100%", maxWidth: 380, background: "linear-gradient(135deg, #1a1a2e, #12121e)", borderRadius: 20, padding: "28px 24px", border: "1px solid rgba(124,58,237,0.3)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+      <div style={{ padding: "10px 14px 8px", flexShrink: 0 }}>
+        <div style={{ position: "relative", clipPath: CUT_LG, background: "linear-gradient(145deg,#1c1c30,#12121e)", padding: "5vw 20px", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}>
+          {QUEST_CORNERS.map((s, ci) => (
+            <div key={ci} style={{ position: "absolute", background: "rgba(124,58,237,0.75)", borderRadius: 1, ...s }} />
+          ))}
+          {/* AXN coin — top right */}
+          <div style={{ position: "absolute", top: 12, right: 12, width: 46, height: 46, clipPath: "circle(50%)", background: "linear-gradient(135deg,#06b6d4,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img src="/axn-logo.svg" style={{ width: 24, height: 24, filter: "brightness(10)" }} alt="" />
+          </div>
+          {/* Orange coin — bottom left */}
+          <div style={{ position: "absolute", bottom: 12, left: 12, width: 42, height: 42, clipPath: "circle(50%)", background: "linear-gradient(135deg,#f97316,#f59e0b)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "white", fontSize: 18, fontWeight: 900, lineHeight: 1 }}>₿</span>
+          </div>
           <AnimatePresence mode="wait">
             <motion.p
               key={question.text}
@@ -481,7 +625,7 @@ export default function CalculusFest() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.18 }}
-              style={{ color: "#c4b5fd", fontSize: 34, fontWeight: 900, textAlign: "center", margin: 0, letterSpacing: -1 }}
+              style={{ color: "white", fontSize: "clamp(30px, 9vw, 50px)", fontWeight: 900, textAlign: "center", margin: 0, letterSpacing: -2, position: "relative", zIndex: 1 }}
             >
               {question.text}
             </motion.p>
@@ -489,32 +633,75 @@ export default function CalculusFest() {
         </div>
       </div>
 
-      {/* Answer grid */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 16px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%", maxWidth: 380 }}>
-          {question.choices.map((choice, idx) => {
-            const isChosen = chosenIdx === idx;
-            const isCorrectChoice = choice === question.answer;
-            let bg = "rgba(255,255,255,0.06)";
-            let border = "1px solid rgba(255,255,255,0.1)";
-            let color = "rgba(255,255,255,0.85)";
-            if (feedback) {
-              if (isChosen && feedback === "correct") { bg = "rgba(34,197,94,0.2)"; border = "2px solid #22c55e"; color = "#22c55e"; }
-              else if (isChosen && feedback === "wrong") { bg = "rgba(239,68,68,0.2)"; border = "2px solid #ef4444"; color = "#ef4444"; }
-              else if (isCorrectChoice && feedback === "wrong") { bg = "rgba(34,197,94,0.15)"; border = "1.5px solid rgba(34,197,94,0.6)"; color = "rgba(34,197,94,0.8)"; }
+      {/* Answer buttons — each takes equal flex share of remaining space */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "4px 14px 6px", gap: 8, minHeight: 0 }}>
+        {question.choices.map((choice, idx) => {
+          const isChosen = chosenIdx === idx;
+          const isWrongChosen = wrongIdx === idx;
+          const isCorrectChoice = choice === question.answer;
+          const isCoolingDown = wrongCooldown > 0;
+
+          let bg = "rgba(255,255,255,0.07)";
+          let accentColor = "rgba(255,255,255,0.22)";
+          let color = "rgba(255,255,255,0.92)";
+
+          if (isWrongChosen) {
+            bg = "rgba(239,68,68,0.18)"; accentColor = "rgba(239,68,68,0.7)"; color = "#ef4444";
+          } else if (isChosen && feedback === "correct") {
+            bg = "rgba(34,197,94,0.18)"; accentColor = "rgba(34,197,94,0.7)"; color = "#22c55e";
+          } else if (isCorrectChoice && isCoolingDown) {
+            bg = "rgba(34,197,94,0.09)"; accentColor = "rgba(34,197,94,0.35)"; color = "rgba(34,197,94,0.65)";
+          }
+
+          return (
+            <motion.button
+              key={idx}
+              whileTap={isCoolingDown || feedback !== null ? {} : { scale: 0.985 }}
+              onClick={() => handleAnswer(choice, idx)}
+              style={{ position: "relative", flex: 1, width: "100%", clipPath: CUT_SM, background: bg, border: "none", color, fontSize: "clamp(20px, 6vw, 28px)", fontWeight: 900, cursor: isCoolingDown || feedback !== null ? "default" : "pointer", transition: "background 0.15s, color 0.15s", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              {ANS_CORNERS.map((s, ci) => (
+                <div key={ci} style={{ position: "absolute", background: accentColor, borderRadius: 1, ...s }} />
+              ))}
+              {/* Wrong X badge */}
+              {isWrongChosen && (
+                <div style={{ position: "absolute", left: 16, width: 26, height: 26, clipPath: "circle(50%)", background: "rgba(239,68,68,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </div>
+              )}
+              <span style={{ position: "relative", zIndex: 1 }}>{choice}</span>
+              {/* Countdown on wrong button */}
+              {isWrongChosen && (
+                <div style={{ position: "absolute", right: 16, display: "flex", alignItems: "center", gap: 5, zIndex: 1 }}>
+                  <span style={{ color: "#ef4444", fontSize: 13, fontWeight: 900 }}>{wrongCooldown}s</span>
+                  <div style={{ width: 7, height: 7, clipPath: "circle(50%)", background: "#ef4444" }} />
+                </div>
+              )}
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Bottom controls — part of flex flow, no fixed positioning */}
+      <div style={{ padding: "4px 14px 20px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={() => setMuted(m => !m)} style={{ position: "relative", background: "rgba(255,255,255,0.07)", border: "none", cursor: "pointer", width: 40, height: 40, clipPath: CUT_SM, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {muted
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
             }
-            return (
-              <motion.button
-                key={idx}
-                whileTap={feedback ? {} : { scale: 0.95 }}
-                onClick={() => handleAnswer(choice, idx)}
-                style={{ padding: "20px 12px", borderRadius: 16, background: bg, border, color, fontSize: 24, fontWeight: 900, cursor: feedback ? "default" : "pointer", transition: "all 0.15s", boxShadow: "0 2px 10px rgba(0,0,0,0.3)", letterSpacing: -0.5 }}
-              >
-                {choice}
-              </motion.button>
-            );
-          })}
+          </button>
+          <button onClick={() => setShowHelp(true)} style={{ position: "relative", background: "rgba(255,255,255,0.07)", border: "none", cursor: "pointer", width: 40, height: 40, clipPath: CUT_SM, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "white", fontSize: 15, fontWeight: 700 }}>?</span>
+          </button>
         </div>
+        <button onClick={() => setLocation("/game")} style={{ position: "relative", width: "100%", padding: "13px 0", clipPath: CUT_SM, background: "rgba(255,255,255,0.05)", border: "none", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          {BTN_CORNERS.map((s, i) => <div key={i} style={{ position: "absolute", background: "rgba(255,255,255,0.2)", borderRadius: 1, ...s }} />)}
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
       </div>
 
       {/* Floating popup */}
@@ -532,26 +719,7 @@ export default function CalculusFest() {
         )}
       </AnimatePresence>
 
-      {/* Bottom controls during game */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40, padding: "20px 20px 28px", background: "linear-gradient(0deg,rgba(17,17,17,1) 60%,rgba(17,17,17,0) 100%)", display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button onClick={() => setMuted(m => !m)} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {muted
-              ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-              : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-            }
-          </button>
-          <button onClick={() => setShowHelp(true)} style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", width: 42, height: 42, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "white", fontSize: 16, fontWeight: 700 }}>?</span>
-          </button>
-        </div>
-        <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
-          Back
-        </button>
-      </div>
-
-      {/* Help overlay during game */}
+      {/* Help overlay */}
       <AnimatePresence>
         {showHelp && (
           <>
@@ -559,23 +727,25 @@ export default function CalculusFest() {
             <motion.div
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#222222", borderRadius: "22px 22px 0 0", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto" }}
+              style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#1c1c2a", padding: "12px 20px 36px", zIndex: 50, maxHeight: "82vh", overflowY: "auto", clipPath: "polygon(0% 22px,22px 0%,calc(100% - 22px) 0%,100% 22px,100% 100%,0% 100%)" }}
             >
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", margin: "0 auto 16px" }}/>
-              <p style={{ color: "white", fontSize: 18, fontWeight: 700, textAlign: "center", margin: "0 0 8px" }}>Calculus Fest</p>
-              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, textAlign: "center", margin: "0 0 20px" }}>You have 60 seconds to solve math problems</p>
-              <div style={{ background: "#1a1a2e", borderRadius: 14, padding: "18px", marginBottom: 16 }}>
-                <p style={{ color: "#a78bfa", fontSize: 28, fontWeight: 900, textAlign: "center", margin: "0 0 14px" }}>7 × 8 = ?</p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ width: 36, height: 4, background: "rgba(255,255,255,0.2)", margin: "8px auto 18px" }}/>
+              <p style={{ color: "white", fontSize: 17, fontWeight: 700, textAlign: "center", margin: "0 0 6px" }}>Calculus Fest</p>
+              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, textAlign: "center", margin: "0 0 18px" }}>Solve math problems before time runs out</p>
+              <div style={{ position: "relative", clipPath: CUT_LG, background: "#12121e", padding: "16px", marginBottom: 14 }}>
+                {QUEST_CORNERS.map((s, ci) => <div key={ci} style={{ position: "absolute", background: "rgba(124,58,237,0.5)", borderRadius: 1, ...s }} />)}
+                <p style={{ color: "#a78bfa", fontSize: 26, fontWeight: 900, textAlign: "center", margin: "0 0 12px", position: "relative", zIndex: 1 }}>7 × 8 = ?</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {[42, 56, 63, 49].map((v, i) => (
-                    <div key={i} style={{ padding: "10px 8px", borderRadius: 10, background: v === 56 ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.06)", border: `1px solid ${v === 56 ? "#22c55e" : "rgba(255,255,255,0.1)"}`, textAlign: "center" }}>
-                      <span style={{ color: v === 56 ? "#22c55e" : "rgba(255,255,255,0.7)", fontSize: 16, fontWeight: 700 }}>{v}</span>
+                    <div key={i} style={{ position: "relative", clipPath: CUT_SM, background: v === 56 ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.06)", padding: "9px 12px", textAlign: "center" }}>
+                      {ANS_CORNERS.map((s, ci) => <div key={ci} style={{ position: "absolute", background: v === 56 ? "rgba(34,197,94,0.6)" : "rgba(255,255,255,0.15)", borderRadius: 1, ...s }} />)}
+                      <span style={{ color: v === 56 ? "#22c55e" : "rgba(255,255,255,0.7)", fontSize: 15, fontWeight: 700, position: "relative", zIndex: 1 }}>{v}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, textAlign: "center", margin: "0 0 8px", lineHeight: 1.6 }}>
-                Tap the correct answer.<br/>Each correct answer earns +{REWARD_PER_CORRECT} AXN!
+              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, textAlign: "center", margin: 0, lineHeight: 1.6 }}>
+                Tap the correct answer. Each correct answer earns +{REWARD_PER_CORRECT} AXN!
               </p>
             </motion.div>
           </>

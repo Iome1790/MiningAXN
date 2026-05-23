@@ -8,8 +8,11 @@ import MenuPopup from "@/components/MenuPopup";
 declare global {
   interface Window {
     show_10401872?: (opts?: any) => Promise<void>;
+    Adsgram?: { init: (opts: { blockId: string }) => { show: () => Promise<void> } };
   }
 }
+
+const CUT_SM = 'polygon(10px 0%,calc(100% - 10px) 0%,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0% calc(100% - 10px),0% 10px)';
 
 const GAMES = [
   {
@@ -18,6 +21,8 @@ const GAMES = [
     name: "Flip Axionet",
     desc: "Match cards to earn some AXN",
     color: "#e67e00",
+    glow: "rgba(230,126,0,0.35)",
+    accent: "#e67e00",
     icon: (
       <svg width="32" height="32" viewBox="0 0 44 44" fill="none">
         <rect x="2" y="2" width="18" height="18" rx="3.5" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
@@ -36,6 +41,8 @@ const GAMES = [
     name: "Sliding Axionet",
     desc: "Slide tiles and finish the puzzle",
     color: "#c91017",
+    glow: "rgba(201,16,23,0.35)",
+    accent: "#c91017",
     icon: (
       <svg width="32" height="32" viewBox="0 0 44 44" fill="none">
         <rect x="3" y="8" width="38" height="28" rx="4" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
@@ -52,6 +59,8 @@ const GAMES = [
     name: "Calculus Fest",
     desc: "Prove you are a calculus master",
     color: "#7c3aed",
+    glow: "rgba(124,58,237,0.35)",
+    accent: "#7c3aed",
     icon: (
       <svg width="32" height="32" viewBox="0 0 44 44" fill="none">
         <rect x="4" y="6" width="36" height="32" rx="5" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
@@ -63,15 +72,94 @@ const GAMES = [
   },
 ];
 
-function showAdThenNavigate(path: string, navigate: (p: string) => void) {
+async function showAdThenNavigate(path: string, navigate: (p: string) => void) {
   const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
-  if (!isDevMode && typeof window.show_10401872 === "function") {
-    window.show_10401872({ type: "interstitial" })
-      .then(() => navigate(path))
-      .catch(() => navigate(path));
-  } else {
+  if (isDevMode) {
     navigate(path);
+    return;
   }
+  try {
+    if (typeof window.Adsgram !== "undefined") {
+      await window.Adsgram.init({ blockId: "int-29765" }).show();
+    } else if (typeof window.show_10401872 === "function") {
+      await window.show_10401872({ type: "interstitial" });
+    }
+  } catch (_) {
+    // ad failed or skipped — still navigate
+  }
+  navigate(path);
+}
+
+function GameCard({ id, path, icon, name, desc, color, glow, accent, onClick }: {
+  id: string; path: string; icon: React.ReactNode; name: string; desc: string;
+  color: string; glow: string; accent: string; onClick: () => void;
+}) {
+  const corners = [
+    { top: '2px',    left: '16px',  width: '24px', height: '1.5px' },
+    { top: '16px',   left: '2px',   width: '1.5px', height: '24px' },
+    { top: '2px',    right: '16px', width: '24px', height: '1.5px' },
+    { top: '16px',   right: '2px',  width: '1.5px', height: '24px' },
+    { bottom: '2px', left: '16px',  width: '24px', height: '1.5px' },
+    { bottom: '16px',left: '2px',   width: '1.5px', height: '24px' },
+    { bottom: '2px', right: '16px', width: '24px', height: '1.5px' },
+    { bottom: '16px',right: '2px',  width: '1.5px', height: '24px' },
+  ];
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+        gap: 0,
+        background: `linear-gradient(135deg, #1e1e1e 60%, #252525)`,
+        clipPath: CUT_SM,
+        cursor: "pointer",
+        width: "100%",
+        textAlign: "left",
+        boxShadow: `0 4px 24px ${glow}, 0 1px 0 rgba(255,255,255,0.05) inset`,
+        border: "none",
+        overflow: "visible",
+      }}
+    >
+      {/* Corner accents */}
+      {corners.map((c, i) => (
+        <div key={i} style={{ position: "absolute", background: accent, opacity: 0.7, borderRadius: 1, ...c }} />
+      ))}
+
+      {/* Colored icon area */}
+      <div style={{
+        width: 78, height: 84, flexShrink: 0,
+        background: `linear-gradient(160deg, ${color}cc, ${color})`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        clipPath: "polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%)",
+        boxShadow: `4px 0 16px ${color}44`,
+      }}>
+        {icon}
+      </div>
+
+      {/* Text */}
+      <div style={{ flex: 1, padding: "0 16px", minWidth: 0 }}>
+        <p style={{ color: "white", fontSize: 16, fontWeight: 800, margin: "0 0 3px", letterSpacing: 0.2 }}>{name}</p>
+        <p style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, margin: 0 }}>{desc}</p>
+      </div>
+
+      {/* Arrow */}
+      <div style={{ paddingRight: 16, flexShrink: 0 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: "50%",
+          background: `${color}22`,
+          border: `1px solid ${color}55`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+      </div>
+    </button>
+  );
 }
 
 export default function Games() {
@@ -93,7 +181,6 @@ export default function Games() {
         onWithdrawOpen={() => setWithdrawOpen(true)}
       />
 
-      {/* Cards centered between header and bottom nav */}
       <div style={{
         flex: 1,
         display: "flex",
@@ -101,42 +188,20 @@ export default function Games() {
         alignItems: "stretch",
         justifyContent: "center",
         padding: "0 16px",
-        paddingTop: 72,
         paddingBottom: 80,
-        gap: 12,
+        gap: 14,
       }}>
-        {GAMES.map(({ id, path, icon, name, desc, color }) => (
-          <button
-            key={id}
-            onClick={() => showAdThenNavigate(path, setLocation)}
-            style={{
-              display: "flex", alignItems: "center", gap: 0,
-              background: "#1e1e1e",
-              borderRadius: 18,
-              overflow: "hidden",
-              cursor: "pointer",
-              border: "1px solid rgba(255,255,255,0.07)",
-              width: "100%", textAlign: "left",
-              boxShadow: "0 2px 12px rgba(0,0,0,0.25)",
-            }}
-          >
-            <div style={{
-              width: 76, height: 80, flexShrink: 0,
-              background: color,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              {icon}
-            </div>
-            <div style={{ flex: 1, padding: "0 16px", minWidth: 0 }}>
-              <p style={{ color: "white", fontSize: 17, fontWeight: 800, margin: "0 0 4px" }}>{name}</p>
-              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, margin: 0 }}>{desc}</p>
-            </div>
-            <div style={{ paddingRight: 14, flexShrink: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M9 18l6-6-6-6"/>
-              </svg>
-            </div>
-          </button>
+        {/* Section label */}
+        <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", margin: "0 2px 2px" }}>
+          Choose a Game
+        </p>
+
+        {GAMES.map((g) => (
+          <GameCard
+            key={g.id}
+            {...g}
+            onClick={() => showAdThenNavigate(g.path, setLocation)}
+          />
         ))}
       </div>
 
