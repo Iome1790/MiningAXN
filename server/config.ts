@@ -8,11 +8,15 @@ export const config = {
   // 2. Forward a message from the channel to @userinfobot
   // 3. It will show the channel ID (looks like: -1001234567890)
   telegram: {
-    // Channel settings (environment variables required)
+    // Channel New (LightningSatoshi)
+    channel2Id: process.env.TELEGRAM_CHANNEL2_ID || '@LightningSatoshi',
+    channel2Url: process.env.TELEGRAM_CHANNEL2_URL || 'https://t.me/LightningSatoshi',
+    channel2Name: process.env.TELEGRAM_CHANNEL2_NAME || 'Lightning Satoshi',
+    // Channel Payout (MoneyAdz)
     channelId: process.env.TELEGRAM_CHANNEL_ID || '@MoneyAdz',
     channelUrl: process.env.TELEGRAM_CHANNEL_URL || 'https://t.me/MoneyAdz',
     channelName: process.env.TELEGRAM_CHANNEL_NAME || 'Axionet Payouts',
-    // Group settings (environment variables required)
+    // Group settings (Axionetchat)
     groupId: process.env.TELEGRAM_GROUP_ID || '@Axionetchat',
     groupUrl: process.env.TELEGRAM_GROUP_URL || 'https://t.me/Axionetchat',
     groupName: process.env.TELEGRAM_GROUP_NAME || 'Axionet Chat',
@@ -33,6 +37,9 @@ export const config = {
 // Helper function to get channel config for API responses
 export function getChannelConfig() {
   return {
+    channel2Id: config.telegram.channel2Id,
+    channel2Url: config.telegram.channel2Url,
+    channel2Name: config.telegram.channel2Name,
     channelId: config.telegram.channelId,
     channelUrl: config.telegram.channelUrl,
     channelName: config.telegram.channelName,

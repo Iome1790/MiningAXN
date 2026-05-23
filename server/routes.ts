@@ -774,13 +774,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 2. BOTH CHANNEL AND GROUP JOIN REQUIRED
+      // 2. ALL CHANNELS AND GROUP JOIN REQUIRED
+      const channel2Member = await verifyChannelMembership(userId, channelConfig.channel2Id, botToken);
       const channelMember = await verifyChannelMembership(userId, channelConfig.channelId, botToken);
       const groupMember = await verifyChannelMembership(userId, channelConfig.groupId, botToken);
       
-      const isVerified = channelMember && groupMember;
+      const isVerified = channel2Member && channelMember && groupMember;
       
-      console.log(`🔍 check-membership for ${telegramId}: channel=${channelMember}, group=${groupMember}, verified=${isVerified}`);
+      console.log(`🔍 check-membership for ${telegramId}: channel2=${channel2Member}, channel=${channelMember}, group=${groupMember}, verified=${isVerified}`);
       
       // Update user status in database to match current membership state
       if (user) {
@@ -794,12 +795,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         isVerified,
+        channel2Member,
         channelMember,
         groupMember,
         moneyCatsMember: true,
+        channel2Url: channelConfig.channel2Url,
         channelUrl: channelConfig.channelUrl,
         groupUrl: channelConfig.groupUrl,
         moneyCatsUrl: '',
+        channel2Name: channelConfig.channel2Name,
         channelName: channelConfig.channelName,
         groupName: channelConfig.groupName,
         moneyCatsName: ''
