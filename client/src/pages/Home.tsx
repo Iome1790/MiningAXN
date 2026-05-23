@@ -6,15 +6,16 @@ import React from "react";
 import { SettingsPopup } from "@/components/SettingsPopup";
 import InvitePopup from "@/components/InvitePopup";
 import Header from "@/components/Header";
-import WithdrawalPopup from "@/components/WithdrawalPopup";
 import MenuPopup from "@/components/MenuPopup";
 import HomeContent from "@/components/HomeContent";
 import { showNotification } from "@/components/AppNotification";
+import { useLocation } from "wouter";
 
 export default function Home() {
   const { user, isLoading } = useAuth();
   const signalAppReady = useContext(AppReadyContext);
   const readySignaled = useRef(false);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!readySignaled.current && !isLoading && user) {
@@ -23,7 +24,6 @@ export default function Home() {
     }
   }, [isLoading, user, signalAppReady]);
 
-  const [withdrawPopupOpen, setWithdrawPopupOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -40,8 +40,6 @@ export default function Home() {
     return () => ro.disconnect();
   }, []);
 
-  const balance = Math.floor(parseFloat((user as any)?.balance || "0"));
-
   const handleComingSoon = () => {
     showNotification("Coming Soon!", "info");
   };
@@ -52,9 +50,9 @@ export default function Home() {
         ref={headerRef}
         onMenuOpen={() => setMenuOpen(true)}
         onInviteOpen={() => setInviteOpen(true)}
-        onWithdrawOpen={() => setWithdrawPopupOpen(true)}
+        onWithdrawOpen={() => setLocation("/withdraw")}
         onSettingsOpen={() => setSettingsOpen(true)}
-        onTransactionsOpen={() => setWithdrawPopupOpen(true)}
+        onTransactionsOpen={() => setLocation("/withdraw")}
         onPromoOpen={handleComingSoon}
         onShareOpen={handleComingSoon}
       />
@@ -81,14 +79,9 @@ export default function Home() {
         <MenuPopup
           onClose={() => setMenuOpen(false)}
           onOpenInvite={() => { setMenuOpen(false); setInviteOpen(true); }}
-          onOpenWithdraw={() => { setMenuOpen(false); setWithdrawPopupOpen(true); }}
+          onOpenWithdraw={() => { setMenuOpen(false); setLocation("/withdraw"); }}
         />
       )}
-      <WithdrawalPopup
-        open={withdrawPopupOpen}
-        onOpenChange={setWithdrawPopupOpen}
-        tonBalance={balance}
-      />
     </Layout>
   );
 }

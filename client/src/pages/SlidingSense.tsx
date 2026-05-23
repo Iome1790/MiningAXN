@@ -19,21 +19,33 @@ const BTN_CORNERS = [
   {bottom:'1px',right:'12px',width:'18px',height:'1.5px'},{bottom:'12px',right:'1px',width:'1.5px',height:'18px'},
 ] as const;
 
-/* ─── Audio ─── */
-function playTone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.15) {
+/* ─── Audio — shared AudioContext singleton for reliable mobile playback ─── */
+let _ssAudioCtx: AudioContext | null = null;
+function getSsAudioCtx(): AudioContext {
+  if (!_ssAudioCtx || _ssAudioCtx.state === "closed") {
+    _ssAudioCtx = new AudioContext();
+  }
+  if (_ssAudioCtx.state === "suspended") {
+    _ssAudioCtx.resume().catch(() => {});
+  }
+  return _ssAudioCtx;
+}
+function playTone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.20) {
   try {
-    const ctx = new AudioContext();
+    const ctx = getSsAudioCtx();
     const osc = ctx.createOscillator(); const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
     osc.type = type; osc.frequency.value = freq;
     gain.gain.setValueAtTime(vol, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
     osc.start(); osc.stop(ctx.currentTime + dur);
-    setTimeout(() => ctx.close(), dur * 1000 + 100);
   } catch {}
 }
-function slideTick() { playTone(600, 0.06, "sine", 0.13); }
-function solveChime() { [660, 880, 1100, 1320].forEach((f, i) => setTimeout(() => playTone(f, 0.1), i * 55)); }
+function slideTick() { playTone(520, 0.09, "sine", 0.22); }
+function wrongTap() { playTone(160, 0.12, "sawtooth", 0.18); }
+function solveChime() {
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.14, "sine", 0.24), i * 60));
+}
 function vib(p: number | number[]) { try { navigator.vibrate?.(p); } catch {} }
 
 /* ─── Tile colors — vivid, unique per tile number ─── */
@@ -466,8 +478,8 @@ export default function SlidingSense() {
   const handleClaim = useCallback(async () => {
     if (rewardSent.current) return;
     const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
-    if (!isDevMode && typeof (window as any).Adsgram !== "undefined") {
-      try { await (window as any).Adsgram.init({ blockId: "int-29765" }).show(); } catch {}
+    if (!isDevMode && typeof window.show_10401872 === "function") {
+      try { await window.show_10401872({ type: "interstitial" }); } catch {}
     }
     if (score > 0) {
       rewardSent.current = true;
@@ -487,7 +499,10 @@ export default function SlidingSense() {
     if (phase !== "playing") return;
     const { rows, cols } = currentPuzzle;
     const blankIdx = tiles.indexOf(null);
-    if (!getNeighbors(blankIdx, rows, cols).includes(idx)) return;
+    if (!getNeighbors(blankIdx, rows, cols).includes(idx)) {
+      if (!muted) wrongTap();
+      return;
+    }
     if (!muted) slideTick();
     vib(20);
     const next = [...tiles];
@@ -574,7 +589,13 @@ export default function SlidingSense() {
               <span style={{ color: "white", fontSize: 17, fontWeight: 800, fontFamily: "monospace" }}>?</span>
             </button>
           </div>
-          <button onClick={startGame} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#0891b2,#06b6d4)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5, touchAction: "manipulation" }}>
+          <button onClick={async () => {
+            const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
+            if (!isDevMode && typeof window.show_10401872 === "function") {
+              try { await window.show_10401872({ type: "interstitial" }); } catch {}
+            }
+            startGame();
+          }} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#0891b2,#06b6d4)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5, touchAction: "manipulation" }}>
             {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.55)", borderRadius:1, ...s }} />)}
             START GAME
           </button>
@@ -772,7 +793,8 @@ export default function SlidingSense() {
             <span style={{ color: "white", fontSize: 17, fontWeight: 800, fontFamily: "monospace" }}>?</span>
           </button>
         </div>
-        <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, touchAction: "manipulation" }}>
+        <button onClick={() => setLocation("/game")} style={{ position: "relative", width: "100%", padding: "13px 0", clipPath: CUT_SM, background: "rgba(255,255,255,0.05)", border: "none", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, touchAction: "manipulation" }}>
+          {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.2)", borderRadius:1, ...s }} />)}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
           Back
         </button>

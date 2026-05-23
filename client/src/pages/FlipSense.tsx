@@ -11,21 +11,30 @@ declare global {
   }
 }
 
-/* ─── Audio ─── */
-function playTone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.18) {
+/* ─── Audio — shared AudioContext singleton for reliable mobile playback ─── */
+let _fsAudioCtx: AudioContext | null = null;
+function getFsAudioCtx(): AudioContext {
+  if (!_fsAudioCtx || _fsAudioCtx.state === "closed") {
+    _fsAudioCtx = new AudioContext();
+  }
+  if (_fsAudioCtx.state === "suspended") {
+    _fsAudioCtx.resume().catch(() => {});
+  }
+  return _fsAudioCtx;
+}
+function playTone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.22) {
   try {
-    const ctx = new AudioContext();
+    const ctx = getFsAudioCtx();
     const osc = ctx.createOscillator(); const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
     osc.type = type; osc.frequency.value = freq;
     gain.gain.setValueAtTime(vol, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
     osc.start(); osc.stop(ctx.currentTime + dur);
-    setTimeout(() => ctx.close(), dur * 1000 + 100);
   } catch {}
 }
-function ding() { playTone(880, 0.1); setTimeout(() => playTone(1100, 0.1), 70); }
-function buzz() { playTone(110, 0.12, "sawtooth", 0.14); }
+function ding() { playTone(880, 0.12); setTimeout(() => playTone(1100, 0.13), 70); }
+function buzz() { playTone(110, 0.15, "sawtooth", 0.18); }
 function vib(p: number | number[]) { try { navigator.vibrate?.(p); } catch {} }
 
 /* ─── Coins ─── */
@@ -553,8 +562,8 @@ export default function FlipSense() {
   const handleClaim = useCallback(async () => {
     if (rewardSent.current) return;
     const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
-    if (!isDevMode && typeof (window as any).Adsgram !== "undefined") {
-      try { await (window as any).Adsgram.init({ blockId: "int-29765" }).show(); } catch {}
+    if (!isDevMode && typeof window.show_10401872 === "function") {
+      try { await window.show_10401872({ type: "interstitial" }); } catch {}
     }
     if (score > 0) {
       rewardSent.current = true;
@@ -693,7 +702,13 @@ export default function FlipSense() {
               <span style={{ color: "white", fontSize: 17, fontWeight: 800, fontFamily: "monospace" }}>?</span>
             </button>
           </div>
-          <button onClick={startGame} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#e67e00,#f59e0b)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5, touchAction: "manipulation" }}>
+          <button onClick={async () => {
+            const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
+            if (!isDevMode && typeof window.show_10401872 === "function") {
+              try { await window.show_10401872({ type: "interstitial" }); } catch {}
+            }
+            startGame();
+          }} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#e67e00,#f59e0b)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5, touchAction: "manipulation" }}>
             {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.55)", borderRadius:1, ...s }} />)}
             START GAME
           </button>
@@ -952,7 +967,8 @@ export default function FlipSense() {
             <span style={{ color: "white", fontSize: 17, fontWeight: 800, fontFamily: "monospace" }}>?</span>
           </button>
         </div>
-        <button onClick={() => setLocation("/game")} style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, touchAction: "manipulation" }}>
+        <button onClick={() => setLocation("/game")} style={{ position: "relative", width: "100%", padding: "13px 0", clipPath: CUT_SM, background: "rgba(255,255,255,0.05)", border: "none", color: "rgba(255,255,255,0.65)", fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, touchAction: "manipulation" }}>
+          {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.2)", borderRadius:1, ...s }} />)}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
           Back
         </button>

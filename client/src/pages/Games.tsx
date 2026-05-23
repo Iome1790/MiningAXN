@@ -2,7 +2,6 @@ import { useLocation } from "wouter";
 import { useState } from "react";
 import Header from "@/components/Header";
 import InvitePopup from "@/components/InvitePopup";
-import WithdrawalPopup from "@/components/WithdrawalPopup";
 import MenuPopup from "@/components/MenuPopup";
 
 declare global {
@@ -191,7 +190,6 @@ function GameCard({ id, path, icon, name, desc, color, glow, accent, neon, onCli
 
 export default function Games() {
   const [, setLocation] = useLocation();
-  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -212,7 +210,7 @@ export default function Games() {
       <Header
         onMenuOpen={() => setMenuOpen(true)}
         onInviteOpen={() => setInviteOpen(true)}
-        onWithdrawOpen={() => setWithdrawOpen(true)}
+        onWithdrawOpen={() => setLocation("/withdraw")}
       />
 
       <div style={{
@@ -241,7 +239,6 @@ export default function Games() {
         ))}
       </div>
 
-      {withdrawOpen && <WithdrawalPopup onClose={() => setWithdrawOpen(false)} />}
       {inviteOpen && <InvitePopup onClose={() => setInviteOpen(false)} />}
       {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}
     </div>
