@@ -590,10 +590,7 @@ export default function SlidingSense() {
             </button>
           </div>
           <button onClick={async () => {
-            const isDevMode = import.meta.env.DEV || import.meta.env.MODE === "development";
-            if (!isDevMode && typeof window.show_10401872 === "function") {
-              try { await window.show_10401872({ type: "interstitial" }); } catch {}
-            }
+            try { if (typeof window.show_10401872 === "function") await window.show_10401872({ type: "interstitial" }); } catch {}
             startGame();
           }} style={{ position: "relative", width: "100%", padding: "16px 0", clipPath: CUT_SM, background: "linear-gradient(90deg,#0891b2,#06b6d4)", border: "none", color: "white", fontSize: 16, fontWeight: 800, cursor: "pointer", letterSpacing: 0.5, touchAction: "manipulation" }}>
             {BTN_CORNERS.map((s,i) => <div key={i} style={{ position:"absolute", background:"rgba(255,255,255,0.55)", borderRadius:1, ...s }} />)}
