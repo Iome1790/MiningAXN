@@ -13,7 +13,6 @@ import { Loader2 } from "lucide-react";
 declare global {
   interface Window {
     show_10963365: (type?: any) => Promise<void>;
-    Adsgram: { init: (opts: { blockId: string }) => { show: () => Promise<void> } };
   }
 }
 
@@ -35,8 +34,6 @@ function WatchAdButton({ onEarned }: { onEarned: () => void }) {
     try {
       if (typeof window.show_10963365 === "function") {
         await window.show_10963365();
-      } else if (window.Adsgram) {
-        await window.Adsgram.init({ blockId: "int-29765" }).show();
       } else {
         showNotification("Ad not available right now.", "error");
         setLoading(false);
@@ -418,8 +415,6 @@ function DailyTaskRow({
       try {
         if (typeof window.show_10963365 === "function") {
           await window.show_10963365();
-        } else if (window.Adsgram) {
-          await window.Adsgram.init({ blockId: "int-29765" }).show();
         } else {
           showNotification("Ad not available right now.", "error");
           setStep("idle");
@@ -608,8 +603,8 @@ export default function HomeContent({ onInviteOpen }: HomeContentProps) {
     if (missionLoading) return;
     setMissionLoading("watchAd");
     try {
-      if ((window as any).Adsgram) {
-        await (window as any).Adsgram.init({ blockId: "int-20373" }).show();
+      if (typeof (window as any).show_10963365 === "function") {
+        await (window as any).show_10963365();
         await claimMission("/api/daily-missions/claim/watch-ad", "watchAd");
       } else {
         showNotification("Ad not available right now", "error");

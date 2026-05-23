@@ -8,6 +8,7 @@ interface ChannelJoinPopupProps {
   onVerified: () => void;
 }
 
+const CHANNEL2_URL = "https://t.me/LightningSatoshi";
 const CHANNEL_URL = "https://t.me/MoneyAdz";
 const GROUP_URL = "https://t.me/Axionetchat";
 
@@ -16,6 +17,7 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [channel2Joined, setChannel2Joined] = useState(false);
   const [channelJoined, setChannelJoined] = useState(false);
   const [groupJoined, setGroupJoined] = useState(false);
 
@@ -41,17 +43,14 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
       }
 
       if (data.success) {
-        if (data.channelMember) {
-          setChannelJoined(true);
-        }
-        if (data.groupMember) {
-          setGroupJoined(true);
-        }
-        if (data.channelMember) {
-          onVerified();
-          queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-        } else if (!isInitialCheck) {
-          setError("Please join both the channel and the chat room to continue.");
+        if (data.channel2Member) setChannel2Joined(true);
+        if (data.channelMember) setChannelJoined(true);
+        if (data.groupMember) setGroupJoined(true);
+
+        if (!isInitialCheck) {
+          if (!data.channel2Member || !data.channelMember || !data.groupMember) {
+            setError("Please join all channels and the chat room to continue.");
+          }
         }
       } else if (!isInitialCheck) {
         setError(data.message || "Failed to verify membership. Please try again.");
@@ -81,6 +80,30 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
     }
   };
 
+  const CHANNELS = [
+    {
+      url: CHANNEL2_URL,
+      joined: channel2Joined,
+      label: "Lightning Satoshi",
+      handle: "@LightningSatoshi",
+      emoji: "⚡",
+    },
+    {
+      url: CHANNEL_URL,
+      joined: channelJoined,
+      label: "Axionet Payouts",
+      handle: "@MoneyAdz",
+      emoji: "📢",
+    },
+    {
+      url: GROUP_URL,
+      joined: groupJoined,
+      label: "Axionet Chat",
+      handle: "@Axionetchat",
+      emoji: "💬",
+    },
+  ];
+
   return (
     <AnimatePresence>
       <motion.div
@@ -89,12 +112,12 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+        <div className="absolute inset-0 bg-black/85 backdrop-blur-md" />
 
         <motion.div
           className="relative w-full max-w-sm overflow-hidden"
           style={{
-            background: '#0d0d10',
+            background: '#000000',
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 24,
           }}
@@ -103,117 +126,81 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
           exit={{ scale: 0.88, opacity: 0, y: 24 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
         >
-          {/* Top glow accent */}
+          {/* Top blue glow accent line */}
           <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, height: 2,
             background: 'linear-gradient(90deg, transparent, rgba(96,165,250,0.8), rgba(59,130,246,1), rgba(96,165,250,0.8), transparent)',
+            boxShadow: '0 0 18px rgba(59,130,246,0.7)',
+          }} />
+
+          {/* Top glow orb */}
+          <div style={{
+            position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)',
+            width: 200, height: 80,
+            background: 'radial-gradient(ellipse at 50% 100%, rgba(59,130,246,0.35) 0%, transparent 70%)',
+            pointerEvents: 'none',
           }} />
 
           {/* Header */}
           <div style={{ padding: '28px 20px 18px', textAlign: 'center' }}>
-            {/* Icon */}
             <div style={{
               width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
               background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 24px rgba(59,130,246,0.35)',
+              boxShadow: '0 0 28px rgba(59,130,246,0.5)',
             }}>
               <Send style={{ width: 28, height: 28, color: '#fff' }} strokeWidth={2} />
             </div>
-            <p style={{ color: '#fff', fontWeight: 900, fontSize: 18, marginBottom: 6 }}>
-              Join to Access
-            </p>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, lineHeight: 1.5 }}>
-              Join our channel and chat room to start using the app.
+            <p style={{ color: '#fff', fontWeight: 900, fontSize: 17, marginBottom: 8 }}>
+              Join our channels and chat room to start using this app.
             </p>
           </div>
 
-          {/* Join cards */}
+          {/* Channel cards */}
           <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-            {/* Channel card */}
-            <button
-              onClick={() => openLink(CHANNEL_URL)}
-              style={{
-                width: '100%', padding: '14px 16px',
-                background: channelJoined ? 'rgba(34,197,94,0.08)' : 'rgba(59,130,246,0.1)',
-                border: `1px solid ${channelJoined ? 'rgba(34,197,94,0.3)' : 'rgba(59,130,246,0.25)'}`,
-                borderRadius: 14, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                transition: 'all 0.2s',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {CHANNELS.map((ch) => (
+              <button
+                key={ch.url}
+                onClick={() => openLink(ch.url)}
+                style={{
+                  width: '100%', padding: '14px 16px',
+                  background: ch.joined ? 'rgba(34,197,94,0.08)' : 'rgba(59,130,246,0.08)',
+                  border: `1px solid ${ch.joined ? 'rgba(34,197,94,0.3)' : 'rgba(59,130,246,0.22)'}`,
+                  borderRadius: 14, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                    background: ch.joined ? 'rgba(34,197,94,0.15)' : 'rgba(59,130,246,0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {ch.joined
+                      ? <CheckCircle2 style={{ width: 20, height: 20, color: '#22c55e' }} />
+                      : <span style={{ fontSize: 18 }}>{ch.emoji}</span>
+                    }
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <p style={{ color: ch.joined ? '#22c55e' : '#fff', fontWeight: 700, fontSize: 14, lineHeight: 1 }}>
+                      {ch.label}
+                    </p>
+                    <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 3 }}>
+                      {ch.handle}
+                    </p>
+                  </div>
+                </div>
                 <div style={{
-                  width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                  background: channelJoined ? 'rgba(34,197,94,0.15)' : 'rgba(59,130,246,0.15)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  color: ch.joined ? '#22c55e' : '#60a5fa',
+                  fontSize: 11, fontWeight: 700,
                 }}>
-                  {channelJoined
-                    ? <CheckCircle2 style={{ width: 20, height: 20, color: '#22c55e' }} />
-                    : <span style={{ fontSize: 18 }}>📢</span>
-                  }
+                  {ch.joined ? 'Joined' : 'Join'}
+                  {!ch.joined && <ArrowRight style={{ width: 13, height: 13 }} />}
                 </div>
-                <div style={{ textAlign: 'left' }}>
-                  <p style={{ color: channelJoined ? '#22c55e' : '#fff', fontWeight: 700, fontSize: 14, lineHeight: 1 }}>
-                    Axionet Payouts
-                  </p>
-                  <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 3 }}>
-                    @MoneyAdz
-                  </p>
-                </div>
-              </div>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                color: channelJoined ? '#22c55e' : '#60a5fa',
-                fontSize: 11, fontWeight: 700,
-              }}>
-                {channelJoined ? 'Joined' : 'Join'}
-                {!channelJoined && <ArrowRight style={{ width: 13, height: 13 }} />}
-              </div>
-            </button>
-
-            {/* Group card */}
-            <button
-              onClick={() => openLink(GROUP_URL)}
-              style={{
-                width: '100%', padding: '14px 16px',
-                background: groupJoined ? 'rgba(34,197,94,0.08)' : 'rgba(59,130,246,0.1)',
-                border: `1px solid ${groupJoined ? 'rgba(34,197,94,0.3)' : 'rgba(59,130,246,0.25)'}`,
-                borderRadius: 14, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                transition: 'all 0.2s',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                  background: groupJoined ? 'rgba(34,197,94,0.15)' : 'rgba(59,130,246,0.15)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {groupJoined
-                    ? <CheckCircle2 style={{ width: 20, height: 20, color: '#22c55e' }} />
-                    : <span style={{ fontSize: 18 }}>💬</span>
-                  }
-                </div>
-                <div style={{ textAlign: 'left' }}>
-                  <p style={{ color: groupJoined ? '#22c55e' : '#fff', fontWeight: 700, fontSize: 14, lineHeight: 1 }}>
-                    Axionet Chat
-                  </p>
-                  <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 3 }}>
-                    @Axionetchat
-                  </p>
-                </div>
-              </div>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                color: groupJoined ? '#22c55e' : '#60a5fa',
-                fontSize: 11, fontWeight: 700,
-              }}>
-                {groupJoined ? 'Joined' : 'Join'}
-                {!groupJoined && <ArrowRight style={{ width: 13, height: 13 }} />}
-              </div>
-            </button>
+              </button>
+            ))}
           </div>
 
           {/* Error */}
@@ -230,30 +217,46 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
             </AnimatePresence>
           </div>
 
-          {/* Verify button */}
+          {/* Join To Access button */}
           <div style={{ padding: '14px 16px 24px' }}>
             <button
               onClick={() => checkMembership(false)}
               disabled={isChecking}
               style={{
-                width: '100%', height: 50, borderRadius: 14,
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: 'rgba(255,255,255,0.55)',
-                fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.08em',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', height: 52, borderRadius: 14,
+                background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)',
+                border: 'none',
+                color: '#fff',
+                fontWeight: 800, fontSize: 15, letterSpacing: '0.02em',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: isChecking ? 'not-allowed' : 'pointer',
-                opacity: isChecking ? 0.6 : 1,
+                opacity: isChecking ? 0.7 : 1,
+                boxShadow: '0 0 24px rgba(59,130,246,0.45)',
                 transition: 'all 0.15s',
               }}
             >
               {isChecking ? (
-                <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
+                <Loader2 style={{ width: 18, height: 18 }} className="animate-spin" />
               ) : (
-                <>I&apos;ve Joined — Verify <ArrowRight style={{ width: 15, height: 15 }} /></>
+                'Join To Access'
               )}
             </button>
           </div>
+
+          {/* Bottom blue glow accent line */}
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
+            background: 'linear-gradient(90deg, transparent, rgba(96,165,250,0.8), rgba(59,130,246,1), rgba(96,165,250,0.8), transparent)',
+            boxShadow: '0 0 18px rgba(59,130,246,0.7)',
+          }} />
+
+          {/* Bottom glow orb */}
+          <div style={{
+            position: 'absolute', bottom: -40, left: '50%', transform: 'translateX(-50%)',
+            width: 200, height: 80,
+            background: 'radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.35) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
         </motion.div>
       </motion.div>
     </AnimatePresence>
