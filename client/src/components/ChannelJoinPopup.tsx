@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Send, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ChannelJoinPopupProps {
@@ -29,9 +29,7 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
     try {
       const headers: Record<string, string> = {};
       const tg = window.Telegram?.WebApp;
-      if (tg?.initData) {
-        headers["x-telegram-data"] = tg.initData;
-      }
+      if (tg?.initData) headers["x-telegram-data"] = tg.initData;
 
       const response = await fetch(`/api/check-membership?t=${Date.now()}`, { headers });
       const data = await response.json();
@@ -66,42 +64,19 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
   };
 
   useEffect(() => {
-    if (!hasInitialized) {
-      checkMembership(true);
-    }
+    if (!hasInitialized) checkMembership(true);
   }, [telegramId, hasInitialized]);
 
   const openLink = (url: string) => {
     const tg = window.Telegram?.WebApp;
-    if (tg?.openTelegramLink) {
-      tg.openTelegramLink(url);
-    } else {
-      window.open(url, "_blank");
-    }
+    if (tg?.openTelegramLink) tg.openTelegramLink(url);
+    else window.open(url, "_blank");
   };
 
   const CHANNELS = [
-    {
-      url: CHANNEL2_URL,
-      joined: channel2Joined,
-      label: "Lightning Satoshi",
-      handle: "@LightningSatoshi",
-      emoji: "⚡",
-    },
-    {
-      url: CHANNEL_URL,
-      joined: channelJoined,
-      label: "Axionet Payouts",
-      handle: "@MoneyAdz",
-      emoji: "📢",
-    },
-    {
-      url: GROUP_URL,
-      joined: groupJoined,
-      label: "Axionet Chat",
-      handle: "@Axionetchat",
-      emoji: "💬",
-    },
+    { url: CHANNEL2_URL, joined: channel2Joined, label: "Lightning Satoshi", handle: "@LightningSatoshi" },
+    { url: CHANNEL_URL,  joined: channelJoined,  label: "Axionet Payouts",   handle: "@MoneyAdz"         },
+    { url: GROUP_URL,    joined: groupJoined,     label: "Axionet Chat",      handle: "@Axionetchat"      },
   ];
 
   return (
@@ -116,17 +91,13 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
 
         <motion.div
           className="relative w-full max-w-sm overflow-hidden"
-          style={{
-            background: '#000000',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 24,
-          }}
+          style={{ background: '#000000', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24 }}
           initial={{ scale: 0.88, opacity: 0, y: 24 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.88, opacity: 0, y: 24 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
         >
-          {/* Top blue glow accent line */}
+          {/* Top blue glow line */}
           <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, height: 2,
             background: 'linear-gradient(90deg, transparent, rgba(96,165,250,0.8), rgba(59,130,246,1), rgba(96,165,250,0.8), transparent)',
@@ -137,26 +108,18 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
           <div style={{
             position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)',
             width: 200, height: 80,
-            background: 'radial-gradient(ellipse at 50% 100%, rgba(59,130,246,0.35) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse at 50% 100%, rgba(59,130,246,0.3) 0%, transparent 70%)',
             pointerEvents: 'none',
           }} />
 
-          {/* Header */}
-          <div style={{ padding: '28px 20px 18px', textAlign: 'center' }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
-              background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 28px rgba(59,130,246,0.5)',
-            }}>
-              <Send style={{ width: 28, height: 28, color: '#fff' }} strokeWidth={2} />
-            </div>
-            <p style={{ color: '#fff', fontWeight: 900, fontSize: 17, marginBottom: 8 }}>
-              Join our channels and chat room to start using this app.
+          {/* Header — no icon, no subtitle */}
+          <div style={{ padding: '28px 20px 16px', textAlign: 'center' }}>
+            <p style={{ color: '#fff', fontWeight: 900, fontSize: 17 }}>
+              Join our channels to access the app
             </p>
           </div>
 
-          {/* Channel cards */}
+          {/* Channel cards — no icon box */}
           <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {CHANNELS.map((ch) => (
               <button
@@ -171,34 +134,20 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
                   transition: 'all 0.2s',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                    background: ch.joined ? 'rgba(34,197,94,0.15)' : 'rgba(59,130,246,0.15)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {ch.joined
-                      ? <CheckCircle2 style={{ width: 20, height: 20, color: '#22c55e' }} />
-                      : <span style={{ fontSize: 18 }}>{ch.emoji}</span>
-                    }
-                  </div>
-                  <div style={{ textAlign: 'left' }}>
-                    <p style={{ color: ch.joined ? '#22c55e' : '#fff', fontWeight: 700, fontSize: 14, lineHeight: 1 }}>
-                      {ch.label}
-                    </p>
-                    <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 3 }}>
-                      {ch.handle}
-                    </p>
-                  </div>
+                <div style={{ textAlign: 'left' }}>
+                  <p style={{ color: ch.joined ? '#22c55e' : '#fff', fontWeight: 700, fontSize: 14, lineHeight: 1 }}>
+                    {ch.label}
+                  </p>
+                  <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 3 }}>
+                    {ch.handle}
+                  </p>
                 </div>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 4,
+                <span style={{
                   color: ch.joined ? '#22c55e' : '#60a5fa',
-                  fontSize: 11, fontWeight: 700,
+                  fontSize: 12, fontWeight: 700,
                 }}>
-                  {ch.joined ? 'Joined' : 'Join'}
-                  {!ch.joined && <ArrowRight style={{ width: 13, height: 13 }} />}
-                </div>
+                  {ch.joined ? 'Joined' : 'Join To Access'}
+                </span>
               </button>
             ))}
           </div>
@@ -217,7 +166,7 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
             </AnimatePresence>
           </div>
 
-          {/* Join To Access button */}
+          {/* Verify button */}
           <div style={{ padding: '14px 16px 24px' }}>
             <button
               onClick={() => checkMembership(false)}
@@ -225,8 +174,7 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
               style={{
                 width: '100%', height: 52, borderRadius: 14,
                 background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)',
-                border: 'none',
-                color: '#fff',
+                border: 'none', color: '#fff',
                 fontWeight: 800, fontSize: 15, letterSpacing: '0.02em',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: isChecking ? 'not-allowed' : 'pointer',
@@ -235,15 +183,14 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
                 transition: 'all 0.15s',
               }}
             >
-              {isChecking ? (
-                <Loader2 style={{ width: 18, height: 18 }} className="animate-spin" />
-              ) : (
-                'Join To Access'
-              )}
+              {isChecking
+                ? <Loader2 style={{ width: 18, height: 18 }} className="animate-spin" />
+                : "I've joined - Verify"
+              }
             </button>
           </div>
 
-          {/* Bottom blue glow accent line */}
+          {/* Bottom blue glow line */}
           <div style={{
             position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
             background: 'linear-gradient(90deg, transparent, rgba(96,165,250,0.8), rgba(59,130,246,1), rgba(96,165,250,0.8), transparent)',
@@ -254,7 +201,7 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
           <div style={{
             position: 'absolute', bottom: -40, left: '50%', transform: 'translateX(-50%)',
             width: 200, height: 80,
-            background: 'radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.35) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.3) 0%, transparent 70%)',
             pointerEvents: 'none',
           }} />
         </motion.div>
