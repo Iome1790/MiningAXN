@@ -9,13 +9,13 @@ export const config = {
   // 3. It will show the channel ID (looks like: -1001234567890)
   telegram: {
     // Channel settings (environment variables required)
-    channelId: process.env.TELEGRAM_CHANNEL_ID || '-1002242502661',
-    channelUrl: process.env.TELEGRAM_CHANNEL_URL || 'https://t.me/LightningSatoshi',
-    channelName: process.env.TELEGRAM_CHANNEL_NAME || 'LightningSatoshi',
+    channelId: process.env.TELEGRAM_CHANNEL_ID || '@MoneyAdz',
+    channelUrl: process.env.TELEGRAM_CHANNEL_URL || 'https://t.me/MoneyAdz',
+    channelName: process.env.TELEGRAM_CHANNEL_NAME || 'Axionet Payouts',
     // Group settings (environment variables required)
-    groupId: process.env.TELEGRAM_GROUP_ID || '-1002769424144',
-    groupUrl: process.env.TELEGRAM_GROUP_URL || 'https://t.me/LightningSatCommunity',
-    groupName: process.env.TELEGRAM_GROUP_NAME || 'Lightning Sat Community',
+    groupId: process.env.TELEGRAM_GROUP_ID || '@Axionetchat',
+    groupUrl: process.env.TELEGRAM_GROUP_URL || 'https://t.me/Axionetchat',
+    groupName: process.env.TELEGRAM_GROUP_NAME || 'Axionet Chat',
     moneyCatsId: process.env.TELEGRAM_MONEYCATS_ID || '',
     moneyCatsUrl: process.env.TELEGRAM_MONEYCATS_URL || '',
     moneyCatsName: process.env.TELEGRAM_MONEYCATS_NAME || '',
