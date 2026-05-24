@@ -6,19 +6,18 @@ import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import Header from "@/components/Header";
-import InvitePopup from "@/components/InvitePopup";
 import MenuPopup from "@/components/MenuPopup";
 
 const PURPLE = '#7C3AED';
 const PURPLE_LIGHT = '#A78BFA';
 const PURPLE_DIM = 'rgba(167,139,250,0.6)';
-const CARD = 'rgba(18,12,36,0.97)';
+const CARD_BG = 'rgba(18,12,36,0.97)';
 const BORDER = 'rgba(124,58,237,0.15)';
 const TEXT = '#fff';
 const TEXT_DIM = 'rgba(255,255,255,0.45)';
 
 const cardStyle: React.CSSProperties = {
-  background: CARD,
+  background: CARD_BG,
   border: `1px solid ${BORDER}`,
   borderRadius: 18,
   padding: '14px',
@@ -102,9 +101,21 @@ export default function Wallet() {
   };
 
   const requirements = [
-    { label: `Min ${minAxn.toLocaleString()} AXN`, current: `${axnBalance.toLocaleString()} AXN`, met: axnBalance >= minAxn },
-    { label: 'Invite 3 Friends', current: `${friendsCount}/3`, met: friendsCount >= MIN_FRIENDS },
-    { label: 'Complete 10 Ad Tasks', current: `${adsWatched}/${MIN_ADS}`, met: adsWatched >= MIN_ADS },
+    {
+      label: `Min ${minAxn.toLocaleString()} AXN`,
+      progress: `${axnBalance.toLocaleString()} / ${minAxn.toLocaleString()}`,
+      met: axnBalance >= minAxn,
+    },
+    {
+      label: 'Invite 3 Friends',
+      progress: `${friendsCount} / 3`,
+      met: friendsCount >= MIN_FRIENDS,
+    },
+    {
+      label: 'Complete 10 Ad Tasks',
+      progress: `${adsWatched} / ${MIN_ADS}`,
+      met: adsWatched >= MIN_ADS,
+    },
   ];
 
   const [, setLocation] = useLocation();
@@ -122,68 +133,74 @@ export default function Wallet() {
 
         {/* Balance Card */}
         <div style={{
+          position: 'relative', overflow: 'hidden',
           marginBottom: 14,
-          background: 'linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(91,33,182,0.14) 100%)',
-          border: '1px solid rgba(124,58,237,0.3)',
+          background: 'linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(91,33,182,0.12) 100%)',
+          border: '1px solid rgba(124,58,237,0.28)',
           borderRadius: 22, padding: '18px 16px',
         }}>
-          <p style={{ color: PURPLE_DIM, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>AXN Balance</p>
-          <p style={{ color: TEXT, fontSize: 32, fontWeight: 900, margin: '0 0 2px', letterSpacing: '-1px' }}>
-            {axnBalance.toLocaleString()}
-            <span style={{ color: PURPLE_DIM, fontSize: 16, fontWeight: 700, marginLeft: 8 }}>AXN</span>
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 14 }}>
-            <div style={{ background: 'rgba(124,58,237,0.1)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(124,58,237,0.15)' }}>
-              <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>TON Value</p>
-              <p style={{ color: PURPLE_LIGHT, fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>{tonValue.toFixed(4)}</p>
+          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(180deg, transparent, #A78BFA, transparent)' }} />
+          <div style={{ paddingLeft: 4 }}>
+            <p style={{ color: PURPLE_DIM, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>AXN Balance</p>
+            <p style={{ color: TEXT, fontSize: 34, fontWeight: 900, margin: '0 0 2px', letterSpacing: '-1px' }}>
+              {axnBalance.toLocaleString()}
+              <span style={{ color: PURPLE_DIM, fontSize: 16, fontWeight: 700, marginLeft: 8 }}>AXN</span>
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 14 }}>
+              <div style={{ background: 'rgba(124,58,237,0.1)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(124,58,237,0.15)' }}>
+                <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>TON Value</p>
+                <p style={{ color: PURPLE_LIGHT, fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>{tonValue.toFixed(4)}</p>
+              </div>
+              <div style={{ background: 'rgba(74,222,128,0.07)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(74,222,128,0.12)' }}>
+                <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>USD Value</p>
+                <p style={{ color: '#4ade80', fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>
+                  {tonLoading ? '—' : usdValue !== null ? `$${usdValue.toFixed(4)}` : '—'}
+                </p>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>TON Price</p>
+                <p style={{ color: TEXT, fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>
+                  {tonLoading ? '...' : tonPrice ? `$${tonPrice.toFixed(2)}` : 'N/A'}
+                </p>
+              </div>
             </div>
-            <div style={{ background: 'rgba(74,222,128,0.08)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(74,222,128,0.12)' }}>
-              <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>USD Value</p>
-              <p style={{ color: '#4ade80', fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>
-                {tonLoading ? '—' : usdValue !== null ? `$${usdValue.toFixed(4)}` : '—'}
-              </p>
-            </div>
-            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>TON Price</p>
-              <p style={{ color: TEXT, fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>
-                {tonLoading ? '...' : tonPrice ? `$${tonPrice.toFixed(2)}` : 'N/A'}
-              </p>
-            </div>
+            <p style={{ color: 'rgba(167,139,250,0.35)', fontSize: 10, margin: '10px 0 0' }}>1,000 AXN = 0.01 TON · Live price</p>
           </div>
-          <p style={{ color: 'rgba(167,139,250,0.4)', fontSize: 10, margin: '10px 0 0' }}>1,000 AXN = 0.01 TON · Live price</p>
         </div>
 
         {/* Requirements */}
-        <p style={{ color: PURPLE_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+        <p style={{ color: PURPLE_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', margin: '0 0 8px' }}>
           Withdrawal Requirements
         </p>
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
+        <div style={{ ...cardStyle, marginBottom: 14, padding: '12px 14px' }}>
           {requirements.map((r, i) => (
             <div key={i} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
               padding: i > 0 ? '10px 0 0' : '0',
-              borderTop: i > 0 ? '1px solid rgba(124,58,237,0.08)' : 'none',
-              paddingTop: i > 0 ? 10 : 0,
+              borderTop: i > 0 ? '1px solid rgba(124,58,237,0.07)' : 'none',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
-                  width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                  background: r.met ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${r.met ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                  background: r.met ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: `1.5px solid ${r.met ? 'rgba(74,222,128,0.4)' : 'rgba(255,255,255,0.1)'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10,
                 }}>
-                  {r.met ? '✓' : '·'}
+                  {r.met ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  ) : (
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }} />
+                  )}
                 </div>
-                <span style={{ color: r.met ? TEXT : TEXT_DIM, fontSize: 12, fontWeight: 600 }}>{r.label}</span>
+                <span style={{ color: r.met ? TEXT : TEXT_DIM, fontSize: 13, fontWeight: r.met ? 700 : 500 }}>{r.label}</span>
               </div>
               <span style={{
                 color: r.met ? '#4ade80' : TEXT_DIM,
                 fontSize: 11, fontWeight: 800,
-                background: r.met ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${r.met ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.06)'}`,
-                borderRadius: 50, padding: '2px 10px',
-              }}>{r.current}</span>
+                background: r.met ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${r.met ? 'rgba(74,222,128,0.25)' : 'rgba(255,255,255,0.06)'}`,
+                borderRadius: 50, padding: '3px 12px', whiteSpace: 'nowrap',
+              }}>{r.met ? 'Done' : r.progress}</span>
             </div>
           ))}
         </div>
@@ -191,11 +208,10 @@ export default function Wallet() {
         {/* Tab Selector */}
         <div style={{
           display: 'flex', gap: 6, marginBottom: 14,
-          background: 'rgba(124,58,237,0.06)',
-          border: '1px solid rgba(124,58,237,0.1)',
+          background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.1)',
           borderRadius: 50, padding: 4,
         }}>
-          {([{ id: 'ton' as Tab, label: '💎 TON' }, { id: 'usd' as Tab, label: '💵 USDT' }]).map(t => (
+          {([{ id: 'ton' as Tab, label: 'TON Network' }, { id: 'usd' as Tab, label: 'USDT (BEP-20)' }]).map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
               flex: 1, padding: '9px 0', border: 'none',
               background: tab === t.id ? 'linear-gradient(135deg, #7C3AED, #5B21B6)' : 'transparent',
@@ -260,16 +276,16 @@ export default function Wallet() {
                 <div style={{
                   ...cardStyle,
                   borderLeft: '3px solid #ef4444',
-                  background: 'rgba(239,68,68,0.06)',
+                  background: 'rgba(239,68,68,0.05)',
                   marginBottom: 10,
                 }}>
-                  <div style={{ color: '#ef4444', fontSize: 11, fontWeight: 800, marginBottom: 6 }}>⚠ IMPORTANT WARNING</div>
+                  <div style={{ color: '#ef4444', fontSize: 11, fontWeight: 800, marginBottom: 6 }}>IMPORTANT WARNING</div>
                   <div style={{ color: TEXT_DIM, fontSize: 12, lineHeight: 1.6 }}>
                     Only send to a <strong style={{ color: '#fff' }}>BEP-20 (BSC)</strong> USDT address starting with{' '}
                     <span style={{ color: PURPLE_LIGHT, fontFamily: 'monospace' }}>0x</span>.
                     Wrong network = permanent loss of funds.
                   </div>
-                  <div style={{ marginTop: 8, padding: '5px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8 }}>
+                  <div style={{ marginTop: 8, padding: '5px 10px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 8 }}>
                     <span style={{ color: '#f87171', fontSize: 11, fontWeight: 700 }}>Network: BSC (BEP-20)</span>
                   </div>
                 </div>
