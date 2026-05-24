@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { forwardRef } from "react";
-import { FaUserFriends } from "react-icons/fa";
 import { AXNIcon } from "@/components/AXNIcon";
 
 interface HeaderProps {
   onMenuOpen?: () => void;
   onInviteOpen?: () => void;
   onWithdrawOpen?: () => void;
+  onSettingsOpen?: () => void;
+  onTransactionsOpen?: () => void;
+  onPromoOpen?: () => void;
+  onShareOpen?: () => void;
 }
 
 const Header = forwardRef<HTMLDivElement, HeaderProps>(
@@ -16,8 +19,9 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
       retry: false,
     });
 
-    const satBalance = Math.floor(parseFloat((user as any)?.balance || "0"));
-    const firstName: string = user?.firstName || user?.username || "You";
+    const axnBalance = Math.floor(parseFloat((user as any)?.balance || "0"));
+    const firstName: string = user?.firstName || user?.username || "Miner";
+    const username: string = user?.username ? `@${user.username}` : "";
 
     const profileImageUrl: string | null =
       user?.profileImageUrl ||
@@ -30,58 +34,125 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
       <div
         ref={ref}
         className="fixed top-0 left-0 right-0 z-40"
-        style={{ paddingTop: "max(env(safe-area-inset-top), 8px)" }}
+        style={{ paddingTop: "max(env(safe-area-inset-top), 10px)" }}
       >
-        <div className="max-w-md mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+        <div
+          style={{
+            margin: "0 12px 8px",
+            borderRadius: 20,
+            background: "rgba(18, 13, 36, 0.92)",
+            border: "1px solid rgba(139, 92, 246, 0.15)",
+            backdropFilter: "blur(20px)",
+            padding: "10px 14px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          {/* Left — menu + avatar + name */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+            <button
+              onClick={onMenuOpen}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                background: "rgba(124, 58, 237, 0.15)",
+                border: "1.5px solid rgba(124, 58, 237, 0.3)",
+              }}
+              className="active:scale-90 transition-transform"
+            >
+              {profileImageUrl ? (
+                <img
+                  src={profileImageUrl}
+                  alt={firstName}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    const parent = target.parentElement;
+                    if (parent) {
+                      const span = document.createElement("span");
+                      span.style.cssText = "color:#fff;font-size:13px;font-weight:900;";
+                      span.textContent = initials;
+                      parent.appendChild(span);
+                    }
+                  }}
+                />
+              ) : (
+                <span style={{ color: "#A78BFA", fontSize: 13, fontWeight: 900 }}>{initials}</span>
+              )}
+            </button>
 
-          {/* Left — profile photo */}
-          <button
-            onClick={onMenuOpen}
-            className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
-            style={{ background: "#1c1c1e" }}
-          >
-            {profileImageUrl ? (
-              <img
-                src={profileImageUrl}
-                alt={firstName}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = "none";
-                  const parent = target.parentElement;
-                  if (parent) {
-                    const span = document.createElement("span");
-                    span.className = "text-white font-black text-sm select-none";
-                    span.textContent = initials;
-                    parent.appendChild(span);
-                  }
-                }}
-              />
-            ) : (
-              <span className="text-white font-black text-sm select-none">{initials}</span>
-            )}
-          </button>
+            <div style={{ minWidth: 0 }}>
+              <p style={{
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 800,
+                margin: 0,
+                lineHeight: 1.2,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                {firstName}
+              </p>
+              {username && (
+                <p style={{
+                  color: "rgba(167,139,250,0.7)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  margin: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}>
+                  {username}
+                </p>
+              )}
+            </div>
+          </div>
 
-          {/* Center — balance pill */}
+          {/* Center — AXN balance */}
           <button
             onClick={onWithdrawOpen}
-            className="flex-1 flex items-center justify-center gap-2 h-10 bg-[#1c1c1e] rounded-full px-4 active:scale-95 transition-transform"
+            className="active:scale-95 transition-transform"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(91,33,182,0.2))",
+              border: "1px solid rgba(124,58,237,0.3)",
+              borderRadius: 50,
+              padding: "7px 14px",
+              flexShrink: 0,
+            }}
           >
-            <AXNIcon size={22} />
-            <span className="text-white font-black text-sm tabular-nums">
-              {satBalance.toLocaleString()}
+            <AXNIcon size={18} />
+            <span style={{
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 900,
+              fontVariantNumeric: "tabular-nums",
+              letterSpacing: "-0.5px",
+            }}>
+              {axnBalance.toLocaleString()}
             </span>
-            <span className="text-white/40 text-xs font-bold uppercase tracking-wide">AXN</span>
-          </button>
-
-          {/* Right — Invite button */}
-          <button
-            onClick={onInviteOpen}
-            className="flex items-center gap-2 h-10 rounded-full px-3 active:scale-95 transition-transform flex-shrink-0"
-            style={{ background: "#1c1c1e" }}
-          >
-            <FaUserFriends style={{ width: 20, height: 20, color: "#60a5fa" }} />
-            <span className="text-blue-400 font-black text-xs uppercase tracking-wide">Invite</span>
+            <span style={{
+              color: "rgba(167,139,250,0.8)",
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}>
+              AXN
+            </span>
           </button>
 
         </div>

@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { showNotification } from "@/components/AppNotification";
 import {
   RiKey2Fill, RiCheckLine, RiUserAddLine, RiPlayCircleFill,
   RiExternalLinkLine, RiGift2Line, RiMegaphoneLine, RiShareLine,
-  RiTimeLine, RiGroupLine, RiSunLine, RiLoginCircleLine,
+  RiTimeLine, RiGroupLine, RiLoginCircleLine,
 } from "react-icons/ri";
 import { Loader2 } from "lucide-react";
 
@@ -16,11 +16,8 @@ declare global {
   }
 }
 
-const CUT_CARD = 'polygon(12px 0%,calc(100% - 12px) 0%,100% 12px,100% calc(100% - 12px),calc(100% - 12px) 100%,12px 100%,0% calc(100% - 12px),0% 12px)';
-
-/* ─── Helpers ─── */
 const divider = () => (
-  <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginInline: 16 }} />
+  <div style={{ height: 1, background: "rgba(139,92,246,0.08)", marginInline: 16 }} />
 );
 
 /* ─── Watch Ad Button ─── */
@@ -67,19 +64,18 @@ function WatchAdButton({ onEarned }: { onEarned: () => void }) {
       disabled={loading}
       className="active:scale-95 transition-transform"
       style={{
-        display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
-        background: "linear-gradient(135deg,#2563eb,#3b82f6)",
-        borderRadius: 50, padding: "9px 18px",
+        display: "flex", alignItems: "center", gap: 7, flexShrink: 0,
+        background: "linear-gradient(135deg, #7C3AED, #5B21B6)",
+        borderRadius: 50, padding: "10px 20px",
         border: "none", cursor: loading ? "default" : "pointer",
-        boxShadow: "0 2px 10px rgba(59,130,246,0.4)",
+        boxShadow: "0 4px 16px rgba(124,58,237,0.4)",
         opacity: loading ? 0.7 : 1,
       }}
     >
-      {loading ? (
-        <Loader2 size={13} color="#fff" className="animate-spin" />
-      ) : (
-        <RiPlayCircleFill size={13} color="#fff" />
-      )}
+      {loading
+        ? <Loader2 size={13} color="#fff" className="animate-spin" />
+        : <RiPlayCircleFill size={13} color="#fff" />
+      }
       <span style={{ color: "#fff", fontSize: 12, fontWeight: 800 }}>Watch Ad</span>
     </button>
   );
@@ -109,46 +105,6 @@ function getLevel(friends: number) {
   return LEVELS[0];
 }
 
-/* ─── Coming Soon Modal ─── */
-function ComingSoonModal({ onClose }: { onClose: () => void }) {
-  return (
-    <div
-      style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-      onClick={onClose}
-    >
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
-      <motion.div
-        initial={{ scale: 0.88, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        onClick={e => e.stopPropagation()}
-        style={{
-          position: "relative", zIndex: 1,
-          background: "rgba(12,14,32,0.99)",
-          border: "1px solid rgba(99,102,241,0.35)",
-          borderRadius: 20, padding: "32px 24px",
-          textAlign: "center", maxWidth: 300, width: "100%",
-        }}
-      >
-        <div style={{ fontSize: 48, marginBottom: 14 }}>🚀</div>
-        <p style={{ color: "#fff", fontSize: 18, fontWeight: 900, marginBottom: 8 }}>Coming Soon</p>
-        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, lineHeight: 1.5 }}>
-          This feature is under development. Stay tuned!
-        </p>
-        <button
-          onClick={onClose}
-          style={{
-            marginTop: 20, background: "linear-gradient(135deg,#4f46e5,#7c3aed)",
-            border: "none", borderRadius: 50, padding: "10px 28px",
-            color: "#fff", fontSize: 13, fontWeight: 800, cursor: "pointer",
-          }}
-        >
-          Got it
-        </button>
-      </motion.div>
-    </div>
-  );
-}
-
 /* ─── Progress Cards ─── */
 interface ProgressCardsProps {
   friendsInvited: number;
@@ -164,120 +120,95 @@ function ProgressCards({ friendsInvited, totalMissions, claimedMissions, secsUnt
   const nextTarget = lvlInfo.next ?? prevTarget;
   const progressInLevel = Math.min(friendsInvited - prevTarget, nextTarget - prevTarget);
   const progressPct = lvlInfo.next ? (progressInLevel / (nextTarget - prevTarget)) * 100 : 100;
-
   const allDone = claimedMissions >= totalMissions && totalMissions > 0;
 
   return (
-    <div style={{ marginInline: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+    <div style={{ marginInline: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
       {/* Invitation Progress */}
       <div style={{
-        background: "rgba(18,18,30,0.98)",
-        border: "1px solid rgba(255,255,255,0.09)",
-        borderRadius: 18, padding: "14px 12px",
-        display: "flex", flexDirection: "column", gap: 6,
+        background: "linear-gradient(135deg, rgba(124,58,237,0.12), rgba(91,33,182,0.08))",
+        border: "1px solid rgba(124,58,237,0.2)",
+        borderRadius: 20, padding: "14px 12px",
+        display: "flex", flexDirection: "column", gap: 7,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{
-            width: 34, height: 34, borderRadius: 10,
-            background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
+            width: 36, height: 36, borderRadius: 12, flexShrink: 0,
+            background: "linear-gradient(135deg, #7C3AED, #5B21B6)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 17, flexShrink: 0,
+            fontSize: 16,
           }}>💎</div>
           <div>
-            <p style={{ color: "#fff", fontSize: 13, fontWeight: 900, margin: 0 }}>
-              {lvlInfo.label}
-              {lvlInfo.next && <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}> »</span>}
-            </p>
+            <p style={{ color: "#fff", fontSize: 13, fontWeight: 900, margin: 0 }}>{lvlInfo.label}</p>
+            <p style={{ color: "rgba(167,139,250,0.7)", fontSize: 10, fontWeight: 600, margin: 0 }}>Invite Level</p>
           </div>
         </div>
 
-        <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: 700, margin: 0, letterSpacing: "0.02em" }}>
-          Invitation Progress
-        </p>
-        {lvlInfo.next ? (
-          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 9, margin: 0 }}>
-            Invite {lvlInfo.next} users for {LEVELS[lvlInfo.level - 1]?.label ?? "Max"}
-          </p>
-        ) : (
-          <p style={{ color: "#FFD700", fontSize: 9, fontWeight: 700, margin: 0 }}>Max Level Reached!</p>
-        )}
-
-        {/* Progress bar */}
-        <div style={{ height: 5, background: "rgba(255,255,255,0.08)", borderRadius: 3, overflow: "hidden", marginTop: 2 }}>
+        <div style={{ height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 9999, overflow: "hidden" }}>
           <div style={{
             height: "100%",
             width: `${progressPct}%`,
-            background: "linear-gradient(90deg,#4f46e5,#818cf8)",
-            borderRadius: 3, transition: "width 0.5s",
+            background: "linear-gradient(90deg, #7C3AED, #A78BFA)",
+            borderRadius: 9999, transition: "width 0.5s",
           }} />
         </div>
-        <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 9, margin: 0 }}>
-          {lvlInfo.next ? `${friendsInvited}/${lvlInfo.next}` : `${friendsInvited} friends`}
+        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 9, margin: 0 }}>
+          {lvlInfo.next ? `${friendsInvited} / ${lvlInfo.next} friends` : `${friendsInvited} friends — Max!`}
         </p>
 
         <button
           onClick={onInviteOpen}
           className="active:scale-95 transition-transform"
           style={{
-            marginTop: 2,
-            background: "linear-gradient(135deg,#4f46e5,#6366f1)",
-            border: "none", borderRadius: 8, padding: "6px 0",
+            background: "linear-gradient(135deg, #7C3AED, #5B21B6)",
+            border: "none", borderRadius: 10, padding: "7px 0",
             color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+            boxShadow: "0 4px 12px rgba(124,58,237,0.3)",
           }}
         >
-          <RiUserAddLine size={11} color="#fff" />
-          Invite
+          <RiUserAddLine size={11} />
+          Invite Friends
         </button>
       </div>
 
       {/* Daily Task Progress */}
       <div style={{
-        background: "rgba(18,18,30,0.98)",
-        border: "1px solid rgba(255,255,255,0.09)",
-        borderRadius: 18, padding: "14px 12px",
-        display: "flex", flexDirection: "column", gap: 6,
+        background: "linear-gradient(135deg, rgba(91,33,182,0.12), rgba(124,58,237,0.08))",
+        border: "1px solid rgba(124,58,237,0.2)",
+        borderRadius: 20, padding: "14px 12px",
+        display: "flex", flexDirection: "column", gap: 7,
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <p style={{
-              color: allDone ? "#ef4444" : "#60a5fa",
-              fontSize: 22, fontWeight: 900, margin: 0, lineHeight: 1,
+              color: allDone ? "#F472B6" : "#A78BFA",
+              fontSize: 26, fontWeight: 900, margin: 0, lineHeight: 1,
             }}>
-              {claimedMissions}/{totalMissions}
+              {claimedMissions}<span style={{ fontSize: 16, color: "rgba(255,255,255,0.4)" }}>/{totalMissions}</span>
             </p>
-            {allDone ? (
-              <p style={{ color: "#ef4444", fontSize: 9, fontWeight: 800, margin: 0, marginTop: 2 }}>Limit Reached</p>
-            ) : (
-              <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 9, margin: 0, marginTop: 2 }}>In Progress</p>
-            )}
           </div>
           <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <span style={{ fontSize: 18 }}>📋</span>
-          </div>
+            width: 38, height: 38, borderRadius: 12,
+            background: allDone ? "rgba(244,114,182,0.12)" : "rgba(167,139,250,0.12)",
+            border: `1px solid ${allDone ? "rgba(244,114,182,0.25)" : "rgba(167,139,250,0.25)"}`,
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+          }}>📋</div>
         </div>
+        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, fontWeight: 700, margin: 0 }}>Daily Tasks</p>
 
-        <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: 700, margin: 0 }}>
-          Daily Task Progress
-        </p>
-
-        <div style={{ height: 5, background: "rgba(255,255,255,0.08)", borderRadius: 3, overflow: "hidden" }}>
+        <div style={{ height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 9999, overflow: "hidden" }}>
           <div style={{
             height: "100%",
             width: `${totalMissions > 0 ? (claimedMissions / totalMissions) * 100 : 0}%`,
             background: allDone
-              ? "linear-gradient(90deg,#ef4444,#f87171)"
-              : "linear-gradient(90deg,#1d4ed8,#60a5fa)",
-            borderRadius: 3, transition: "width 0.5s",
+              ? "linear-gradient(90deg, #E879A8, #F472B6)"
+              : "linear-gradient(90deg, #7C3AED, #A78BFA)",
+            borderRadius: 9999, transition: "width 0.5s",
           }} />
         </div>
-
         <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, margin: 0 }}>
-          Resets in {formatReset(secsUntilReset)}
+          {allDone ? "All done! 🎉" : `Resets in ${formatReset(secsUntilReset)}`}
         </p>
       </div>
     </div>
@@ -302,45 +233,41 @@ function MissionTaskRow({ icon, title, badge, reward, claimed, disabled, onActio
       display: "flex", alignItems: "center", gap: 12,
       padding: "12px 16px",
     }}>
-      {/* Icon circle */}
       <div style={{
-        width: 42, height: 42, borderRadius: "50%", flexShrink: 0,
+        width: 42, height: 42, borderRadius: 14, flexShrink: 0,
         background: claimed
-          ? "rgba(74,222,128,0.1)"
-          : "linear-gradient(135deg,rgba(59,130,246,0.25),rgba(99,102,241,0.25))",
-        border: claimed ? "1px solid rgba(74,222,128,0.25)" : "1px solid rgba(99,102,241,0.3)",
+          ? "rgba(74,222,128,0.08)"
+          : "rgba(124,58,237,0.12)",
+        border: claimed
+          ? "1px solid rgba(74,222,128,0.2)"
+          : "1px solid rgba(124,58,237,0.2)",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        {claimed
-          ? <RiCheckLine size={18} color="#4ade80" />
-          : icon
-        }
+        {claimed ? <RiCheckLine size={18} color="#4ade80" /> : icon}
       </div>
 
-      {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
-          color: claimed ? "rgba(255,255,255,0.35)" : "#fff",
+          color: claimed ? "rgba(255,255,255,0.3)" : "#fff",
           fontSize: 13, fontWeight: 700, margin: 0,
         }}>{title}</p>
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 3,
           marginTop: 3,
-          background: "rgba(59,130,246,0.12)",
-          border: "1px solid rgba(59,130,246,0.25)",
-          borderRadius: 5, padding: "1px 7px",
+          background: "rgba(124,58,237,0.1)",
+          border: "1px solid rgba(124,58,237,0.2)",
+          borderRadius: 6, padding: "1px 7px",
         }}>
-          <RiExternalLinkLine size={9} color="#60a5fa" />
-          <span style={{ color: "#60a5fa", fontSize: 9, fontWeight: 700 }}>{badge}</span>
+          <RiExternalLinkLine size={9} color="#A78BFA" />
+          <span style={{ color: "#A78BFA", fontSize: 9, fontWeight: 700 }}>{badge}</span>
         </div>
       </div>
 
-      {/* Reward / Action */}
       <div style={{ flexShrink: 0 }}>
         {claimed ? (
           <div style={{
-            background: "rgba(74,222,128,0.1)",
-            border: "1px solid rgba(74,222,128,0.2)",
+            background: "rgba(74,222,128,0.08)",
+            border: "1px solid rgba(74,222,128,0.18)",
             borderRadius: 20, padding: "5px 12px",
             display: "flex", alignItems: "center", gap: 4,
           }}>
@@ -354,22 +281,22 @@ function MissionTaskRow({ icon, title, badge, reward, claimed, disabled, onActio
             className="active:scale-95 transition-transform"
             style={{
               background: disabled
-                ? "rgba(255,255,255,0.05)"
-                : "linear-gradient(135deg,rgba(59,130,246,0.9),rgba(99,102,241,0.9))",
-              border: disabled ? "1px solid rgba(255,255,255,0.08)" : "none",
+                ? "rgba(255,255,255,0.04)"
+                : "linear-gradient(135deg, #7C3AED, #5B21B6)",
+              border: disabled ? "1px solid rgba(255,255,255,0.07)" : "none",
               borderRadius: 20, padding: "5px 12px",
               display: "flex", alignItems: "center", gap: 5,
               cursor: disabled ? "not-allowed" : "pointer",
               opacity: actionLoading ? 0.6 : 1,
+              boxShadow: disabled ? "none" : "0 3px 10px rgba(124,58,237,0.3)",
             }}
           >
-            {actionLoading ? (
-              <Loader2 size={10} color="#fff" className="animate-spin" />
-            ) : (
-              <RiKey2Fill size={11} color={disabled ? "rgba(255,255,255,0.25)" : "#FFD700"} />
-            )}
+            {actionLoading
+              ? <Loader2 size={10} color="#fff" className="animate-spin" />
+              : <RiKey2Fill size={11} color={disabled ? "rgba(255,255,255,0.2)" : "#E9D5FF"} />
+            }
             <span style={{
-              color: disabled ? "rgba(255,255,255,0.25)" : "#fff",
+              color: disabled ? "rgba(255,255,255,0.2)" : "#fff",
               fontSize: 11, fontWeight: 800,
             }}>{reward}</span>
           </button>
@@ -379,7 +306,7 @@ function MissionTaskRow({ icon, title, badge, reward, claimed, disabled, onActio
   );
 }
 
-/* ─── Daily Task Row (2-step flow) ─── */
+/* ─── Daily Task Row ─── */
 type TaskStep = "idle" | "ad_loading" | "ready" | "claiming" | "claimed";
 
 interface DailyTaskConfig {
@@ -409,7 +336,6 @@ function DailyTaskRow({
 
   const handleStart = useCallback(async () => {
     if (step !== "idle" || config.disabled) return;
-
     if (config.type === "checkin") {
       setStep("ad_loading");
       try {
@@ -445,60 +371,83 @@ function DailyTaskRow({
   const isDone = config.claimed || step === "claimed";
 
   return (
-    <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-          background: isDone ? "rgba(74,222,128,0.08)" : config.disabled ? "rgba(255,255,255,0.04)" : "rgba(255,215,0,0.1)",
-          border: isDone ? "1px solid rgba(74,222,128,0.2)" : config.disabled ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(255,215,0,0.25)",
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+    <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: 13, flexShrink: 0,
+        background: isDone
+          ? "rgba(74,222,128,0.08)"
+          : config.disabled
+          ? "rgba(255,255,255,0.03)"
+          : "rgba(124,58,237,0.12)",
+        border: `1px solid ${isDone ? "rgba(74,222,128,0.2)" : config.disabled ? "rgba(255,255,255,0.06)" : "rgba(124,58,237,0.2)"}`,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+      }}>
+        {config.icon}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          color: isDone || config.disabled ? "rgba(255,255,255,0.3)" : "#fff",
+          fontSize: 13, fontWeight: 800, marginBottom: 2,
         }}>
-          {config.icon}
-        </div>
-        <div>
-          <p style={{ color: isDone || config.disabled ? "rgba(255,255,255,0.35)" : "#fff", fontSize: 13, fontWeight: 800, marginBottom: 2 }}>
-            {config.title}
-          </p>
-          {config.disabled && config.disabledReason ? (
-            <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 10, fontWeight: 600 }}>{config.disabledReason}</p>
-          ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <RiKey2Fill size={10} color={isDone ? "rgba(255,215,0,0.25)" : "#FFD700"} />
-              <p style={{ color: isDone ? "rgba(255,255,255,0.2)" : "#FFD700", fontSize: 11, fontWeight: 700 }}>
-                +{config.reward} Keys
-              </p>
-            </div>
-          )}
-        </div>
+          {config.title}
+        </p>
+        {config.disabled && config.disabledReason ? (
+          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 10, fontWeight: 600 }}>{config.disabledReason}</p>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <RiKey2Fill size={10} color={isDone ? "rgba(167,139,250,0.25)" : "#A78BFA"} />
+            <p style={{ color: isDone ? "rgba(255,255,255,0.2)" : "#A78BFA", fontSize: 11, fontWeight: 700 }}>
+              +{config.reward} Keys
+            </p>
+          </div>
+        )}
       </div>
 
       {isDone ? (
-        <div style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+          background: "rgba(74,222,128,0.08)",
+          border: "1px solid rgba(74,222,128,0.2)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
           <RiCheckLine size={16} color="#4ade80" />
         </div>
       ) : config.disabled ? (
-        <div style={{ padding: "6px 12px", borderRadius: 50, flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ padding: "6px 12px", borderRadius: 50, flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
           <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 10, fontWeight: 700 }}>Locked</span>
         </div>
       ) : step === "idle" ? (
-        <button onClick={handleStart} className="active:scale-95 transition-transform" style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", borderRadius: 50, padding: "7px 16px", border: "none", cursor: "pointer", boxShadow: "0 2px 10px rgba(59,130,246,0.35)" }}>
+        <button onClick={handleStart} className="active:scale-95 transition-transform" style={{
+          display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
+          background: "linear-gradient(135deg, #7C3AED, #5B21B6)",
+          borderRadius: 50, padding: "7px 16px",
+          border: "none", cursor: "pointer",
+          boxShadow: "0 3px 12px rgba(124,58,237,0.3)",
+        }}>
           {config.type === "checkin" ? <RiPlayCircleFill size={12} color="#fff" /> : config.type === "updates" ? <RiExternalLinkLine size={12} color="#fff" /> : null}
           <span style={{ color: "#fff", fontSize: 11, fontWeight: 900 }}>{config.type === "invite" ? "Claim" : "Start"}</span>
         </button>
       ) : step === "ad_loading" ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "7px 16px", borderRadius: 50, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-          <Loader2 size={12} color="rgba(255,255,255,0.5)" className="animate-spin" />
-          <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 700 }}>Loading…</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "7px 14px", borderRadius: 50, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)" }}>
+          <Loader2 size={12} color="#A78BFA" className="animate-spin" />
+          <span style={{ color: "#A78BFA", fontSize: 11, fontWeight: 700 }}>Loading…</span>
         </div>
       ) : step === "ready" ? (
-        <button onClick={handleClaim} className="active:scale-95 transition-transform" style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, background: "linear-gradient(135deg,#b8860b,#FFD700)", borderRadius: 50, padding: "7px 14px", border: "none", cursor: "pointer", boxShadow: "0 2px 10px rgba(255,215,0,0.3)" }}>
-          <RiKey2Fill size={12} color="#1a1a1a" />
-          <span style={{ color: "#1a1a1a", fontSize: 11, fontWeight: 900 }}>Claim</span>
+        <button onClick={handleClaim} className="active:scale-95 transition-transform" style={{
+          display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
+          background: "linear-gradient(135deg, #5B21B6, #7C3AED)",
+          borderRadius: 50, padding: "7px 14px",
+          border: "1px solid rgba(167,139,250,0.4)",
+          cursor: "pointer", boxShadow: "0 3px 14px rgba(124,58,237,0.4)",
+        }}>
+          <RiKey2Fill size={12} color="#E9D5FF" />
+          <span style={{ color: "#fff", fontSize: 11, fontWeight: 900 }}>Claim</span>
         </button>
       ) : step === "claiming" ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "7px 14px", borderRadius: 50, background: "rgba(255,215,0,0.12)", border: "1px solid rgba(255,215,0,0.2)" }}>
-          <Loader2 size={12} color="#FFD700" className="animate-spin" />
-          <span style={{ color: "#FFD700", fontSize: 11, fontWeight: 700 }}>Claiming…</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "7px 14px", borderRadius: 50, background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.2)" }}>
+          <Loader2 size={12} color="#A78BFA" className="animate-spin" />
+          <span style={{ color: "#A78BFA", fontSize: 11, fontWeight: 700 }}>Claiming…</span>
         </div>
       ) : null}
     </div>
@@ -533,7 +482,6 @@ export default function HomeContent({ onInviteOpen }: HomeContentProps) {
     refetchInterval: 60000,
   });
 
-  const [showComingSoon, setShowComingSoon] = useState(false);
   const [missionLoading, setMissionLoading] = useState<string | null>(null);
 
   const dailyCheckin = user?.dailyCheckinClaimed ?? user?.daily_checkin_claimed ?? false;
@@ -542,7 +490,6 @@ export default function HomeContent({ onInviteOpen }: HomeContentProps) {
   const friendsInvited = user?.friendsInvited ?? 0;
   const channelUrl = settings?.channelUrl || "https://t.me/LightningSatoshi";
 
-  // Compute mission counts
   const missionItems = missionStatus ? [
     missionStatus.login.claimed,
     missionStatus.announcement.claimed,
@@ -625,28 +572,27 @@ export default function HomeContent({ onInviteOpen }: HomeContentProps) {
     { type: "updates", icon: "🔄", title: "Check for Updates", reward: 3, claimed: dailyUpdates },
   ];
 
-  // Mission task list definitions
   const missionList = missionStatus ? [
     {
-      key: "login", icon: <RiLoginCircleLine size={18} color="#60a5fa" />,
+      key: "login", icon: <RiLoginCircleLine size={18} color="#A78BFA" />,
       title: "Daily Login", badge: "Daily Task", reward: "+2 AXN",
       claimed: missionStatus.login.claimed,
       onAction: () => claimMission("/api/daily-missions/claim/login", "login"),
     },
     {
-      key: "announcement", icon: <RiMegaphoneLine size={18} color="#a78bfa" />,
+      key: "announcement", icon: <RiMegaphoneLine size={18} color="#C4B5FD" />,
       title: "Check Announcement", badge: "Link Task", reward: "+1 AXN",
       claimed: missionStatus.announcement.claimed,
       onAction: () => handleMissionLink("https://t.me/LightningSatoshi", "/api/daily-missions/claim/announcement", "announcement"),
     },
     {
-      key: "watchAd", icon: <RiPlayCircleFill size={18} color="#f59e0b" />,
+      key: "watchAd", icon: <RiPlayCircleFill size={18} color="#DDD6FE" />,
       title: "Watch an Ad", badge: "Ad Task", reward: "+3 AXN",
       claimed: missionStatus.watchAd.claimed,
       onAction: handleWatchAdMission,
     },
     {
-      key: "shareApp", icon: <RiShareLine size={18} color="#34d399" />,
+      key: "shareApp", icon: <RiShareLine size={18} color="#A78BFA" />,
       title: "Share the App", badge: "Share Task", reward: "+2 AXN",
       claimed: missionStatus.shareApp.claimed,
       onAction: async () => {
@@ -661,62 +607,66 @@ export default function HomeContent({ onInviteOpen }: HomeContentProps) {
       },
     },
     {
-      key: "community", icon: <RiGroupLine size={18} color="#f472b6" />,
+      key: "community", icon: <RiGroupLine size={18} color="#C4B5FD" />,
       title: "Join Community", badge: "Link Task", reward: "+3 AXN",
       claimed: missionStatus.community.claimed,
       onAction: () => handleMissionLink("https://t.me/PaidAdzGroup", "/api/daily-missions/claim/community", "community"),
     },
     {
-      key: "appTime", icon: <RiTimeLine size={18} color="#38bdf8" />,
+      key: "appTime", icon: <RiTimeLine size={18} color="#DDD6FE" />,
       title: "Stay Active 10 min", badge: "Time Task", reward: "+2 AXN",
       claimed: missionStatus.appTime.claimed,
       onAction: () => {},
       disabled: !missionStatus.appTime.claimed && missionStatus.appTime.seconds < 600,
     },
     ...(missionStatus.hasNewReferralToday ? [{
-      key: "invite", icon: <RiGift2Line size={18} color="#facc15" />,
+      key: "invite", icon: <RiGift2Line size={18} color="#E9D5FF" />,
       title: "New Referral Today!", badge: "Bonus Task", reward: "+5 AXN",
       claimed: missionStatus.invite.claimed,
       onAction: () => claimMission("/api/daily-missions/claim/invite", "invite"),
     }] : []),
   ] : [];
 
-  const cardBase: React.CSSProperties = {
-    background: "rgba(18, 18, 28, 0.97)",
-    clipPath: CUT_CARD,
-    border: "1px solid rgba(255,255,255,0.07)",
-    marginInline: 10,
-  };
-
   return (
-    <div className="w-full" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 90px)", display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="w-full" style={{
+      paddingBottom: "calc(env(safe-area-inset-bottom) + 90px)",
+      display: "flex", flexDirection: "column", gap: 12,
+    }}>
 
-      {/* Key Earn Banner */}
+      {/* ─── Stats Row ─── */}
+      <ProgressCards
+        friendsInvited={friendsInvited}
+        totalMissions={totalMissions}
+        claimedMissions={claimedMissions}
+        secsUntilReset={secsUntilReset}
+        onInviteOpen={onInviteOpen}
+      />
+
+      {/* ─── Key Earn Banner ─── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
+        transition={{ duration: 0.3 }}
         style={{
-          marginInline: 10,
-          background: "linear-gradient(135deg,rgba(30,20,80,0.98) 0%,rgba(50,30,120,0.98) 100%)",
-          border: "1px solid rgba(255,215,0,0.2)",
-          borderRadius: 20,
-          padding: "16px 18px",
+          marginInline: 12,
+          background: "linear-gradient(135deg, rgba(124,58,237,0.18) 0%, rgba(91,33,182,0.14) 100%)",
+          border: "1px solid rgba(124,58,237,0.25)",
+          borderRadius: 20, padding: "16px 18px",
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{
-            width: 46, height: 46, borderRadius: 14, flexShrink: 0,
-            background: "rgba(255,215,0,0.12)",
-            border: "1px solid rgba(255,215,0,0.3)",
+            width: 46, height: 46, borderRadius: 15, flexShrink: 0,
+            background: "rgba(124,58,237,0.2)",
+            border: "1px solid rgba(124,58,237,0.3)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <RiKey2Fill size={22} color="#FFD700" />
+            <RiKey2Fill size={22} color="#A78BFA" />
           </div>
           <div>
             <p style={{ color: "#fff", fontSize: 14, fontWeight: 900, margin: 0 }}>Earn Keys</p>
-            <p style={{ color: "rgba(255,215,0,0.7)", fontSize: 11, fontWeight: 700, marginTop: 2 }}>
+            <p style={{ color: "rgba(167,139,250,0.8)", fontSize: 11, fontWeight: 600, marginTop: 2 }}>
               Watch an ad → get 1 Key
             </p>
           </div>
@@ -724,19 +674,29 @@ export default function HomeContent({ onInviteOpen }: HomeContentProps) {
         <WatchAdButton onEarned={() => queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] })} />
       </motion.div>
 
-      {/* Daily Tasks Section */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.07 }} style={cardBase}>
+      {/* ─── Daily Tasks Card ─── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.06 }}
+        style={{
+          marginInline: 12,
+          background: "rgba(18, 12, 36, 0.95)",
+          border: "1px solid rgba(124,58,237,0.15)",
+          borderRadius: 20,
+        }}
+      >
         <div style={{ padding: "14px 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <p style={{ color: "#fff", fontSize: 15, fontWeight: 900, margin: 0 }}>🎯 Daily Tasks</p>
-            <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginTop: 2 }}>Earn Keys • Resets daily</p>
+            <p style={{ color: "rgba(167,139,250,0.6)", fontSize: 11, marginTop: 2 }}>Earn Keys • Resets daily</p>
           </div>
           <div style={{
-            background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.2)",
-            borderRadius: 8, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4,
+            background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.2)",
+            borderRadius: 9, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4,
           }}>
-            <RiKey2Fill size={11} color="#FFD700" />
-            <span style={{ color: "#FFD700", fontSize: 10, fontWeight: 800 }}>Keys</span>
+            <RiKey2Fill size={11} color="#A78BFA" />
+            <span style={{ color: "#A78BFA", fontSize: 10, fontWeight: 800 }}>Keys</span>
           </div>
         </div>
         {divider()}
@@ -749,27 +709,37 @@ export default function HomeContent({ onInviteOpen }: HomeContentProps) {
         <div style={{ height: 6 }} />
       </motion.div>
 
-      {/* Mission Task List */}
-      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.14 }} style={cardBase}>
+      {/* ─── Mission Tasks Card ─── */}
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.12 }}
+        style={{
+          marginInline: 12,
+          background: "rgba(18, 12, 36, 0.95)",
+          border: "1px solid rgba(124,58,237,0.15)",
+          borderRadius: 20,
+        }}
+      >
         <div style={{ padding: "14px 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <p style={{ color: "#fff", fontSize: 15, fontWeight: 900, margin: 0 }}>🏆 Mission Tasks</p>
-            <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginTop: 2 }}>
+            <p style={{ color: "rgba(167,139,250,0.6)", fontSize: 11, marginTop: 2 }}>
               {claimedMissions}/{totalMissions} completed
             </p>
           </div>
           <div style={{
-            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
-            borderRadius: 8, padding: "4px 10px",
+            background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.15)",
+            borderRadius: 9, padding: "4px 10px",
           }}>
-            <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: 700 }}>+AXN</span>
+            <span style={{ color: "rgba(167,139,250,0.7)", fontSize: 10, fontWeight: 700 }}>+AXN</span>
           </div>
         </div>
         {divider()}
 
         {missionList.length === 0 ? (
-          <div style={{ padding: "24px 16px", textAlign: "center" }}>
-            <Loader2 size={20} color="rgba(255,255,255,0.2)" className="animate-spin" style={{ margin: "0 auto" }} />
+          <div style={{ padding: "28px 16px", textAlign: "center" }}>
+            <Loader2 size={20} color="rgba(167,139,250,0.3)" className="animate-spin" style={{ margin: "0 auto" }} />
           </div>
         ) : (
           missionList.map((m, idx) => (
@@ -790,8 +760,6 @@ export default function HomeContent({ onInviteOpen }: HomeContentProps) {
         )}
         <div style={{ height: 6 }} />
       </motion.div>
-
-      {showComingSoon && <ComingSoonModal onClose={() => setShowComingSoon(false)} />}
     </div>
   );
 }
