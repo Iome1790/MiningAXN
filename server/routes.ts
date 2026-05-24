@@ -1446,6 +1446,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .set({ friendsInvited: friendsInvited })
           .where(eq(users.id, userId));
       }
+
+      // Count referrals created TODAY (for daily invite goal)
+      const todayStart = new Date();
+      todayStart.setUTCHours(0, 0, 0, 0);
+      const todayReferralsRes = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(referrals)
+        .where(and(
+          eq(referrals.referrerId, userId),
+          sql`${referrals.createdAt} >= ${todayStart.toISOString()}`
+        ));
+      const todayReferrals = Number(todayReferralsRes[0]?.count || 0);
       
       // Add referral link - use /start flow for reliable referral tracking
       const botUsername = await getBotUsername();
@@ -1456,6 +1468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         ...user,
         friendsInvited,
+        todayReferrals,
         referralLink,
         planStatus: hasBoughtBoost ? 'Premium' : 'Trial',
       });
