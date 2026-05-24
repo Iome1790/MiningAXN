@@ -18,7 +18,7 @@ export const AppReadyContext = createContext<() => void>(() => {});
 
 declare global {
   interface Window {
-    show_10401872: (type?: string | { type: string; inAppSettings: any }) => Promise<void>;
+    show_10963365: (type?: any) => Promise<void>;
   }
 }
 
@@ -79,20 +79,105 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
   return (
     <div
       className="fixed inset-0 overflow-hidden"
-      style={{ background: '#020810', zIndex: 9999, opacity, pointerEvents: opacity < 0.05 ? 'none' : 'auto' }}
+      style={{ background: '#000000', zIndex: 9999, opacity, pointerEvents: opacity < 0.05 ? 'none' : 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
     >
-      <img
-        src="/loading-screen.png"
-        alt="Loading"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          objectPosition: 'center center',
-        }}
-      />
+      <style>{`
+        @keyframes axn-ring-pulse {
+          0%, 100% { opacity: 0.55; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.06); }
+        }
+        @keyframes axn-ring-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes axn-coin-float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes axn-dot-bounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+          40% { transform: translateY(-8px); opacity: 1; }
+        }
+        @keyframes axn-glow-pulse {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.7; }
+        }
+      `}</style>
+      {/* Outer glow orb */}
+      <div style={{
+        position: 'absolute',
+        width: 280,
+        height: 280,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(230,126,0,0.18) 0%, transparent 70%)',
+        animation: 'axn-glow-pulse 2.2s ease-in-out infinite',
+      }} />
+      {/* Spinning ring */}
+      <div style={{
+        position: 'absolute',
+        width: 160,
+        height: 160,
+        borderRadius: '50%',
+        border: '2px solid transparent',
+        borderTopColor: 'rgba(230,126,0,0.8)',
+        borderRightColor: 'rgba(245,158,11,0.4)',
+        animation: 'axn-ring-spin 1.6s linear infinite',
+      }} />
+      {/* Static glowing ring */}
+      <div style={{
+        position: 'absolute',
+        width: 148,
+        height: 148,
+        borderRadius: '50%',
+        border: '1px solid rgba(230,126,0,0.25)',
+        boxShadow: '0 0 24px rgba(230,126,0,0.3), inset 0 0 24px rgba(230,126,0,0.08)',
+        animation: 'axn-ring-pulse 2s ease-in-out infinite',
+      }} />
+      {/* Coin container */}
+      <div style={{ animation: 'axn-coin-float 2.8s ease-in-out infinite', position: 'relative', zIndex: 2 }}>
+        <svg width="90" height="90" viewBox="0 0 90 90" fill="none">
+          <defs>
+            <radialGradient id="lc-coin" cx="38%" cy="35%" r="65%">
+              <stop offset="0%" stopColor="#fde68a"/>
+              <stop offset="45%" stopColor="#f59e0b"/>
+              <stop offset="100%" stopColor="#b45309"/>
+            </radialGradient>
+            <radialGradient id="lc-inner" cx="38%" cy="35%" r="65%">
+              <stop offset="0%" stopColor="#fbbf24"/>
+              <stop offset="100%" stopColor="#92400e"/>
+            </radialGradient>
+            <filter id="lc-glow">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          {/* Outer coin */}
+          <circle cx="45" cy="45" r="43" fill="url(#lc-coin)" filter="url(#lc-glow)"/>
+          {/* Rim */}
+          <circle cx="45" cy="45" r="43" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
+          {/* Inner face */}
+          <circle cx="45" cy="45" r="34" fill="url(#lc-inner)"/>
+          {/* Chrome highlight */}
+          <path d="M24 26 Q45 19 66 26" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+          {/* AXN text */}
+          <text x="45" y="52" textAnchor="middle" fill="rgba(255,255,255,0.95)" fontSize="19" fontWeight="900" fontFamily="system-ui,sans-serif" letterSpacing="1">AXN</text>
+          {/* Small sparkles */}
+          <circle cx="14" cy="22" r="2.5" fill="#fde68a" opacity="0.7"/>
+          <circle cx="76" cy="18" r="2" fill="#fde68a" opacity="0.55"/>
+          <circle cx="78" cy="68" r="1.8" fill="#fde68a" opacity="0.5"/>
+        </svg>
+      </div>
+      {/* Bouncing dots */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 32, position: 'relative', zIndex: 2 }}>
+        {[0, 1, 2].map(i => (
+          <div key={i} style={{
+            width: 7, height: 7, borderRadius: '50%',
+            background: 'rgba(230,126,0,0.8)',
+            animation: `axn-dot-bounce 1.2s ease-in-out infinite`,
+            animationDelay: `${i * 0.18}s`,
+          }} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -155,26 +240,18 @@ function AppContent() {
     inAppAdInitialized.current = true;
 
     const showInAppAd = () => {
-      // Never interrupt active gameplay
       if (window.location.pathname.startsWith('/game/')) return;
-      if (typeof window.show_10401872 === 'function') {
-        console.log('🎬 Showing In-App Interstitial ad...');
-        window.show_10401872({
+      if (typeof window.show_10963365 === 'function') {
+        window.show_10963365({
           type: 'inApp',
           inAppSettings: {
-            frequency: 999,
-            capping: 24,
-            interval: 15,
-            timeout: 0,
-            everyPage: false
+            frequency: 2,
+            capping: 0.1,
+            interval: 30,
+            timeout: 5,
+            everyPage: false,
           }
-        }).then(() => {
-          console.log('✅ In-App Interstitial ad shown');
-        }).catch((error) => {
-          console.log('⚠️ In-App Interstitial ad error:', error);
-        });
-      } else {
-        console.log('⚠️ Monetag SDK not available for In-App ads');
+        }).catch(() => {});
       }
     };
 
