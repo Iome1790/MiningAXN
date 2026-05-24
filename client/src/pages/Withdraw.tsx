@@ -3,18 +3,26 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { showNotification } from "@/components/AppNotification";
-import { Loader2, TrendingUp, TrendingDown, ChevronLeft, HelpCircle, X } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, ChevronLeft, HelpCircle } from "lucide-react";
 import { AXNIcon } from "@/components/AXNIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AreaChart, Area, ResponsiveContainer, Tooltip, YAxis, XAxis,
 } from "recharts";
 
-declare global {
-  interface Window {
-    show_10401872?: (opts?: any) => Promise<void>;
-  }
-}
+const CUT_SM = 'polygon(10px 0%,calc(100% - 10px) 0%,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0% calc(100% - 10px),0% 10px)';
+const CUT_XS = 'polygon(7px 0%,calc(100% - 7px) 0%,100% 7px,100% calc(100% - 7px),calc(100% - 7px) 100%,7px 100%,0% calc(100% - 7px),0% 7px)';
+const CORNERS_SM = [
+  { top: '2px',    left: '12px',  width: '18px', height: '1.5px' },
+  { top: '12px',   left: '2px',   width: '1.5px', height: '18px' },
+  { top: '2px',    right: '12px', width: '18px', height: '1.5px' },
+  { top: '12px',   right: '2px',  width: '1.5px', height: '18px' },
+  { bottom: '2px', left: '12px',  width: '18px', height: '1.5px' },
+  { bottom: '12px',left: '2px',   width: '1.5px', height: '18px' },
+  { bottom: '2px', right: '12px', width: '18px', height: '1.5px' },
+  { bottom: '12px',right: '2px',  width: '1.5px', height: '18px' },
+] as const;
+const CHROME_SHIMMER = { position: 'absolute' as const, top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.14),transparent)', pointerEvents: 'none' as const, zIndex: 2 };
 
 type ChartTab = "1D" | "7D" | "30D" | "90D";
 const TAB_DAYS: Record<ChartTab, number> = { "1D": 1, "7D": 7, "30D": 30, "90D": 90 };
@@ -281,12 +289,6 @@ export default function WithdrawPage() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         flexShrink: 0, position: 'relative', zIndex: 5,
       }}>
-        <button
-          onClick={() => setLocation("/game")}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', borderRadius: 8 }}
-        >
-          <ChevronLeft style={{ width: 22, height: 22 }} />
-        </button>
         <div style={{ flex: 1 }}>
           <p style={{ color: '#fff', fontWeight: 900, fontSize: 17 }}>Trade AXN</p>
           <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11 }}>Exchange AXN for TON</p>
@@ -302,23 +304,22 @@ export default function WithdrawPage() {
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 24px', display: 'flex', flexDirection: 'column', gap: 12, position: 'relative', zIndex: 1 }}>
 
         {/* TON Price Card */}
-        <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 16, padding: '14px 16px',
-        }}>
+        <div style={{ position: 'relative', background: 'linear-gradient(135deg,#1a1a1a 0%,#222228 50%,#1a1a1a 100%)', clipPath: CUT_SM, padding: '14px 16px', boxShadow: '0 4px 24px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.06) inset' }}>
+          <div style={CHROME_SHIMMER} />
+          {CORNERS_SM.map((c, i) => <div key={i} style={{ position: 'absolute', background: '#3b82f6', opacity: 0.6, borderRadius: 1, ...c }} />)}
           <TonPriceChart />
         </div>
 
         {/* TON Wallet Address */}
-        <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 16, padding: '14px 16px',
-        }}>
+        <div style={{ position: 'relative', background: 'linear-gradient(135deg,#1a1a1a 0%,#222228 50%,#1a1a1a 100%)', clipPath: CUT_SM, padding: '14px 16px', boxShadow: '0 4px 24px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.06) inset' }}>
+          <div style={CHROME_SHIMMER} />
+          {CORNERS_SM.map((c, i) => <div key={i} style={{ position: 'absolute', background: '#0098EA', opacity: 0.7, borderRadius: 1, ...c }} />)}
+          <div style={{ position: 'absolute', left: 0, top: 10, bottom: 10, width: 2, background: 'linear-gradient(180deg,transparent,#0098EA,transparent)', opacity: 0.6 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0098EA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0098EA', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 10px rgba(0,152,234,0.5)' }}>
               <span style={{ color: '#fff', fontSize: 13, fontWeight: 900 }}>T</span>
             </div>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>TON Wallet Address</span>
+            <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>TON Wallet Address</span>
           </div>
           <input
             type="text"
@@ -326,19 +327,20 @@ export default function WithdrawPage() {
             value={walletAddress}
             onChange={e => setWalletAddress(e.target.value)}
             style={{
-              width: '100%', height: 44, background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
-              color: '#fff', fontSize: 13, padding: '0 12px', outline: 'none',
+              width: '100%', height: 44,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              clipPath: CUT_XS,
+              color: '#fff', fontSize: 12, padding: '0 12px', outline: 'none',
               boxSizing: 'border-box', fontFamily: 'monospace',
             }}
           />
         </div>
 
         {/* Rating + Watch Ad */}
-        <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 16, padding: '14px 16px',
-        }}>
+        <div style={{ position: 'relative', background: 'linear-gradient(135deg,#1a1a1a 0%,#222228 50%,#1a1a1a 100%)', clipPath: CUT_SM, padding: '14px 16px', boxShadow: '0 4px 24px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.06) inset' }}>
+          <div style={CHROME_SHIMMER} />
+          {CORNERS_SM.map((c, i) => <div key={i} style={{ position: 'absolute', background: '#3b82f6', opacity: 0.6, borderRadius: 1, ...c }} />)}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Rating</span>
@@ -405,11 +407,9 @@ export default function WithdrawPage() {
 
         {/* Minimum balance warning */}
         {satBalance < MIN_TRADE && (
-          <div style={{
-            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-            borderRadius: 12, padding: '10px 14px', textAlign: 'center',
-          }}>
-            <p style={{ color: '#f87171', fontSize: 12, fontWeight: 600 }}>
+          <div style={{ position: 'relative', background: 'linear-gradient(135deg,#1a0a0a,#221212 50%,#1a0a0a)', clipPath: CUT_XS, padding: '12px 16px', textAlign: 'center', boxShadow: '0 2px 16px rgba(239,68,68,0.12)' }}>
+            {CORNERS_SM.map((c, i) => <div key={i} style={{ position: 'absolute', background: '#ef4444', opacity: 0.5, borderRadius: 1, ...c }} />)}
+            <p style={{ color: '#f87171', fontSize: 12, fontWeight: 700, margin: 0 }}>
               ⚠ Minimum {MIN_TRADE.toLocaleString()} AXN required — you need {(MIN_TRADE - satBalance).toLocaleString()} more
             </p>
           </div>
@@ -430,25 +430,26 @@ export default function WithdrawPage() {
         pointerEvents: 'none', zIndex: 0,
       }} />
 
-      {/* Trade button - fixed at bottom */}
-      <div style={{ padding: '12px 16px 20px', flexShrink: 0, position: 'relative', zIndex: 5 }}>
+      {/* Trade button + Back button - fixed at bottom */}
+      <div style={{ padding: '12px 16px 20px', flexShrink: 0, position: 'relative', zIndex: 5, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button
           onClick={handleTrade}
           disabled={tradeMutation.isPending || satBalance < MIN_TRADE}
           style={{
-            width: '100%', height: 54, borderRadius: 14,
+            position: 'relative', width: '100%', height: 54, border: 'none',
+            clipPath: CUT_SM,
             background: satBalance < MIN_TRADE
-              ? 'rgba(255,255,255,0.04)'
+              ? 'rgba(255,255,255,0.05)'
               : 'linear-gradient(135deg,#1d4ed8,#3b82f6)',
-            border: satBalance < MIN_TRADE ? '1px solid rgba(255,255,255,0.08)' : 'none',
-            color: satBalance < MIN_TRADE ? 'rgba(255,255,255,0.25)' : '#fff',
+            color: satBalance < MIN_TRADE ? 'rgba(255,255,255,0.2)' : '#fff',
             fontWeight: 900, fontSize: 16, letterSpacing: '0.02em',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: (tradeMutation.isPending || satBalance < MIN_TRADE) ? 'not-allowed' : 'pointer',
-            boxShadow: satBalance < MIN_TRADE ? 'none' : '0 0 28px rgba(59,130,246,0.5)',
+            boxShadow: satBalance < MIN_TRADE ? 'none' : '0 0 32px rgba(59,130,246,0.55)',
             transition: 'all 0.2s',
           }}
         >
+          {CORNERS_SM.map((c, i) => <div key={i} style={{ position: 'absolute', background: satBalance < MIN_TRADE ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.4)', borderRadius: 1, ...c }} />)}
           {tradeMutation.isPending ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Loader2 style={{ width: 18, height: 18 }} className="animate-spin" />
@@ -457,6 +458,24 @@ export default function WithdrawPage() {
           ) : (
             'Trade'
           )}
+        </button>
+        <button
+          onClick={() => setLocation("/")}
+          style={{
+            position: 'relative', width: '100%', height: 48, border: 'none',
+            clipPath: CUT_SM,
+            background: 'linear-gradient(135deg,#1a1a1a,#222228 50%,#1a1a1a)',
+            color: 'rgba(255,255,255,0.4)',
+            fontWeight: 800, fontSize: 14,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            cursor: 'pointer',
+            boxShadow: '0 2px 16px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.06) inset',
+            transition: 'all 0.2s',
+          }}
+        >
+          {CORNERS_SM.map((c, i) => <div key={i} style={{ position: 'absolute', background: 'rgba(255,255,255,0.2)', borderRadius: 1, ...c }} />)}
+          <ChevronLeft style={{ width: 18, height: 18 }} />
+          Back
         </button>
       </div>
     </div>

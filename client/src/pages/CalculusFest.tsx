@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { AXNIcon } from "@/components/AXNIcon";
-import { showAd } from "@/lib/showAd";
+import { showAd, setGamePlaying } from "@/lib/showAd";
 
 const CUT_SM = 'polygon(10px 0%,calc(100% - 10px) 0%,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0% calc(100% - 10px),0% 10px)';
 const CUT_LG = 'polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px)';
@@ -452,6 +452,13 @@ export default function CalculusFest() {
       const goToResults = () => setPhase("results");
       showAd().then(goToResults).catch(goToResults);
     }
+  }, [phase]);
+
+  /* disable in-app ads during active gameplay */
+  useEffect(() => {
+    const active = phase === "playing" || phase === "countdown";
+    setGamePlaying(active);
+    return () => { setGamePlaying(false); };
   }, [phase]);
 
   const handleClaim = useCallback(async () => {

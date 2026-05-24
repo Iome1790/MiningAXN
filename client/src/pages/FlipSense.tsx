@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { AXNIcon } from "@/components/AXNIcon";
-import { showAd } from "@/lib/showAd";
+import { showAd, setGamePlaying } from "@/lib/showAd";
 
 /* ─── Audio — shared AudioContext singleton for reliable mobile playback ─── */
 let _fsAudioCtx: AudioContext | null = null;
@@ -538,6 +538,13 @@ export default function FlipSense() {
       });
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [phase]);
+
+  /* disable in-app ads during active gameplay */
+  useEffect(() => {
+    const active = phase === "playing" || phase === "countdown";
+    setGamePlaying(active);
+    return () => { setGamePlaying(false); };
   }, [phase]);
 
   /* ad + results (reward only on claim) */

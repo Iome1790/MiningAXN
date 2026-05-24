@@ -3,7 +3,7 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import InvitePopup from "@/components/InvitePopup";
 import MenuPopup from "@/components/MenuPopup";
-import { showAd } from "@/lib/showAd";
+import { showRewardedPopup } from "@/lib/showAd";
 
 const CUT_SM = 'polygon(10px 0%,calc(100% - 10px) 0%,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0% calc(100% - 10px),0% 10px)';
 
@@ -69,7 +69,7 @@ const GAMES = [
 ];
 
 async function showAdThenNavigate(path: string, navigate: (p: string) => void) {
-  await showAd();
+  await showRewardedPopup();
   navigate(path);
 }
 
