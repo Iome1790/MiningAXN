@@ -32,6 +32,10 @@ const SlidingSensePage = lazy(() => import("@/pages/SlidingSense"));
 const CalculusFestPage = lazy(() => import("@/pages/CalculusFest"));
 const OffersPage = lazy(() => import("@/pages/Offers"));
 const WithdrawPage = lazy(() => import("@/pages/Withdraw"));
+const EarnPage = lazy(() => import("@/pages/Earn"));
+const WatchPage = lazy(() => import("@/pages/Watch"));
+const FriendPage = lazy(() => import("@/pages/Friend"));
+const WalletPage = lazy(() => import("@/pages/Wallet"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const PageLoader = memo(function PageLoader() {
@@ -182,7 +186,7 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
   );
 }
 
-const NAV_ROUTES = new Set(["/", "/game", "/offers"]);
+const NAV_ROUTES = new Set(["/", "/earn", "/watch", "/game", "/friend", "/wallet"]);
 
 function Router() {
   const [location] = useLocation();
@@ -192,7 +196,11 @@ function Router() {
     <>
       <Suspense fallback={null}>
         <Switch>
-          <Route path="/" component={() => { const [, setLocation] = useLocation(); setLocation("/game"); return null; }} />
+          <Route path="/" component={() => { const [, setLocation] = useLocation(); setLocation("/earn"); return null; }} />
+          <Route path="/earn" component={EarnPage} />
+          <Route path="/watch" component={WatchPage} />
+          <Route path="/friend" component={FriendPage} />
+          <Route path="/wallet" component={WalletPage} />
           <Route path="/landing" component={Landing} />
           <Route path="/admin" component={Admin} />
           <Route path="/admin/country-controls" component={CountryControls} />
