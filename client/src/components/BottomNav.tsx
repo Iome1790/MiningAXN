@@ -18,10 +18,9 @@ const TABS = [
   },
   {
     label: "Offers",
-    sublabel: "Coming Soon",
     path: "/offers",
     icon: (active: boolean) => (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.22)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "#f59e0b" : "rgba(255,255,255,0.38)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 12 20 22 4 22 4 12"/>
         <rect x="2" y="7" width="20" height="5"/>
         <line x1="12" y1="22" x2="12" y2="7"/>
@@ -35,11 +34,6 @@ const TABS = [
 export default function BottomNav() {
   const [location, setLocation] = useLocation();
 
-  const handleClick = (path: string, sublabel?: string) => {
-    if (sublabel === "Coming Soon") return;
-    setLocation(path);
-  };
-
   return (
     <div style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 600,
@@ -49,56 +43,57 @@ export default function BottomNav() {
       borderTop: "1px solid rgba(255,255,255,0.07)",
       boxShadow: "0 -4px 24px rgba(0,0,0,0.6)",
     }}>
-      {TABS.map(({ label, sublabel, path, icon }) => {
-        const active = label === "Games" ? location.startsWith("/game") : false;
-        const isComingSoon = sublabel === "Coming Soon";
+      {TABS.map(({ label, path, icon }) => {
+        const active = label === "Games"
+          ? location.startsWith("/game")
+          : location === path;
 
         return (
           <button
             key={label}
-            onClick={() => handleClick(path, sublabel)}
+            onClick={() => setLocation(path)}
             style={{
               flex: 1, height: "100%", border: "none", background: "transparent",
-              cursor: isComingSoon ? "default" : "pointer",
+              cursor: "pointer",
               display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center", gap: 3,
-              touchAction: "manipulation", opacity: isComingSoon ? 0.45 : 1,
+              touchAction: "manipulation",
             }}
           >
             <div style={{
               width: 54, height: 36, borderRadius: 12,
               background: active
-                ? "linear-gradient(135deg, rgba(124,58,237,0.22), rgba(59,130,246,0.15))"
+                ? label === "Offers"
+                  ? "linear-gradient(135deg, rgba(245,158,11,0.22), rgba(230,126,0,0.15))"
+                  : "linear-gradient(135deg, rgba(124,58,237,0.22), rgba(59,130,246,0.15))"
                 : "transparent",
-              border: active ? "1px solid rgba(124,58,237,0.35)" : "1px solid transparent",
+              border: active
+                ? label === "Offers"
+                  ? "1px solid rgba(245,158,11,0.35)"
+                  : "1px solid rgba(124,58,237,0.35)"
+                : "1px solid transparent",
               display: "flex", alignItems: "center", justifyContent: "center",
               transition: "all 0.2s",
-              boxShadow: active ? "0 0 16px rgba(124,58,237,0.25)" : "none",
+              boxShadow: active
+                ? label === "Offers"
+                  ? "0 0 16px rgba(245,158,11,0.25)"
+                  : "0 0 16px rgba(124,58,237,0.25)"
+                : "none",
             }}>
               {icon(active)}
             </div>
             <span style={{
               fontSize: 10, fontWeight: active ? 800 : 600,
-              color: active ? "#fff" : isComingSoon ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.35)",
+              color: active
+                ? label === "Offers" ? "#f59e0b" : "#fff"
+                : "rgba(255,255,255,0.35)",
               letterSpacing: 0.3,
               textTransform: "uppercase",
               lineHeight: 1.1,
               textAlign: "center",
             }}>
-              {isComingSoon ? "Coming" : label}
+              {label}
             </span>
-            {isComingSoon && (
-              <span style={{
-                fontSize: 8, fontWeight: 700,
-                color: "rgba(255,255,255,0.2)",
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-                lineHeight: 1,
-                marginTop: -2,
-              }}>
-                Soon
-              </span>
-            )}
           </button>
         );
       })}
