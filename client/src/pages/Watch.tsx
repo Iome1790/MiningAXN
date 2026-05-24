@@ -1,30 +1,24 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useLocation } from "wouter";
+import Header from "@/components/Header";
+import InvitePopup from "@/components/InvitePopup";
+import MenuPopup from "@/components/MenuPopup";
 
-const BG = '#0a0a0a';
-const CARD = '#111111';
-const BORDER = '#3a2800';
-const AMBER = '#c67a00';
-const AMBER_BRIGHT = '#f5a623';
-const TEXT = '#e0e0e0';
-const TEXT_DIM = 'rgba(255,255,255,0.38)';
-const MONO = "'Courier New', Courier, monospace";
+const PURPLE = '#7C3AED';
+const PURPLE_LIGHT = '#A78BFA';
+const PURPLE_DIM = 'rgba(167,139,250,0.6)';
+const CARD = 'rgba(18,12,36,0.97)';
+const BORDER = 'rgba(124,58,237,0.15)';
+const TEXT = '#fff';
+const TEXT_DIM = 'rgba(255,255,255,0.45)';
 
 const cardStyle = {
   background: CARD,
   border: `1px solid ${BORDER}`,
-  borderLeft: `2px solid ${AMBER}`,
+  borderRadius: 18,
   padding: '14px 14px',
   marginBottom: 10,
-};
-
-const sectionLabel = {
-  fontFamily: MONO,
-  fontSize: 11,
-  color: AMBER,
-  letterSpacing: '0.08em',
-  margin: '0 0 8px',
-  fontWeight: 400,
 };
 
 const AD_TASKS = [
@@ -49,84 +43,117 @@ function AdRow({ task }: { task: typeof AD_TASKS[0] }) {
     }
   };
 
-  const btnLabel = state === 'idle' ? '→ Start' : state === 'pending' ? 'Verifying...' : state === 'claim' ? '→ Claim ←' : '✓ Done';
-  const btnBorder = state === 'done' ? '#2a2a2a' : state === 'claim' ? '#22c55e' : AMBER;
-  const btnColor = state === 'done' ? '#4ade80' : state === 'claim' ? '#4ade80' : AMBER_BRIGHT;
-  const btnBg = state === 'done' ? '#1a1a1a' : state === 'claim' ? '#002210' : '#1c1100';
+  const isDone = state === 'done';
+  const isClaim = state === 'claim';
+  const isPending = state === 'pending';
 
   return (
     <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{
-        width: 38, height: 38, background: '#1a1100', border: `1px solid ${BORDER}`,
+        width: 44, height: 44,
+        background: isDone ? 'rgba(74,222,128,0.08)' : 'rgba(124,58,237,0.15)',
+        border: `1px solid ${isDone ? 'rgba(74,222,128,0.2)' : 'rgba(124,58,237,0.25)'}`,
+        borderRadius: 14,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 18, flexShrink: 0,
+        fontSize: 20, flexShrink: 0,
       }}>
-        {task.icon}
+        {isDone ? '✓' : task.icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-          <span style={{ color: TEXT, fontSize: 13, fontFamily: MONO }}>{task.title}</span>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+          <span style={{ color: isDone ? TEXT_DIM : TEXT, fontSize: 13, fontWeight: 700 }}>{task.title}</span>
           <span style={{
-            display: 'inline-block', background: AMBER, color: '#000',
-            fontFamily: MONO, fontSize: 11, fontWeight: 700, padding: '2px 7px',
+            display: 'inline-flex', alignItems: 'center',
+            background: 'rgba(124,58,237,0.15)',
+            border: '1px solid rgba(124,58,237,0.25)',
+            borderRadius: 8, color: PURPLE_LIGHT,
+            fontSize: 10, fontWeight: 700, padding: '1px 7px',
           }}>+{task.reward} AXN</span>
         </div>
-        {state === 'pending' && (
-          <span style={{ color: AMBER, fontSize: 11, fontFamily: MONO }}>Verifying membership...</span>
+        {isPending && (
+          <span style={{ color: PURPLE_LIGHT, fontSize: 11, fontWeight: 600 }}>Verifying membership...</span>
         )}
-        {state === 'done' && (
-          <span style={{ color: '#4ade80', fontSize: 11, fontFamily: MONO }}>Reward credited</span>
+        {isDone && (
+          <span style={{ color: '#4ade80', fontSize: 11, fontWeight: 700 }}>✓ Reward credited</span>
         )}
       </div>
       <button
         onClick={handleClick}
-        disabled={state === 'done' || state === 'pending'}
+        disabled={isDone || isPending}
+        className="active:scale-95 transition-transform"
         style={{
-          background: btnBg, border: `1px solid ${btnBorder}`,
-          color: btnColor, fontFamily: MONO, fontSize: 11,
-          padding: '7px 12px', cursor: (state === 'idle' || state === 'claim') ? 'pointer' : 'not-allowed',
-          whiteSpace: 'nowrap', flexShrink: 0,
-          opacity: state === 'pending' ? 0.6 : 1,
+          background: isDone
+            ? 'rgba(74,222,128,0.08)'
+            : isClaim
+            ? 'linear-gradient(135deg, #4ade80, #16a34a)'
+            : isPending
+            ? 'rgba(124,58,237,0.08)'
+            : 'linear-gradient(135deg, #7C3AED, #5B21B6)',
+          border: `1px solid ${isDone ? 'rgba(74,222,128,0.2)' : isClaim ? 'rgba(74,222,128,0.4)' : 'rgba(124,58,237,0.3)'}`,
+          color: isDone ? '#4ade80' : '#fff',
+          fontSize: 11, fontWeight: 800,
+          padding: '7px 14px', cursor: (state === 'idle' || state === 'claim') ? 'pointer' : 'not-allowed',
+          whiteSpace: 'nowrap', flexShrink: 0, borderRadius: 50,
+          opacity: isPending ? 0.6 : 1,
+          boxShadow: isDone || isPending ? 'none' : '0 3px 10px rgba(124,58,237,0.3)',
         }}
-      >{btnLabel}</button>
+      >
+        {isDone ? '✓ Done' : isPending ? 'Verifying...' : isClaim ? 'Claim →' : 'Start →'}
+      </button>
     </div>
   );
 }
 
 export default function Watch() {
+  const [, setLocation] = useLocation();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <div style={{ minHeight: '100vh', background: BG, display: 'flex', flexDirection: 'column', fontFamily: MONO }}>
+    <div style={{ minHeight: '100vh', background: '#0a0614', display: 'flex', flexDirection: 'column' }}>
 
-      <div style={{ padding: 'max(env(safe-area-inset-top), 16px) 14px 12px', borderBottom: `1px solid ${BORDER}` }}>
-        <span style={{ color: TEXT_DIM, fontSize: 11, letterSpacing: '0.08em' }}>Watch & Earn</span>
-      </div>
+      <Header
+        onMenuOpen={() => setMenuOpen(true)}
+        onInviteOpen={() => setInviteOpen(true)}
+        onWithdrawOpen={() => setLocation('/wallet')}
+      />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px 64px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px 80px', paddingTop: 90 }}>
 
-        <p style={sectionLabel}>Ad Rewards</p>
+        <p style={{ color: PURPLE_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+          Ad Rewards
+        </p>
 
         {AD_TASKS.map((task, i) => (
-          <motion.div key={task.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.06 }}>
+          <motion.div key={task.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
             <AdRow task={task} />
           </motion.div>
         ))}
 
-        {/* Bottom notes */}
         <div style={{ marginTop: 8 }}>
-          <p style={sectionLabel}>Important Notes</p>
-          <div style={{ ...cardStyle, borderLeft: `2px solid #3a3a3a` }}>
+          <p style={{ color: PURPLE_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+            Important Notes
+          </p>
+          <div style={{
+            ...cardStyle,
+            borderLeft: `3px solid rgba(124,58,237,0.4)`,
+            background: 'rgba(124,58,237,0.06)',
+          }}>
             {[
-              '→ Token Credited after Verification',
-              '→ Exploit results in account suspension',
-              '→ Instant payment upon approval',
+              '💡 Token credited after verification',
+              '⚠️ Exploits result in account suspension',
+              '⚡ Instant payment upon approval',
             ].map((note, i) => (
-              <div key={i} style={{ color: TEXT_DIM, fontSize: 12, padding: i > 0 ? '6px 0 0' : '0', fontFamily: MONO }}>
+              <div key={i} style={{ color: TEXT_DIM, fontSize: 12, fontWeight: 600, padding: i > 0 ? '6px 0 0' : '0' }}>
                 {note}
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {inviteOpen && <InvitePopup onClose={() => setInviteOpen(false)} />}
+      {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}
     </div>
   );
 }

@@ -4,43 +4,38 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
+import Header from "@/components/Header";
+import InvitePopup from "@/components/InvitePopup";
+import MenuPopup from "@/components/MenuPopup";
 
-const BG = '#0a0a0a';
-const CARD = '#111111';
-const BORDER = '#3a2800';
-const AMBER = '#c67a00';
-const AMBER_BRIGHT = '#f5a623';
-const TEXT = '#e0e0e0';
-const TEXT_DIM = 'rgba(255,255,255,0.38)';
-const MONO = "'Courier New', Courier, monospace";
+const PURPLE = '#7C3AED';
+const PURPLE_LIGHT = '#A78BFA';
+const PURPLE_DIM = 'rgba(167,139,250,0.6)';
+const CARD = 'rgba(18,12,36,0.97)';
+const BORDER = 'rgba(124,58,237,0.15)';
+const TEXT = '#fff';
+const TEXT_DIM = 'rgba(255,255,255,0.45)';
 
-const cardStyle = {
+const cardStyle: React.CSSProperties = {
   background: CARD,
   border: `1px solid ${BORDER}`,
-  borderLeft: `2px solid ${AMBER}`,
-  padding: '14px 14px',
+  borderRadius: 18,
+  padding: '14px',
   marginBottom: 10,
 };
 
-const sectionLabel = {
-  fontFamily: MONO,
-  fontSize: 11,
-  color: AMBER,
-  letterSpacing: '0.08em',
-  margin: '0 0 8px',
-};
-
-const fieldStyle = {
-  width: '100%', height: 40,
-  background: '#1a1a1a',
-  border: `1px solid ${BORDER}`,
+const fieldStyle: React.CSSProperties = {
+  width: '100%', height: 44,
+  background: 'rgba(124,58,237,0.08)',
+  border: '1px solid rgba(124,58,237,0.2)',
   color: TEXT,
-  fontFamily: MONO,
-  fontSize: 12, padding: '0 10px', outline: 'none', boxSizing: 'border-box' as const,
+  fontSize: 13, padding: '0 12px', outline: 'none',
+  boxSizing: 'border-box',
+  borderRadius: 12,
 };
 
 const TON_PER_AXN = 0.00001;
-
 type Tab = 'ton' | 'usd';
 
 export default function Wallet() {
@@ -106,166 +101,214 @@ export default function Wallet() {
     withdrawMutation.mutate({ address: usdAddress.trim(), amount: usdAmount, method: 'USDT-BSC' });
   };
 
+  const requirements = [
+    { label: `Min ${minAxn.toLocaleString()} AXN`, current: `${axnBalance.toLocaleString()} AXN`, met: axnBalance >= minAxn },
+    { label: 'Invite 3 Friends', current: `${friendsCount}/3`, met: friendsCount >= MIN_FRIENDS },
+    { label: 'Complete 10 Ad Tasks', current: `${adsWatched}/${MIN_ADS}`, met: adsWatched >= MIN_ADS },
+  ];
+
+  const [, setLocation] = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <div style={{ minHeight: '100vh', background: BG, display: 'flex', flexDirection: 'column', fontFamily: MONO }}>
+    <div style={{ minHeight: '100vh', background: '#0a0614', display: 'flex', flexDirection: 'column' }}>
 
-      <div style={{ padding: 'max(env(safe-area-inset-top), 16px) 14px 12px', borderBottom: `1px solid ${BORDER}` }}>
-        <span style={{ color: TEXT_DIM, fontSize: 11, letterSpacing: '0.08em' }}>Wallet</span>
-      </div>
+      <Header
+        onMenuOpen={() => setMenuOpen(true)}
+        onWithdrawOpen={() => setLocation('/wallet')}
+      />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px 64px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px', paddingBottom: 80, paddingTop: 90 }}>
 
         {/* Balance Card */}
-        <div style={{ ...cardStyle, borderLeft: `2px solid ${AMBER_BRIGHT}`, marginBottom: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, marginBottom: 0 }}>
-            <div style={{ padding: '2px 0 10px', borderBottom: `1px solid ${BORDER}` }}>
-              <div style={{ color: TEXT_DIM, fontSize: 10, marginBottom: 3 }}>Balance</div>
-              <div style={{ color: TEXT, fontSize: 15, fontWeight: 700 }}>{axnBalance.toLocaleString()}</div>
+        <div style={{
+          marginBottom: 14,
+          background: 'linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(91,33,182,0.14) 100%)',
+          border: '1px solid rgba(124,58,237,0.3)',
+          borderRadius: 22, padding: '18px 16px',
+        }}>
+          <p style={{ color: PURPLE_DIM, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>AXN Balance</p>
+          <p style={{ color: TEXT, fontSize: 32, fontWeight: 900, margin: '0 0 2px', letterSpacing: '-1px' }}>
+            {axnBalance.toLocaleString()}
+            <span style={{ color: PURPLE_DIM, fontSize: 16, fontWeight: 700, marginLeft: 8 }}>AXN</span>
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 14 }}>
+            <div style={{ background: 'rgba(124,58,237,0.1)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(124,58,237,0.15)' }}>
+              <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>TON Value</p>
+              <p style={{ color: PURPLE_LIGHT, fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>{tonValue.toFixed(4)}</p>
             </div>
-            <div style={{ padding: '2px 0 10px', paddingLeft: 16, borderBottom: `1px solid ${BORDER}` }}>
-              <div style={{ color: TEXT_DIM, fontSize: 10, marginBottom: 3 }}>TON Value</div>
-              <div style={{ color: AMBER_BRIGHT, fontSize: 15, fontWeight: 700 }}>{tonValue.toFixed(4)}</div>
-            </div>
-            <div style={{ padding: '10px 0 0' }}>
-              <div style={{ color: TEXT_DIM, fontSize: 10, marginBottom: 3 }}>USD Value</div>
-              <div style={{ color: '#4ade80', fontSize: 15, fontWeight: 700 }}>
+            <div style={{ background: 'rgba(74,222,128,0.08)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(74,222,128,0.12)' }}>
+              <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>USD Value</p>
+              <p style={{ color: '#4ade80', fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>
                 {tonLoading ? '—' : usdValue !== null ? `$${usdValue.toFixed(4)}` : '—'}
-              </div>
+              </p>
             </div>
-            <div style={{ padding: '10px 0 0', paddingLeft: 16 }}>
-              <div style={{ color: TEXT_DIM, fontSize: 10, marginBottom: 3 }}>TON Price</div>
-              <div style={{ color: TEXT, fontSize: 15, fontWeight: 700 }}>
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>TON Price</p>
+              <p style={{ color: TEXT, fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>
                 {tonLoading ? '...' : tonPrice ? `$${tonPrice.toFixed(2)}` : 'N/A'}
-              </div>
+              </p>
             </div>
           </div>
-          <div style={{ marginTop: 10, color: TEXT_DIM, fontSize: 10 }}>1,000 AXN = 0.01 TON · Live price</div>
+          <p style={{ color: 'rgba(167,139,250,0.4)', fontSize: 10, margin: '10px 0 0' }}>1,000 AXN = 0.01 TON · Live price</p>
         </div>
 
         {/* Requirements */}
-        <p style={sectionLabel}>Withdrawal Requirements</p>
-        <div style={{ ...cardStyle }}>
-          {[
-            { label: `Balance: ${axnBalance.toLocaleString()} AXN`, req: `Min ${minAxn.toLocaleString()} AXN`, met: axnBalance >= minAxn },
-            { label: `Friends: ${friendsCount}/3`, req: 'Invite 3 Friends', met: friendsCount >= MIN_FRIENDS },
-            { label: `Ad tasks: ${adsWatched}/${MIN_ADS}`, req: 'Complete 10 Ad Tasks', met: adsWatched >= MIN_ADS },
-          ].map((r, i) => (
+        <p style={{ color: PURPLE_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+          Withdrawal Requirements
+        </p>
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          {requirements.map((r, i) => (
             <div key={i} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: i > 0 ? '8px 0 0' : '0',
-              borderTop: i > 0 ? `1px solid ${BORDER}` : 'none',
-              paddingTop: i > 0 ? 8 : 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              padding: i > 0 ? '10px 0 0' : '0',
+              borderTop: i > 0 ? '1px solid rgba(124,58,237,0.08)' : 'none',
+              paddingTop: i > 0 ? 10 : 0,
             }}>
-              <span style={{ color: r.met ? TEXT : TEXT_DIM, fontSize: 12 }}>{r.req}</span>
-              <span style={{ color: r.met ? '#4ade80' : TEXT_DIM, fontSize: 12 }}>{r.label}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                  background: r.met ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${r.met ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10,
+                }}>
+                  {r.met ? '✓' : '·'}
+                </div>
+                <span style={{ color: r.met ? TEXT : TEXT_DIM, fontSize: 12, fontWeight: 600 }}>{r.label}</span>
+              </div>
+              <span style={{
+                color: r.met ? '#4ade80' : TEXT_DIM,
+                fontSize: 11, fontWeight: 800,
+                background: r.met ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${r.met ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                borderRadius: 50, padding: '2px 10px',
+              }}>{r.current}</span>
             </div>
           ))}
         </div>
 
-        {/* Tab selector */}
-        <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}`, marginBottom: 14 }}>
-          {([{ id: 'ton', label: 'TON Withdrawal' }, { id: 'usd', label: 'USD Withdrawal' }] as const).map(t => (
+        {/* Tab Selector */}
+        <div style={{
+          display: 'flex', gap: 6, marginBottom: 14,
+          background: 'rgba(124,58,237,0.06)',
+          border: '1px solid rgba(124,58,237,0.1)',
+          borderRadius: 50, padding: 4,
+        }}>
+          {([{ id: 'ton' as Tab, label: '💎 TON' }, { id: 'usd' as Tab, label: '💵 USDT' }]).map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
-              flex: 1, padding: '9px 0', border: 'none', background: 'transparent',
-              fontFamily: MONO, fontSize: 12, letterSpacing: '0.05em',
-              color: tab === t.id ? AMBER_BRIGHT : TEXT_DIM,
-              borderBottom: tab === t.id ? `2px solid ${AMBER_BRIGHT}` : '2px solid transparent',
-              cursor: 'pointer', marginBottom: -1,
+              flex: 1, padding: '9px 0', border: 'none',
+              background: tab === t.id ? 'linear-gradient(135deg, #7C3AED, #5B21B6)' : 'transparent',
+              fontSize: 12, fontWeight: tab === t.id ? 800 : 600,
+              color: tab === t.id ? '#fff' : TEXT_DIM,
+              cursor: 'pointer', borderRadius: 50,
+              boxShadow: tab === t.id ? '0 2px 10px rgba(124,58,237,0.3)' : 'none',
+              transition: 'all 0.2s',
             }}>{t.label}</button>
           ))}
         </div>
 
         <AnimatePresence mode="wait">
-          <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+          <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
 
             {tab === 'ton' && (
               <div>
-                {/* TON live price strip */}
-                <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ color: TEXT_DIM, fontSize: 12 }}>TON Network · Live Price</span>
-                  <span style={{ color: AMBER_BRIGHT, fontSize: 14, fontWeight: 700 }}>
+                <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <span style={{ color: TEXT_DIM, fontSize: 12, fontWeight: 600 }}>TON Network · Live Price</span>
+                  <span style={{ color: PURPLE_LIGHT, fontSize: 14, fontWeight: 900 }}>
                     {tonLoading ? '...' : tonPrice ? `$${tonPrice.toFixed(2)}` : 'N/A'}
                   </span>
                 </div>
-
                 <div style={{ ...cardStyle }}>
-                  <div style={{ color: TEXT_DIM, fontSize: 11, marginBottom: 6 }}>TON Wallet Address</div>
+                  <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>TON Wallet Address</div>
                   <input type="text" value={tonAddress} onChange={e => setTonAddress(e.target.value)}
                     placeholder="Enter your TON wallet address"
-                    style={{ ...fieldStyle, marginBottom: 10, fontFamily: 'monospace' }} />
-                  <div style={{ color: TEXT_DIM, fontSize: 11, marginBottom: 6 }}>Memo (optional)</div>
+                    style={{ ...fieldStyle, marginBottom: 12 }} />
+                  <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>Memo (optional)</div>
                   <input type="text" value={tonMemo} onChange={e => setTonMemo(e.target.value)}
                     placeholder="Memo / Tag (if required)"
-                    style={{ ...fieldStyle, marginBottom: 10 }} />
-                  <div style={{ color: TEXT_DIM, fontSize: 11, marginBottom: 6 }}>Amount (AXN)</div>
+                    style={{ ...fieldStyle, marginBottom: 12 }} />
+                  <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>Amount (AXN)</div>
                   <input type="number" value={tonAmount} onChange={e => setTonAmount(e.target.value)}
                     placeholder={`Min ${minAxn.toLocaleString()} AXN`}
-                    style={{ ...fieldStyle, marginBottom: 0 }} />
+                    style={{ ...fieldStyle }} />
                 </div>
-
                 <button
                   onClick={handleTonWithdraw}
                   disabled={withdrawMutation.isPending || !meetsRequirements}
+                  className="active:scale-95 transition-transform"
                   style={{
-                    width: '100%', padding: '13px 0', border: `1px solid ${meetsRequirements ? AMBER_BRIGHT : BORDER}`,
-                    background: meetsRequirements ? '#1c1100' : '#1a1a1a',
-                    color: meetsRequirements ? AMBER_BRIGHT : TEXT_DIM,
-                    fontFamily: MONO, fontSize: 14, cursor: meetsRequirements ? 'pointer' : 'not-allowed',
+                    width: '100%', padding: '13px 0',
+                    background: meetsRequirements ? 'linear-gradient(135deg, #7C3AED, #5B21B6)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${meetsRequirements ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                    color: meetsRequirements ? '#fff' : TEXT_DIM,
+                    fontSize: 14, fontWeight: 800,
+                    cursor: meetsRequirements ? 'pointer' : 'not-allowed',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    marginBottom: 0,
+                    borderRadius: 50,
+                    boxShadow: meetsRequirements ? '0 4px 16px rgba(124,58,237,0.4)' : 'none',
                   }}
                 >
-                  {withdrawMutation.isPending ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : null}
-                  {meetsRequirements ? '→ Withdraw TON ←' : 'Requirements Not Met'}
+                  {withdrawMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                  {meetsRequirements ? 'Withdraw TON' : 'Requirements Not Met'}
                 </button>
               </div>
             )}
 
             {tab === 'usd' && (
               <div>
-                {/* Warning */}
-                <div style={{ ...cardStyle, borderLeft: `2px solid #ef4444`, background: '#120000', marginBottom: 10 }}>
-                  <div style={{ color: '#ef4444', fontSize: 11, fontWeight: 700, marginBottom: 6 }}>⚠ IMPORTANT WARNING</div>
+                <div style={{
+                  ...cardStyle,
+                  borderLeft: '3px solid #ef4444',
+                  background: 'rgba(239,68,68,0.06)',
+                  marginBottom: 10,
+                }}>
+                  <div style={{ color: '#ef4444', fontSize: 11, fontWeight: 800, marginBottom: 6 }}>⚠ IMPORTANT WARNING</div>
                   <div style={{ color: TEXT_DIM, fontSize: 12, lineHeight: 1.6 }}>
-                    Only send to a BEP-20 (BSC) USDT address starting with{' '}
-                    <span style={{ color: AMBER_BRIGHT, fontFamily: 'monospace' }}>0x</span>.
-                    Sending to wrong network will result in permanent loss of funds.
+                    Only send to a <strong style={{ color: '#fff' }}>BEP-20 (BSC)</strong> USDT address starting with{' '}
+                    <span style={{ color: PURPLE_LIGHT, fontFamily: 'monospace' }}>0x</span>.
+                    Wrong network = permanent loss of funds.
                   </div>
-                  <div style={{ marginTop: 8, padding: '6px 10px', background: '#1a0000', border: '1px solid #ef444433' }}>
-                    <span style={{ color: '#f87171', fontSize: 11 }}>Network: BSC (BEP-20)</span>
+                  <div style={{ marginTop: 8, padding: '5px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8 }}>
+                    <span style={{ color: '#f87171', fontSize: 11, fontWeight: 700 }}>Network: BSC (BEP-20)</span>
                   </div>
                 </div>
-
                 <div style={{ ...cardStyle }}>
-                  <div style={{ color: TEXT_DIM, fontSize: 11, marginBottom: 6 }}>USDT Address (BEP-20)</div>
+                  <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>USDT Address (BEP-20)</div>
                   <input type="text" value={usdAddress} onChange={e => setUsdAddress(e.target.value)}
                     placeholder="0x... BSC address"
-                    style={{ ...fieldStyle, marginBottom: 10, fontFamily: 'monospace' }} />
-                  <div style={{ color: TEXT_DIM, fontSize: 11, marginBottom: 6 }}>Amount (AXN)</div>
+                    style={{ ...fieldStyle, marginBottom: 12, fontFamily: 'monospace' }} />
+                  <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>Amount (AXN)</div>
                   <input type="number" value={usdAmount} onChange={e => setUsdAmount(e.target.value)}
                     placeholder={`Min ${minAxn.toLocaleString()} AXN`}
-                    style={{ ...fieldStyle, marginBottom: 0 }} />
+                    style={{ ...fieldStyle }} />
                 </div>
-
                 <button
                   onClick={handleUsdWithdraw}
                   disabled={withdrawMutation.isPending || !meetsRequirements}
+                  className="active:scale-95 transition-transform"
                   style={{
-                    width: '100%', padding: '13px 0', border: `1px solid ${meetsRequirements ? '#22c55e' : BORDER}`,
-                    background: meetsRequirements ? '#002210' : '#1a1a1a',
-                    color: meetsRequirements ? '#4ade80' : TEXT_DIM,
-                    fontFamily: MONO, fontSize: 14, cursor: meetsRequirements ? 'pointer' : 'not-allowed',
+                    width: '100%', padding: '13px 0',
+                    background: meetsRequirements ? 'linear-gradient(135deg, #16a34a, #22c55e)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${meetsRequirements ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                    color: meetsRequirements ? '#fff' : TEXT_DIM,
+                    fontSize: 14, fontWeight: 800,
+                    cursor: meetsRequirements ? 'pointer' : 'not-allowed',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    borderRadius: 50,
+                    boxShadow: meetsRequirements ? '0 4px 16px rgba(34,197,94,0.3)' : 'none',
                   }}
                 >
-                  {withdrawMutation.isPending ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : null}
-                  {meetsRequirements ? '→ Withdraw USDT ←' : 'Requirements Not Met'}
+                  {withdrawMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                  {meetsRequirements ? 'Withdraw USDT' : 'Requirements Not Met'}
                 </button>
               </div>
             )}
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}
     </div>
   );
 }
