@@ -7,82 +7,159 @@ import InvitePopup from "@/components/InvitePopup";
 import MenuPopup from "@/components/MenuPopup";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
+import { showRewardedInterstitial } from "@/lib/showAd";
 
-const PURPLE = '#7C3AED';
-const PURPLE_LIGHT = '#A78BFA';
-const PURPLE_DIM = 'rgba(167,139,250,0.6)';
-const CARD_BG = 'rgba(18,12,36,0.97)';
-const BORDER = 'rgba(124,58,237,0.15)';
+const PURPLE_L = '#60a5fa';
+const PURPLE_D = 'rgba(96,165,250,0.5)';
+const CARD = 'rgba(10,10,10,0.97)';
+const BORDER = 'rgba(255,255,255,0.07)';
 const TEXT = '#fff';
-const TEXT_DIM = 'rgba(255,255,255,0.45)';
+const TEXT_DIM = 'rgba(255,255,255,0.38)';
 
 const sectionLabel = (text: string) => (
-  <p style={{ color: PURPLE_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', margin: '0 0 8px' }}>{text}</p>
+  <p style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', margin: '0 0 8px' }}>{text}</p>
 );
 
-const rewardBadge = (txt: string) => (
+const badge = (txt: string, color = PURPLE_L) => (
   <span style={{
-    background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)',
-    borderRadius: 6, color: PURPLE_LIGHT, fontSize: 10, fontWeight: 800, padding: '2px 8px', marginLeft: 6,
+    background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)',
+    borderRadius: 6, color, fontSize: 10, fontWeight: 800, padding: '2px 8px', marginLeft: 6,
+    whiteSpace: 'nowrap',
   }}>+{txt}</span>
 );
 
 const MISSIONS = [
-  { count: 10, reward: 100, color: '#f59e0b', neon: '#fbbf24' },
-  { count: 25, reward: 250, color: '#3b82f6', neon: '#60a5fa' },
-  { count: 50, reward: 500, color: '#10b981', neon: '#34d399' },
-  { count: 75, reward: 750, color: '#ef4444', neon: '#f87171' },
+  { count: 10,  reward: 100,  color: '#f59e0b', neon: '#fbbf24' },
+  { count: 25,  reward: 250,  color: '#3b82f6', neon: '#60a5fa' },
+  { count: 50,  reward: 500,  color: '#10b981', neon: '#34d399' },
+  { count: 75,  reward: 750,  color: '#ef4444', neon: '#f87171' },
   { count: 100, reward: 1000, color: '#8b5cf6', neon: '#a78bfa' },
   { count: 200, reward: 2000, color: '#f59e0b', neon: '#fbbf24' },
   { count: 300, reward: 3000, color: '#3b82f6', neon: '#60a5fa' },
   { count: 500, reward: 5000, color: '#10b981', neon: '#34d399' },
 ];
 
-type Tab = 'tasks' | 'mission' | 'partner';
+const AD_TASKS = [
+  { id: 1, title: 'Watch Ad #1', reward: 20, color: '#3b82f6', neon: '#60a5fa' },
+  { id: 2, title: 'Watch Ad #2', reward: 20, color: '#8b5cf6', neon: '#a78bfa' },
+  { id: 3, title: 'Watch Ad #3', reward: 20, color: '#10b981', neon: '#34d399' },
+  { id: 4, title: 'Watch Ad #4', reward: 5,  color: '#f59e0b', neon: '#fbbf24' },
+  { id: 5, title: 'Watch Ad #5', reward: 5,  color: '#ef4444', neon: '#f87171' },
+];
 
-function MissionRow({ count, reward, progress, color, neon }: { count: number; reward: number; progress: number; color: string; neon: string }) {
+type AdState = 'idle' | 'loading' | 'claim' | 'done';
+
+function AdTaskRow({ task }: { task: typeof AD_TASKS[0] }) {
+  const [state, setState] = useState<AdState>('idle');
+
+  const handleStart = async () => {
+    if (state !== 'idle') return;
+    setState('loading');
+    try { await showRewardedInterstitial(); } catch {}
+    setState('claim');
+  };
+
+  return (
+    <div style={{
+      position: 'relative', display: 'flex', alignItems: 'center',
+      background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14,
+      marginBottom: 8, overflow: 'hidden',
+      boxShadow: state === 'done' ? '0 2px 12px rgba(74,222,128,0.08)' : `0 2px 12px ${task.color}12`,
+    }}>
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: `linear-gradient(180deg, transparent, ${task.neon}, transparent)`, opacity: state === 'done' ? 0.3 : 0.7 }} />
+      <div style={{
+        width: 58, height: 62, flexShrink: 0, marginLeft: 3,
+        background: state === 'done' ? 'rgba(74,222,128,0.12)' : `linear-gradient(160deg, ${task.color}cc, ${task.color}55)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {state === 'done'
+          ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+          : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l5 3-5 3V9z" fill="white"/></svg>
+        }
+      </div>
+      <div style={{ flex: 1, padding: '0 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ color: state === 'done' ? TEXT_DIM : TEXT, fontSize: 13, fontWeight: 700 }}>{task.title}</span>
+          {badge(`${task.reward} AXN`)}
+        </div>
+        <div style={{ fontSize: 11, marginTop: 2, color: state === 'loading' ? PURPLE_L : state === 'claim' ? '#fbbf24' : state === 'done' ? '#4ade80' : TEXT_DIM }}>
+          {state === 'loading' ? 'Loading ad...' : state === 'claim' ? 'Ad watched — claim reward' : state === 'done' ? 'Reward credited' : 'Watch to earn AXN'}
+        </div>
+      </div>
+      <div style={{ paddingRight: 12, flexShrink: 0 }}>
+        <button
+          onClick={state === 'idle' ? handleStart : state === 'claim' ? () => setState('done') : undefined}
+          disabled={state === 'done' || state === 'loading'}
+          style={{
+            background: state === 'done' ? 'rgba(74,222,128,0.08)'
+              : state === 'claim' ? 'linear-gradient(135deg, #16a34a, #22c55e)'
+              : state === 'loading' ? 'rgba(255,255,255,0.05)'
+              : `linear-gradient(135deg, ${task.color}, ${task.neon})`,
+            border: `1px solid ${state === 'done' ? 'rgba(74,222,128,0.18)' : state === 'claim' ? 'rgba(74,222,128,0.3)' : `${task.color}44`}`,
+            color: state === 'done' ? '#4ade80' : '#fff',
+            fontSize: 11, fontWeight: 800, padding: '7px 14px',
+            cursor: state === 'idle' || state === 'claim' ? 'pointer' : 'not-allowed',
+            whiteSpace: 'nowrap', borderRadius: 50, opacity: state === 'loading' ? 0.5 : 1,
+            boxShadow: (state === 'done' || state === 'loading') ? 'none' : `0 3px 10px ${task.color}35`,
+          }}
+        >
+          {state === 'done' ? 'Done' : state === 'loading' ? '...' : state === 'claim' ? 'Claim' : 'Watch'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MissionRow({
+  count, reward, progress, color, neon, claimed, onClaim, isClaiming,
+}: {
+  count: number; reward: number; progress: number; color: string; neon: string;
+  claimed: boolean; onClaim: () => void; isClaiming: boolean;
+}) {
   const done = progress >= count;
-  const [claimed, setClaimed] = useState(false);
   const pct = Math.min((progress / count) * 100, 100);
 
   return (
     <div style={{
-      position: 'relative', display: 'flex', alignItems: 'center', gap: 0,
-      background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 16,
+      position: 'relative', display: 'flex', alignItems: 'center',
+      background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14,
       marginBottom: 8, overflow: 'hidden',
-      boxShadow: done ? `0 2px 16px ${color}22` : 'none',
+      boxShadow: done ? `0 2px 14px ${color}18` : 'none',
     }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: `linear-gradient(180deg, transparent, ${neon}, transparent)`, opacity: done ? 1 : 0.4 }} />
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: `linear-gradient(180deg, transparent, ${neon}, transparent)`, opacity: done ? 1 : 0.35 }} />
       <div style={{
-        width: 56, height: 60, flexShrink: 0, marginLeft: 3,
-        background: `linear-gradient(160deg, ${color}cc, ${color}66)`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2,
+        width: 54, height: 58, flexShrink: 0, marginLeft: 3,
+        background: `linear-gradient(160deg, ${color}bb, ${color}55)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 1,
       }}>
         <span style={{ color: '#fff', fontSize: 14, fontWeight: 900, lineHeight: 1 }}>{count}</span>
-        <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 8, fontWeight: 700, textTransform: 'uppercase' }}>Friends</span>
+        <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 8, fontWeight: 700, textTransform: 'uppercase' }}>Friends</span>
       </div>
-      <div style={{ flex: 1, padding: '10px 12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-          <span style={{ color: done ? PURPLE_LIGHT : TEXT, fontSize: 12, fontWeight: 700 }}>Invite {count} Verified Friends</span>
-          {rewardBadge(`${reward.toLocaleString()} AXN`)}
+      <div style={{ flex: 1, padding: '10px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 5 }}>
+          <span style={{ color: claimed ? TEXT_DIM : TEXT, fontSize: 12, fontWeight: 700 }}>Invite {count} Verified Friends</span>
+          {badge(`${reward.toLocaleString()} AXN`)}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 9999, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.05)', borderRadius: 9999, overflow: 'hidden' }}>
             <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg, ${color}, ${neon})`, borderRadius: 9999, transition: 'width 0.5s' }} />
           </div>
           <span style={{ color: TEXT_DIM, fontSize: 10, whiteSpace: 'nowrap' }}>{Math.min(progress, count)}/{count}</span>
         </div>
       </div>
       <div style={{ paddingRight: 12, flexShrink: 0 }}>
-        {done && !claimed ? (
-          <button onClick={() => setClaimed(true)} style={{
+        {claimed ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+            <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 800 }}>Claimed</span>
+          </div>
+        ) : done ? (
+          <button onClick={onClaim} disabled={isClaiming} style={{
             background: `linear-gradient(135deg, ${color}, ${neon})`,
             color: '#fff', border: 'none', fontSize: 11, fontWeight: 800,
-            padding: '6px 14px', cursor: 'pointer', borderRadius: 50,
-            boxShadow: `0 2px 10px ${color}55`,
-          }}>Claim</button>
-        ) : claimed ? (
-          <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 800 }}>Done</span>
+            padding: '7px 14px', cursor: 'pointer', borderRadius: 50,
+            boxShadow: `0 2px 10px ${color}45`, opacity: isClaiming ? 0.6 : 1,
+          }}>{isClaiming ? '...' : 'Claim'}</button>
         ) : (
           <span style={{ fontSize: 10, color: TEXT_DIM }}>Pending</span>
         )}
@@ -91,25 +168,29 @@ function MissionRow({ count, reward, progress, color, neon }: { count: number; r
   );
 }
 
+type Tab = 'tasks' | 'mission' | 'partner';
+
 export default function Earn() {
   const [tab, setTab] = useState<Tab>('tasks');
   const [taskDone, setTaskDone] = useState(false);
   const [dailyClaimed, setDailyClaimed] = useState(false);
+  const [claimingMilestone, setClaimingMilestone] = useState<number | null>(null);
 
   const queryClient = useQueryClient();
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
-  const { data: wellData } = useQuery<any>({ queryKey: ['/api/referrals/well'], staleTime: 30000 });
+  const { data: claimedData } = useQuery<{ claimed: number[] }>({
+    queryKey: ['/api/milestone/claimed'],
+    staleTime: 60000,
+  });
 
   const verifiedFriends = Number(user?.friendsInvited ?? 0);
   const todayInvites = Number(user?.todayReferrals ?? 0);
   const dailyProgress = Math.min(todayInvites, 3);
   const dailyComplete = dailyProgress >= 3;
+  const claimedMilestones = new Set(claimedData?.claimed ?? []);
 
   const claimDailyMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/daily-tasks/claim/invite', {});
-      return res.json();
-    },
+    mutationFn: async () => (await apiRequest('POST', '/api/daily-tasks/claim/invite', {})).json(),
     onSuccess: (data) => {
       showNotification(data.message || 'Reward claimed!', 'success');
       setDailyClaimed(true);
@@ -119,6 +200,28 @@ export default function Earn() {
       let msg = 'Failed to claim';
       try { const p = JSON.parse(e.message); if (p.message) msg = p.message; } catch { msg = e.message || msg; }
       showNotification(msg, 'error');
+    },
+  });
+
+  const claimMilestoneMutation = useMutation({
+    mutationFn: async ({ count, reward }: { count: number; reward: number }) => {
+      const res = await apiRequest('POST', '/api/milestone/claim', { count, reward });
+      return res.json();
+    },
+    onSuccess: (data, vars) => {
+      showNotification(`${vars.reward.toLocaleString()} AXN claimed!`, 'success');
+      queryClient.invalidateQueries({ queryKey: ['/api/milestone/claimed'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      setClaimingMilestone(null);
+    },
+    onError: (e: any, vars) => {
+      let msg = 'Failed to claim';
+      try { const p = JSON.parse(e.message); if (p.message) msg = p.message; } catch {}
+      if (msg.includes('Already')) {
+        queryClient.invalidateQueries({ queryKey: ['/api/milestone/claimed'] });
+      }
+      showNotification(msg, 'error');
+      setClaimingMilestone(null);
     },
   });
 
@@ -133,7 +236,7 @@ export default function Earn() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0614', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#000000', display: 'flex', flexDirection: 'column' }}>
 
       <Header
         onMenuOpen={() => setMenuOpen(true)}
@@ -141,34 +244,32 @@ export default function Earn() {
         onWithdrawOpen={() => setLocation('/wallet')}
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px', paddingBottom: 80, paddingTop: 90 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px', paddingBottom: 86, paddingTop: 88 }}>
 
-        {/* Daily Network Goal */}
+        {/* Daily Goal */}
         {sectionLabel('Daily Network Goal')}
         <div style={{
           position: 'relative', overflow: 'hidden',
-          background: CARD_BG, border: `1px solid rgba(124,58,237,0.2)`,
-          borderRadius: 18, marginBottom: 16,
-          boxShadow: dailyComplete ? '0 4px 24px rgba(124,58,237,0.25)' : 'none',
+          background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, marginBottom: 14,
+          boxShadow: dailyComplete ? '0 4px 20px rgba(37,99,235,0.18)' : 'none',
         }}>
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(180deg, transparent, #A78BFA, transparent)' }} />
-          <div style={{ padding: '14px 14px 14px 18px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(180deg, transparent, #60a5fa, transparent)' }} />
+          <div style={{ padding: '13px 13px 13px 18px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 3 }}>
                 <span style={{ color: TEXT, fontSize: 13, fontWeight: 700 }}>Referral Bonus</span>
-                {rewardBadge('50 AXN')}
+                {badge('50 AXN')}
               </div>
               <p style={{ color: TEXT_DIM, fontSize: 11, margin: '0 0 10px' }}>Invite 3 new friends today</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} style={{
-                    flex: 1, height: 6, borderRadius: 9999,
-                    background: dailyProgress > i ? 'linear-gradient(90deg, #7C3AED, #A78BFA)' : 'rgba(255,255,255,0.07)',
-                    border: `1px solid ${dailyProgress > i ? 'rgba(124,58,237,0.5)' : 'rgba(255,255,255,0.05)'}`,
+                    flex: 1, height: 5, borderRadius: 9999,
+                    background: dailyProgress > i ? 'linear-gradient(90deg, #2563eb, #60a5fa)' : 'rgba(255,255,255,0.06)',
                     transition: 'all 0.3s',
                   }} />
                 ))}
-                <span style={{ color: PURPLE_LIGHT, fontSize: 11, fontWeight: 700, marginLeft: 6, whiteSpace: 'nowrap' }}>{dailyProgress}/3</span>
+                <span style={{ color: PURPLE_L, fontSize: 11, fontWeight: 700, marginLeft: 6, whiteSpace: 'nowrap' }}>{dailyProgress}/3</span>
               </div>
             </div>
             <button
@@ -176,33 +277,31 @@ export default function Earn() {
               disabled={!dailyComplete || dailyClaimed || claimDailyMutation.isPending}
               style={{
                 flexShrink: 0, padding: '8px 16px',
-                background: dailyComplete && !dailyClaimed ? 'linear-gradient(135deg, #7C3AED, #5B21B6)' : 'rgba(255,255,255,0.05)',
-                border: `1px solid ${dailyComplete && !dailyClaimed ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                background: dailyComplete && !dailyClaimed ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${dailyComplete && !dailyClaimed ? 'rgba(37,99,235,0.4)' : 'rgba(255,255,255,0.07)'}`,
                 color: dailyClaimed ? '#4ade80' : dailyComplete ? '#fff' : TEXT_DIM,
                 fontSize: 12, fontWeight: 800, cursor: (dailyComplete && !dailyClaimed) ? 'pointer' : 'default',
                 whiteSpace: 'nowrap', borderRadius: 50,
-                boxShadow: dailyComplete && !dailyClaimed ? '0 3px 12px rgba(124,58,237,0.4)' : 'none',
+                boxShadow: dailyComplete && !dailyClaimed ? '0 3px 12px rgba(37,99,235,0.35)' : 'none',
               }}
-            >
-              {dailyClaimed ? 'Claimed' : dailyComplete ? 'Claim' : 'In Progress'}
-            </button>
+            >{dailyClaimed ? 'Claimed' : dailyComplete ? 'Claim' : 'In Progress'}</button>
           </div>
         </div>
 
-        {/* Tab Bar */}
+        {/* Tab bar */}
         <div style={{
           display: 'flex', gap: 4, marginBottom: 14,
-          background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.1)',
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
           borderRadius: 50, padding: 4,
         }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
               flex: 1, padding: '8px 0', border: 'none',
-              background: tab === t.id ? 'linear-gradient(135deg, #7C3AED, #5B21B6)' : 'transparent',
+              background: tab === t.id ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : 'transparent',
               fontSize: 12, fontWeight: tab === t.id ? 800 : 600,
               color: tab === t.id ? '#fff' : TEXT_DIM,
               cursor: 'pointer', borderRadius: 50,
-              boxShadow: tab === t.id ? '0 2px 10px rgba(124,58,237,0.35)' : 'none',
+              boxShadow: tab === t.id ? '0 2px 10px rgba(37,99,235,0.3)' : 'none',
               transition: 'all 0.2s',
             }}>{t.label}</button>
           ))}
@@ -211,70 +310,95 @@ export default function Earn() {
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
 
+            {/* ── ACTIVE TAB ── */}
             {tab === 'tasks' && (
               <>
-                {sectionLabel('Official Task')}
-                <div style={{
-                  position: 'relative', display: 'flex', alignItems: 'center', gap: 0,
-                  background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 16,
-                  marginBottom: 8, overflow: 'hidden',
-                  boxShadow: taskDone ? '0 2px 12px rgba(74,222,128,0.12)' : '0 2px 12px rgba(124,58,237,0.12)',
-                }}>
-                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: `linear-gradient(180deg, transparent, ${taskDone ? '#4ade80' : '#A78BFA'}, transparent)` }} />
+                {sectionLabel('Ad Rewards')}
+                {AD_TASKS.map((task, i) => (
+                  <motion.div key={task.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                    <AdTaskRow task={task} />
+                  </motion.div>
+                ))}
+
+                <div style={{ marginTop: 14 }}>
+                  {sectionLabel('Official Task')}
                   <div style={{
-                    width: 62, height: 66, flexShrink: 0, marginLeft: 3,
-                    background: taskDone ? 'linear-gradient(160deg, #16a34acc, #4ade8088)' : 'linear-gradient(160deg, #7C3AEDcc, #5B21B688)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    position: 'relative', display: 'flex', alignItems: 'center',
+                    background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14,
+                    overflow: 'hidden',
+                    boxShadow: taskDone ? '0 2px 12px rgba(74,222,128,0.08)' : '0 2px 12px rgba(37,99,235,0.08)',
                   }}>
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
-                      <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1, padding: '0 12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <span style={{ color: taskDone ? TEXT_DIM : TEXT, fontSize: 14, fontWeight: 700 }}>Visit Website</span>
-                      {rewardBadge('10 AXN')}
+                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: `linear-gradient(180deg, transparent, ${taskDone ? '#4ade80' : '#60a5fa'}, transparent)` }} />
+                    <div style={{
+                      width: 58, height: 62, flexShrink: 0, marginLeft: 3,
+                      background: taskDone ? 'rgba(74,222,128,0.12)' : 'linear-gradient(160deg, #2563ebcc, #1d4ed888)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {taskDone
+                        ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                        : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                          </svg>
+                      }
                     </div>
-                    <span style={{ color: TEXT_DIM, fontSize: 11 }}>Visit the official Axionet website</span>
-                  </div>
-                  <div style={{ paddingRight: 12, flexShrink: 0 }}>
-                    <button
-                      onClick={() => { window.open('https://axionet.io', '_blank'); setTimeout(() => setTaskDone(true), 2000); }}
-                      disabled={taskDone}
-                      style={{
-                        background: taskDone ? 'rgba(74,222,128,0.1)' : 'linear-gradient(135deg, #7C3AED, #5B21B6)',
-                        color: taskDone ? '#4ade80' : '#fff',
-                        border: taskDone ? '1px solid rgba(74,222,128,0.25)' : 'none',
-                        fontSize: 11, fontWeight: 800, padding: '7px 14px',
-                        cursor: taskDone ? 'default' : 'pointer', whiteSpace: 'nowrap',
-                        borderRadius: 50, boxShadow: taskDone ? 'none' : '0 3px 10px rgba(124,58,237,0.4)',
-                      }}
-                    >{taskDone ? 'Done' : 'Visit'}</button>
+                    <div style={{ flex: 1, padding: '0 10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <span style={{ color: taskDone ? TEXT_DIM : TEXT, fontSize: 13, fontWeight: 700 }}>Visit Website</span>
+                        {badge('10 AXN')}
+                      </div>
+                      <span style={{ color: TEXT_DIM, fontSize: 11 }}>Visit official Axionet website</span>
+                    </div>
+                    <div style={{ paddingRight: 12, flexShrink: 0 }}>
+                      <button
+                        onClick={() => { window.open('https://axionet.io', '_blank'); setTimeout(() => setTaskDone(true), 2000); }}
+                        disabled={taskDone}
+                        style={{
+                          background: taskDone ? 'rgba(74,222,128,0.07)' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                          color: taskDone ? '#4ade80' : '#fff',
+                          border: taskDone ? '1px solid rgba(74,222,128,0.2)' : 'none',
+                          fontSize: 11, fontWeight: 800, padding: '7px 14px',
+                          cursor: taskDone ? 'default' : 'pointer', borderRadius: 50,
+                          boxShadow: taskDone ? 'none' : '0 3px 10px rgba(37,99,235,0.35)',
+                        }}
+                      >{taskDone ? 'Done' : 'Visit'}</button>
+                    </div>
                   </div>
                 </div>
               </>
             )}
 
+            {/* ── MILESTONES TAB ── */}
             {tab === 'mission' && (
               <>
                 {sectionLabel(`Invite Milestones · ${verifiedFriends} Verified`)}
                 {MISSIONS.map(m => (
-                  <MissionRow key={m.count} count={m.count} reward={m.reward} progress={verifiedFriends} color={m.color} neon={m.neon} />
+                  <MissionRow
+                    key={m.count}
+                    count={m.count} reward={m.reward} progress={verifiedFriends}
+                    color={m.color} neon={m.neon}
+                    claimed={claimedMilestones.has(m.count)}
+                    isClaiming={claimingMilestone === m.count}
+                    onClaim={() => {
+                      setClaimingMilestone(m.count);
+                      claimMilestoneMutation.mutate({ count: m.count, reward: m.reward });
+                    }}
+                  />
                 ))}
               </>
             )}
 
+            {/* ── PARTNER TAB ── */}
             {tab === 'partner' && (
               <div style={{
-                position: 'relative', overflow: 'hidden',
-                background: CARD_BG, border: `1px solid ${BORDER}`,
+                background: CARD, border: `1px solid ${BORDER}`,
                 borderRadius: 18, padding: '40px 24px', textAlign: 'center',
+                position: 'relative', overflow: 'hidden',
               }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(180deg, transparent, #A78BFA, transparent)', opacity: 0.5 }} />
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(180deg, transparent, #60a5fa, transparent)', opacity: 0.4 }} />
                 <div style={{
                   width: 56, height: 56, borderRadius: 16, margin: '0 auto 16px',
-                  background: 'linear-gradient(160deg, #7C3AEDcc, #5B21B688)',
+                  background: 'linear-gradient(160deg, #2563ebcc, #1d4ed866)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">

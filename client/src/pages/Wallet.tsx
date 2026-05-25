@@ -7,60 +7,173 @@ import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import Header from "@/components/Header";
 import MenuPopup from "@/components/MenuPopup";
+import WithdrawPopup from "@/components/WithdrawPopup";
 
-const PURPLE = '#7C3AED';
-const PURPLE_LIGHT = '#A78BFA';
-const PURPLE_DIM = 'rgba(167,139,250,0.6)';
-const CARD_BG = 'rgba(18,12,36,0.97)';
-const BORDER = 'rgba(124,58,237,0.15)';
+const CARD = 'rgba(10,10,10,0.97)';
+const BORDER = 'rgba(255,255,255,0.07)';
 const TEXT = '#fff';
-const TEXT_DIM = 'rgba(255,255,255,0.45)';
+const TEXT_DIM = 'rgba(255,255,255,0.35)';
+const PURPLE = '#2563eb';
+const PURPLE_L = '#60a5fa';
 
-const cardStyle: React.CSSProperties = {
-  background: CARD_BG,
-  border: `1px solid ${BORDER}`,
-  borderRadius: 18,
-  padding: '14px',
-  marginBottom: 10,
-};
-
-const fieldStyle: React.CSSProperties = {
-  width: '100%', height: 44,
-  background: 'rgba(124,58,237,0.08)',
-  border: '1px solid rgba(124,58,237,0.2)',
-  color: TEXT,
-  fontSize: 13, padding: '0 12px', outline: 'none',
-  boxSizing: 'border-box',
-  borderRadius: 12,
-};
+const animStyles = `
+@keyframes wlt-glow-pulse { 0%,100%{opacity:0.5}50%{opacity:1} }
+@keyframes wlt-shimmer { 0%{left:-60%}100%{left:110%} }
+`;
 
 const TON_PER_AXN = 0.00001;
-type Tab = 'ton' | 'usd';
+
+function ConnectWalletModal({ onClose, onConnect, savedAddress }: { onClose: () => void; onConnect: (addr: string) => void; savedAddress?: string }) {
+  const [step, setStep] = useState<'choose' | 'input'>(savedAddress ? 'input' : 'choose');
+  const [manualAddr, setManualAddr] = useState(savedAddress || '');
+  const [saving, setSaving] = useState(false);
+
+  const WALLETS = [
+    { name: 'Tonkeeper', color: '#0088CC', icon: '💎', deepLink: 'tonkeeper://' },
+    { name: 'MyTonWallet', color: '#2563eb', icon: '🔷', deepLink: 'mytonwallet://' },
+    { name: 'OpenMask', color: '#2563eb', icon: '🔮', deepLink: null },
+    { name: 'Tonhub', color: '#10b981', icon: '🏠', deepLink: 'tonhub://' },
+  ];
+
+  const handleWalletClick = (w: typeof WALLETS[0]) => {
+    if (w.deepLink) {
+      window.open(w.deepLink, '_blank');
+    }
+    setStep('input');
+  };
+
+  const handleSave = async () => {
+    if (!manualAddr.trim()) { showNotification('Enter wallet address', 'error'); return; }
+    setSaving(true);
+    try {
+      await apiRequest('POST', '/api/wallet/save', { tonWalletAddress: manualAddr.trim() });
+      showNotification('Wallet connected!', 'success');
+      onConnect(manualAddr.trim());
+      onClose();
+    } catch {
+      showNotification('Failed to save wallet', 'error');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 900,
+      background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(16px)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    }} onClick={onClose}>
+      <div style={{
+        width: '100%', maxWidth: 480,
+        background: 'linear-gradient(160deg, #0a0a0c, #111118)',
+        border: '1px solid rgba(37,99,235,0.22)',
+        borderRadius: '28px 28px 0 0', padding: '28px 20px 44px',
+        boxShadow: '0 -8px 60px rgba(37,99,235,0.18)',
+        position: 'relative', overflow: 'hidden',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #2563eb, transparent)' }} />
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 24px' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <div style={{ color: TEXT, fontSize: 18, fontWeight: 900 }}>
+              {step === 'choose' ? 'Connect Wallet' : 'Enter Address'}
+            </div>
+            <div style={{ color: TEXT_DIM, fontSize: 11, marginTop: 2 }}>
+              {step === 'choose' ? 'Select your TON wallet' : 'Paste your TON wallet address'}
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            width: 32, height: 32, borderRadius: '50%', border: 'none',
+            background: 'rgba(255,255,255,0.06)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {step === 'choose' ? (
+            <motion.div key="choose" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+                {WALLETS.map(w => (
+                  <button key={w.name} onClick={() => handleWalletClick(w)} style={{
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: 16, padding: '16px 12px', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                    transition: 'all 0.2s',
+                  }} className="active:scale-95 transition-transform">
+                    <div style={{ fontSize: 28 }}>{w.icon}</div>
+                    <div style={{ color: TEXT, fontSize: 13, fontWeight: 700 }}>{w.name}</div>
+                    <div style={{
+                      background: `rgba(${w.color.slice(1).match(/.{2}/g)!.map(h=>parseInt(h,16)).join(',')},0.15)`,
+                      border: `1px solid ${w.color}30`,
+                      borderRadius: 50, padding: '3px 10px',
+                      color: w.color, fontSize: 10, fontWeight: 700,
+                    }}>Connect</div>
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setStep('input')} style={{
+                width: '100%', padding: '12px 0', border: '1px solid rgba(255,255,255,0.08)',
+                background: 'transparent', borderRadius: 50,
+                color: TEXT_DIM, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              }}>Enter address manually</button>
+            </motion.div>
+          ) : (
+            <motion.div key="input" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+              <input
+                type="text" value={manualAddr} onChange={e => setManualAddr(e.target.value)}
+                placeholder="Enter TON wallet address"
+                style={{
+                  width: '100%', height: 48,
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(37,99,235,0.2)',
+                  color: TEXT, fontSize: 13, padding: '0 14px', outline: 'none',
+                  boxSizing: 'border-box', borderRadius: 12, marginBottom: 16,
+                }}
+              />
+              <div style={{ display: 'flex', gap: 10 }}>
+                {savedAddress ? null : (
+                  <button onClick={() => setStep('choose')} style={{
+                    flex: 1, padding: '13px 0', border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'transparent', borderRadius: 50,
+                    color: TEXT_DIM, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  }}>Back</button>
+                )}
+                <button onClick={handleSave} disabled={saving} style={{
+                  flex: 2, padding: '13px 0', border: 'none', borderRadius: 50,
+                  background: 'linear-gradient(135deg, #2563eb, #2563eb)',
+                  color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  boxShadow: '0 4px 20px rgba(37,99,235,0.35)',
+                  opacity: saving ? 0.7 : 1,
+                }}>
+                  {saving && <Loader2 size={14} className="animate-spin" />}
+                  Save Wallet
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
 
 export default function Wallet() {
-  const [tab, setTab] = useState<Tab>('ton');
-  const [tonAddress, setTonAddress] = useState('');
-  const [tonMemo, setTonMemo] = useState('');
-  const [tonAmount, setTonAmount] = useState('');
-  const [usdAddress, setUsdAddress] = useState('');
-  const [usdAmount, setUsdAmount] = useState('');
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [tonPrice, setTonPrice] = useState<number | null>(null);
   const [tonLoading, setTonLoading] = useState(true);
+  const [connectedAddress, setConnectedAddress] = useState('');
 
-  const queryClient = useQueryClient();
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
   const { data: wellData } = useQuery<any>({ queryKey: ['/api/referrals/well'], staleTime: 30000 });
-  const { data: appSettings } = useQuery<any>({ queryKey: ['/api/app-settings'], staleTime: 30000 });
+  const [, setLocation] = useLocation();
 
-  const axnBalance = Math.floor(parseFloat(user?.balance || '0'));
-  const tonValue = axnBalance * TON_PER_AXN;
-  const usdValue = tonPrice ? tonValue * tonPrice : null;
-  const friendsCount = wellData?.totalFriends ?? 0;
-  const minAxn = appSettings?.minTradeAmount ?? 300;
-  const adsWatched = user?.ads_watched ?? 0;
-  const MIN_FRIENDS = 3;
-  const MIN_ADS = 10;
-  const meetsRequirements = axnBalance >= minAxn && friendsCount >= MIN_FRIENDS && adsWatched >= MIN_ADS;
+  useEffect(() => {
+    if (user?.tonWalletAddress) setConnectedAddress(user.tonWalletAddress);
+  }, [user?.tonWalletAddress]);
 
   useEffect(() => {
     setTonLoading(true);
@@ -71,259 +184,259 @@ export default function Wallet() {
       .finally(() => setTonLoading(false));
   }, []);
 
-  const withdrawMutation = useMutation({
-    mutationFn: async (payload: any) => {
-      const res = await apiRequest('POST', '/api/withdrawals', payload);
-      return res.json();
-    },
-    onSuccess: () => {
-      showNotification('Withdrawal request submitted!', 'success');
-      setTonAddress(''); setTonMemo(''); setTonAmount(''); setUsdAddress(''); setUsdAmount('');
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-    },
-    onError: (e: any) => {
-      let msg = 'Withdrawal failed';
-      try { const p = JSON.parse(e.message); if (p.message) msg = p.message; } catch { msg = e.message || msg; }
-      showNotification(msg, 'error');
-    },
-  });
+  const axnBalance = Math.floor(parseFloat(user?.balance || '0'));
+  const tonBalance = parseFloat(user?.tonBalance || '0');
+  const axnTonValue = axnBalance * TON_PER_AXN;
+  const axnUsdValue = tonPrice ? axnTonValue * tonPrice : 0;
+  const tonUsdValue = tonPrice ? tonBalance * tonPrice : 0;
+  const totalUsd = axnUsdValue + tonUsdValue;
 
-  const handleTonWithdraw = () => {
-    if (!tonAddress.trim()) { showNotification('Enter TON wallet address', 'error'); return; }
-    if (!tonAmount || parseInt(tonAmount) < minAxn) { showNotification(`Minimum ${minAxn.toLocaleString()} AXN`, 'error'); return; }
-    withdrawMutation.mutate({ address: tonAddress.trim(), amount: tonAmount, method: 'TON', memo: tonMemo.trim() || undefined });
-  };
-
-  const handleUsdWithdraw = () => {
-    if (!usdAddress.trim() || !usdAddress.startsWith('0x')) { showNotification('Enter valid BEP-20 address (0x...)', 'error'); return; }
-    if (!usdAmount || parseInt(usdAmount) < minAxn) { showNotification(`Minimum ${minAxn.toLocaleString()} AXN`, 'error'); return; }
-    withdrawMutation.mutate({ address: usdAddress.trim(), amount: usdAmount, method: 'USDT-BSC' });
-  };
-
-  const requirements = [
+  const QUICK_ITEMS = [
     {
-      label: `Min ${minAxn.toLocaleString()} AXN`,
-      progress: `${axnBalance.toLocaleString()} / ${minAxn.toLocaleString()}`,
-      met: axnBalance >= minAxn,
+      label: 'History', icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+      ), color: '#60a5fa', action: () => showNotification('Coming soon', 'info'),
     },
     {
-      label: 'Invite 3 Friends',
-      progress: `${friendsCount} / 3`,
-      met: friendsCount >= MIN_FRIENDS,
+      label: 'Route', icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      ), color: '#a78bfa', action: () => showNotification('Coming soon', 'info'),
     },
     {
-      label: 'Complete 10 Ad Tasks',
-      progress: `${adsWatched} / ${MIN_ADS}`,
-      met: adsWatched >= MIN_ADS,
+      label: 'White Paper', icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+        </svg>
+      ), color: '#34d399', action: () => window.open('https://axionet.io/whitepaper', '_blank'),
     },
   ];
 
-  const [, setLocation] = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const AXN_PRICE_USD = tonPrice ? TON_PER_AXN * tonPrice : 0;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0614', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#000000', display: 'flex', flexDirection: 'column' }}>
+      <style>{animStyles}</style>
 
-      <Header
-        onMenuOpen={() => setMenuOpen(true)}
-        onWithdrawOpen={() => setLocation('/wallet')}
-      />
+      <Header onMenuOpen={() => setMenuOpen(true)} onWithdrawOpen={() => setWithdrawOpen(true)} />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px', paddingBottom: 80, paddingTop: 90 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px', paddingBottom: 86, paddingTop: 88 }}>
 
-        {/* Balance Card */}
+        {/* ── Portfolio Header ── */}
         <div style={{
           position: 'relative', overflow: 'hidden',
-          marginBottom: 14,
-          background: 'linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(91,33,182,0.12) 100%)',
-          border: '1px solid rgba(124,58,237,0.28)',
-          borderRadius: 22, padding: '18px 16px',
+          background: 'linear-gradient(160deg, #0d0d14 0%, #111120 100%)',
+          border: '1px solid rgba(37,99,235,0.2)',
+          borderRadius: 22, padding: '20px 18px', marginBottom: 12,
+          boxShadow: '0 4px 40px rgba(37,99,235,0.1)',
         }}>
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(180deg, transparent, #A78BFA, transparent)' }} />
-          <div style={{ paddingLeft: 4 }}>
-            <p style={{ color: PURPLE_DIM, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>AXN Balance</p>
-            <p style={{ color: TEXT, fontSize: 34, fontWeight: 900, margin: '0 0 2px', letterSpacing: '-1px' }}>
-              {axnBalance.toLocaleString()}
-              <span style={{ color: PURPLE_DIM, fontSize: 16, fontWeight: 700, marginLeft: 8 }}>AXN</span>
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 14 }}>
-              <div style={{ background: 'rgba(124,58,237,0.1)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(124,58,237,0.15)' }}>
-                <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>TON Value</p>
-                <p style={{ color: PURPLE_LIGHT, fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>{tonValue.toFixed(4)}</p>
-              </div>
-              <div style={{ background: 'rgba(74,222,128,0.07)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(74,222,128,0.12)' }}>
-                <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>USD Value</p>
-                <p style={{ color: '#4ade80', fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>
-                  {tonLoading ? '—' : usdValue !== null ? `$${usdValue.toFixed(4)}` : '—'}
-                </p>
-              </div>
-              <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '8px 10px', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <p style={{ color: TEXT_DIM, fontSize: 9, margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>TON Price</p>
-                <p style={{ color: TEXT, fontSize: 13, fontWeight: 900, margin: '2px 0 0' }}>
-                  {tonLoading ? '...' : tonPrice ? `$${tonPrice.toFixed(2)}` : 'N/A'}
-                </p>
-              </div>
+          {/* Shimmer */}
+          <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: 22, pointerEvents: 'none' }}>
+            <div style={{
+              position: 'absolute', top: 0, bottom: 0, width: '60%',
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.025), transparent)',
+              animation: 'wlt-shimmer 3s ease-in-out infinite',
+            }} />
+          </div>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, transparent)', animation: 'wlt-glow-pulse 2.5s infinite' }} />
+
+          <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+            User Total Portfolio
+          </div>
+          <div style={{ color: TEXT, fontSize: 38, fontWeight: 900, letterSpacing: '-1.5px', marginBottom: 18, lineHeight: 1 }}>
+            ${totalUsd.toFixed(2)}
+            <span style={{ color: TEXT_DIM, fontSize: 14, fontWeight: 600, marginLeft: 8 }}>USD</span>
+          </div>
+
+          {/* Wallet status */}
+          {connectedAddress ? (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
+              borderRadius: 50, padding: '5px 14px', marginBottom: 16,
+            }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
+              <span style={{ color: '#4ade80', fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
+                {connectedAddress.slice(0, 8)}...{connectedAddress.slice(-6)}
+              </span>
             </div>
-            <p style={{ color: 'rgba(167,139,250,0.35)', fontSize: 10, margin: '10px 0 0' }}>1,000 AXN = 0.01 TON · Live price</p>
+          ) : null}
+
+          {/* Action buttons */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button onClick={() => setConnectOpen(true)} className="active:scale-95 transition-transform" style={{
+              padding: '13px 0', border: '1px solid rgba(37,99,235,0.35)', cursor: 'pointer',
+              background: 'rgba(37,99,235,0.1)', borderRadius: 14,
+              color: '#60a5fa', fontSize: 13, fontWeight: 800,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              boxShadow: '0 0 16px rgba(37,99,235,0.15)',
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+              {connectedAddress ? 'Change Wallet' : 'Connect Wallet'}
+            </button>
+            <button onClick={() => setWithdrawOpen(true)} className="active:scale-95 transition-transform" style={{
+              padding: '13px 0', border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg, #2563eb, #2563eb)',
+              borderRadius: 14, color: '#fff', fontSize: 13, fontWeight: 800,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              boxShadow: '0 4px 20px rgba(37,99,235,0.35)',
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+              </svg>
+              Withdraw AXN
+            </button>
           </div>
         </div>
 
-        {/* Requirements */}
-        <p style={{ color: PURPLE_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', margin: '0 0 8px' }}>
-          Withdrawal Requirements
-        </p>
-        <div style={{ ...cardStyle, marginBottom: 14, padding: '12px 14px' }}>
-          {requirements.map((r, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-              padding: i > 0 ? '10px 0 0' : '0',
-              borderTop: i > 0 ? '1px solid rgba(124,58,237,0.07)' : 'none',
+        {/* ── Quick Options ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+          {QUICK_ITEMS.map(item => (
+            <button key={item.label} onClick={item.action} className="active:scale-95 transition-transform" style={{
+              background: CARD, border: `1px solid ${BORDER}`,
+              borderRadius: 16, padding: '14px 8px', cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
             }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 11, flexShrink: 0,
+                background: `${item.color}12`, border: `1px solid ${item.color}22`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: item.color,
+              }}>
+                {item.icon}
+              </div>
+              <span style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700 }}>{item.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* ── Asset Balance Section ── */}
+        <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+          Asset Balance
+        </div>
+
+        {/* AXIONET (AXN) */}
+        <div style={{
+          background: CARD, border: `1px solid ${BORDER}`,
+          borderRadius: 18, padding: '16px 16px', marginBottom: 8,
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(180deg, transparent, #f59e0b, transparent)' }} />
+          <div style={{ paddingLeft: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
-                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                  background: r.met ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.04)',
-                  border: `1.5px solid ${r.met ? 'rgba(74,222,128,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                  width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 0 12px rgba(245,158,11,0.35)',
                 }}>
-                  {r.met ? (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-                  ) : (
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }} />
-                  )}
+                  <span style={{ color: '#000', fontSize: 11, fontWeight: 900 }}>AXN</span>
                 </div>
-                <span style={{ color: r.met ? TEXT : TEXT_DIM, fontSize: 13, fontWeight: r.met ? 700 : 500 }}>{r.label}</span>
+                <div>
+                  <div style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>AXIONET</div>
+                  <div style={{ color: TEXT_DIM, fontSize: 11 }}>AXN Token</div>
+                </div>
               </div>
-              <span style={{
-                color: r.met ? '#4ade80' : TEXT_DIM,
-                fontSize: 11, fontWeight: 800,
-                background: r.met ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${r.met ? 'rgba(74,222,128,0.25)' : 'rgba(255,255,255,0.06)'}`,
-                borderRadius: 50, padding: '3px 12px', whiteSpace: 'nowrap',
-              }}>{r.met ? 'Done' : r.progress}</span>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ color: TEXT, fontSize: 16, fontWeight: 900 }}>{axnBalance.toLocaleString()}</div>
+                <div style={{ color: TEXT_DIM, fontSize: 11 }}>AXN</div>
+              </div>
             </div>
-          ))}
-        </div>
-
-        {/* Tab Selector */}
-        <div style={{
-          display: 'flex', gap: 6, marginBottom: 14,
-          background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.1)',
-          borderRadius: 50, padding: 4,
-        }}>
-          {([{ id: 'ton' as Tab, label: 'TON Network' }, { id: 'usd' as Tab, label: 'USDT (BEP-20)' }]).map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
-              flex: 1, padding: '9px 0', border: 'none',
-              background: tab === t.id ? 'linear-gradient(135deg, #7C3AED, #5B21B6)' : 'transparent',
-              fontSize: 12, fontWeight: tab === t.id ? 800 : 600,
-              color: tab === t.id ? '#fff' : TEXT_DIM,
-              cursor: 'pointer', borderRadius: 50,
-              boxShadow: tab === t.id ? '0 2px 10px rgba(124,58,237,0.3)' : 'none',
-              transition: 'all 0.2s',
-            }}>{t.label}</button>
-          ))}
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
-
-            {tab === 'ton' && (
-              <div>
-                <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span style={{ color: TEXT_DIM, fontSize: 12, fontWeight: 600 }}>TON Network · Live Price</span>
-                  <span style={{ color: PURPLE_LIGHT, fontSize: 14, fontWeight: 900 }}>
-                    {tonLoading ? '...' : tonPrice ? `$${tonPrice.toFixed(2)}` : 'N/A'}
-                  </span>
-                </div>
-                <div style={{ ...cardStyle }}>
-                  <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>TON Wallet Address</div>
-                  <input type="text" value={tonAddress} onChange={e => setTonAddress(e.target.value)}
-                    placeholder="Enter your TON wallet address"
-                    style={{ ...fieldStyle, marginBottom: 12 }} />
-                  <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>Memo (optional)</div>
-                  <input type="text" value={tonMemo} onChange={e => setTonMemo(e.target.value)}
-                    placeholder="Memo / Tag (if required)"
-                    style={{ ...fieldStyle, marginBottom: 12 }} />
-                  <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>Amount (AXN)</div>
-                  <input type="number" value={tonAmount} onChange={e => setTonAmount(e.target.value)}
-                    placeholder={`Min ${minAxn.toLocaleString()} AXN`}
-                    style={{ ...fieldStyle }} />
-                </div>
-                <button
-                  onClick={handleTonWithdraw}
-                  disabled={withdrawMutation.isPending || !meetsRequirements}
-                  className="active:scale-95 transition-transform"
-                  style={{
-                    width: '100%', padding: '13px 0',
-                    background: meetsRequirements ? 'linear-gradient(135deg, #7C3AED, #5B21B6)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${meetsRequirements ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                    color: meetsRequirements ? '#fff' : TEXT_DIM,
-                    fontSize: 14, fontWeight: 800,
-                    cursor: meetsRequirements ? 'pointer' : 'not-allowed',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    borderRadius: 50,
-                    boxShadow: meetsRequirements ? '0 4px 16px rgba(124,58,237,0.4)' : 'none',
-                  }}
-                >
-                  {withdrawMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                  {meetsRequirements ? 'Withdraw TON' : 'Requirements Not Met'}
-                </button>
-              </div>
-            )}
-
-            {tab === 'usd' && (
-              <div>
-                <div style={{
-                  ...cardStyle,
-                  borderLeft: '3px solid #ef4444',
-                  background: 'rgba(239,68,68,0.05)',
-                  marginBottom: 10,
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              {[
+                { label: 'AXN Balance', value: axnBalance.toLocaleString(), color: '#f59e0b' },
+                { label: 'AXN Price', value: tonLoading ? '...' : AXN_PRICE_USD > 0 ? `$${AXN_PRICE_USD.toFixed(6)}` : 'N/A', color: '#60a5fa' },
+                { label: 'USD Value', value: `$${axnUsdValue.toFixed(4)}`, color: '#4ade80' },
+              ].map(s => (
+                <div key={s.label} style={{
+                  background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)',
+                  borderRadius: 10, padding: '8px 6px', textAlign: 'center',
                 }}>
-                  <div style={{ color: '#ef4444', fontSize: 11, fontWeight: 800, marginBottom: 6 }}>IMPORTANT WARNING</div>
-                  <div style={{ color: TEXT_DIM, fontSize: 12, lineHeight: 1.6 }}>
-                    Only send to a <strong style={{ color: '#fff' }}>BEP-20 (BSC)</strong> USDT address starting with{' '}
-                    <span style={{ color: PURPLE_LIGHT, fontFamily: 'monospace' }}>0x</span>.
-                    Wrong network = permanent loss of funds.
-                  </div>
-                  <div style={{ marginTop: 8, padding: '5px 10px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 8 }}>
-                    <span style={{ color: '#f87171', fontSize: 11, fontWeight: 700 }}>Network: BSC (BEP-20)</span>
-                  </div>
+                  <div style={{ color: s.color, fontSize: 12, fontWeight: 800 }}>{s.value}</div>
+                  <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{s.label}</div>
                 </div>
-                <div style={{ ...cardStyle }}>
-                  <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>USDT Address (BEP-20)</div>
-                  <input type="text" value={usdAddress} onChange={e => setUsdAddress(e.target.value)}
-                    placeholder="0x... BSC address"
-                    style={{ ...fieldStyle, marginBottom: 12, fontFamily: 'monospace' }} />
-                  <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>Amount (AXN)</div>
-                  <input type="number" value={usdAmount} onChange={e => setUsdAmount(e.target.value)}
-                    placeholder={`Min ${minAxn.toLocaleString()} AXN`}
-                    style={{ ...fieldStyle }} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* TON */}
+        <div style={{
+          background: CARD, border: `1px solid ${BORDER}`,
+          borderRadius: 18, padding: '16px 16px', marginBottom: 8,
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(180deg, transparent, #0088cc, transparent)' }} />
+          <div style={{ paddingLeft: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                  background: 'linear-gradient(135deg, #0088cc, #005a99)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 0 12px rgba(0,136,204,0.3)',
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14l-4-4h3V8h2v4h3l-4 4z"/>
+                  </svg>
                 </div>
-                <button
-                  onClick={handleUsdWithdraw}
-                  disabled={withdrawMutation.isPending || !meetsRequirements}
-                  className="active:scale-95 transition-transform"
-                  style={{
-                    width: '100%', padding: '13px 0',
-                    background: meetsRequirements ? 'linear-gradient(135deg, #16a34a, #22c55e)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${meetsRequirements ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                    color: meetsRequirements ? '#fff' : TEXT_DIM,
-                    fontSize: 14, fontWeight: 800,
-                    cursor: meetsRequirements ? 'pointer' : 'not-allowed',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    borderRadius: 50,
-                    boxShadow: meetsRequirements ? '0 4px 16px rgba(34,197,94,0.3)' : 'none',
-                  }}
-                >
-                  {withdrawMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                  {meetsRequirements ? 'Withdraw USDT' : 'Requirements Not Met'}
-                </button>
+                <div>
+                  <div style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>TON</div>
+                  <div style={{ color: TEXT_DIM, fontSize: 11 }}>The Open Network</div>
+                </div>
               </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ color: TEXT, fontSize: 16, fontWeight: 900 }}>{tonBalance.toFixed(4)}</div>
+                <div style={{ color: TEXT_DIM, fontSize: 11 }}>TON</div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              {[
+                { label: 'TON Balance', value: tonBalance.toFixed(4), color: '#0088cc' },
+                { label: 'USD Value', value: `$${tonUsdValue.toFixed(4)}`, color: '#4ade80' },
+                { label: 'TON Price', value: tonLoading ? '...' : tonPrice ? `$${tonPrice.toFixed(2)}` : 'N/A', color: '#60a5fa' },
+              ].map(s => (
+                <div key={s.label} style={{
+                  background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)',
+                  borderRadius: 10, padding: '8px 6px', textAlign: 'center',
+                }}>
+                  <div style={{ color: s.color, fontSize: 12, fontWeight: 800 }}>{s.value}</div>
+                  <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* TON rate note */}
+        <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: 10, textAlign: 'center', marginTop: 6 }}>
+          1,000 AXN = 0.01 TON · Live CoinGecko price
+        </div>
       </div>
 
+      {connectOpen && (
+        <ConnectWalletModal
+          onClose={() => setConnectOpen(false)}
+          onConnect={(addr) => setConnectedAddress(addr)}
+          savedAddress={connectedAddress || undefined}
+        />
+      )}
+      {withdrawOpen && (
+        <WithdrawPopup
+          onClose={() => setWithdrawOpen(false)}
+          userBalance={axnBalance}
+          connectedAddress={connectedAddress || undefined}
+        />
+      )}
       {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}
     </div>
   );
