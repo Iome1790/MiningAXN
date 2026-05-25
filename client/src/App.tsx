@@ -131,39 +131,20 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
         boxShadow: '0 0 24px rgba(230,126,0,0.3), inset 0 0 24px rgba(230,126,0,0.08)',
         animation: 'axn-ring-pulse 2s ease-in-out infinite',
       }} />
-      {/* Coin container */}
+      {/* AXN Image */}
       <div style={{ animation: 'axn-coin-float 2.8s ease-in-out infinite', position: 'relative', zIndex: 2 }}>
-        <svg width="90" height="90" viewBox="0 0 90 90" fill="none">
-          <defs>
-            <radialGradient id="lc-coin" cx="38%" cy="35%" r="65%">
-              <stop offset="0%" stopColor="#fde68a"/>
-              <stop offset="45%" stopColor="#f59e0b"/>
-              <stop offset="100%" stopColor="#b45309"/>
-            </radialGradient>
-            <radialGradient id="lc-inner" cx="38%" cy="35%" r="65%">
-              <stop offset="0%" stopColor="#fbbf24"/>
-              <stop offset="100%" stopColor="#92400e"/>
-            </radialGradient>
-            <filter id="lc-glow">
-              <feGaussianBlur stdDeviation="3" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-          </defs>
-          {/* Outer coin */}
-          <circle cx="45" cy="45" r="43" fill="url(#lc-coin)" filter="url(#lc-glow)"/>
-          {/* Rim */}
-          <circle cx="45" cy="45" r="43" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
-          {/* Inner face */}
-          <circle cx="45" cy="45" r="34" fill="url(#lc-inner)"/>
-          {/* Chrome highlight */}
-          <path d="M24 26 Q45 19 66 26" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-          {/* AXN text */}
-          <text x="45" y="52" textAnchor="middle" fill="rgba(255,255,255,0.95)" fontSize="19" fontWeight="900" fontFamily="system-ui,sans-serif" letterSpacing="1">AXN</text>
-          {/* Small sparkles */}
-          <circle cx="14" cy="22" r="2.5" fill="#fde68a" opacity="0.7"/>
-          <circle cx="76" cy="18" r="2" fill="#fde68a" opacity="0.55"/>
-          <circle cx="78" cy="68" r="1.8" fill="#fde68a" opacity="0.5"/>
-        </svg>
+        <div style={{
+          width: 110, height: 110, borderRadius: '50%',
+          overflow: 'hidden', position: 'relative',
+          border: '2px solid rgba(230,126,0,0.4)',
+          boxShadow: '0 0 28px rgba(230,126,0,0.35)',
+        }}>
+          <img
+            src="/axn-coin-new.png"
+            alt="AXN"
+            style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.18)', width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        </div>
       </div>
       {/* Bouncing dots */}
       <div style={{ display: 'flex', gap: 8, marginTop: 32, position: 'relative', zIndex: 2 }}>
@@ -190,7 +171,7 @@ function Router() {
     <>
       <Suspense fallback={null}>
         <Switch>
-          <Route path="/" component={() => { const [, setLocation] = useLocation(); setLocation("/earn"); return null; }} />
+          <Route path="/" component={() => { const [, setLocation] = useLocation(); setLocation("/game"); return null; }} />
           <Route path="/earn" component={EarnPage} />
           <Route path="/watch" component={WatchPage} />
           <Route path="/friend" component={FriendPage} />
