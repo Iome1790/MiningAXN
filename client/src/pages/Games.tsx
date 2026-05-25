@@ -13,24 +13,24 @@ const TON_PER_AXN = 0.00001;
 
 const animStyles = `
 @keyframes glow-pulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.06); }
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.08); }
+}
+@keyframes ripple-1 {
+  0% { transform: scale(0.92); opacity: 0.5; }
+  100% { transform: scale(1.28); opacity: 0; }
+}
+@keyframes ripple-2 {
+  0% { transform: scale(0.92); opacity: 0.35; }
+  100% { transform: scale(1.4); opacity: 0; }
 }
 @keyframes float-img {
   0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+  50% { transform: translateY(-9px); }
 }
 @keyframes dot-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.2; }
-}
-@keyframes spark {
-  0%, 100% { opacity: 0; transform: scale(0); }
-  50% { opacity: 1; transform: scale(1); }
-}
-@keyframes ring-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 `;
 
@@ -150,7 +150,7 @@ export default function Games() {
 
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '80px 20px 90px',
+        justifyContent: 'center', padding: '58px 20px 68px',
       }}>
 
         {/* ── Total Balance ── */}
@@ -175,43 +175,36 @@ export default function Games() {
 
         {/* ── AXN Coin Image ── */}
         <div style={{
-          position: 'relative', width: 190, height: 190,
+          position: 'relative', width: 200, height: 200,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          marginBottom: 32,
+          marginBottom: 28,
         }}>
+          {/* Soft background glow */}
           <div style={{
-            position: 'absolute', width: 220, height: 220, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%)',
-            animation: 'glow-pulse 3s ease-in-out infinite',
+            position: 'absolute', width: 240, height: 240, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 68%)',
+            animation: 'glow-pulse 2.8s ease-in-out infinite',
           }} />
-
+          {/* Ripple ring 1 */}
           <div style={{
-            position: 'absolute', width: 196, height: 196, borderRadius: '50%',
-            border: '1.5px solid transparent',
-            borderTopColor: 'rgba(59,130,246,0.7)',
-            borderRightColor: 'rgba(59,130,246,0.25)',
-            animation: 'ring-spin 3s linear infinite',
+            position: 'absolute', width: 190, height: 190, borderRadius: '50%',
+            border: '1.5px solid rgba(59,130,246,0.5)',
+            animation: 'ripple-1 2.4s ease-out infinite',
           }} />
-
-          {[
-            { top: '8%', left: '22%', delay: '0s' },
-            { top: '12%', right: '20%', delay: '0.4s' },
-            { bottom: '10%', left: '18%', delay: '0.8s' },
-            { bottom: '8%', right: '22%', delay: '1.2s' },
-          ].map((pos, i) => (
-            <div key={i} style={{
-              position: 'absolute', width: 5, height: 5, borderRadius: '50%',
-              background: '#3b82f6', ...(pos as any),
-              animation: `spark 2s ${pos.delay} ease-in-out infinite`,
-            }} />
-          ))}
-
+          {/* Ripple ring 2 — delayed */}
           <div style={{
-            width: 172, height: 172, borderRadius: '50%',
+            position: 'absolute', width: 190, height: 190, borderRadius: '50%',
+            border: '1px solid rgba(59,130,246,0.28)',
+            animation: 'ripple-2 2.4s ease-out 1s infinite',
+          }} />
+          {/* Coin */}
+          <div style={{
+            width: 178, height: 178, borderRadius: '50%',
             overflow: 'hidden', flexShrink: 0,
             position: 'relative', zIndex: 2,
             animation: 'float-img 3.5s ease-in-out infinite',
-            boxShadow: '0 0 30px rgba(59,130,246,0.3)',
+            boxShadow: '0 0 32px rgba(59,130,246,0.35), 0 0 70px rgba(59,130,246,0.12)',
+            border: '2px solid rgba(59,130,246,0.25)',
           }}>
             <img
               src="/axn-coin-new.png"
