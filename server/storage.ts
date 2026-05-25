@@ -1082,7 +1082,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Get admin-configured referral ads requirement (no hardcoded values)
-      const referralAdsRequired = parseInt(await this.getAppSetting('referral_ads_required', '1'));
+      const referralAdsRequired = parseInt(await this.getAppSetting('referral_ads_required', '10'));
       
       // Count ads watched by this user
       const [adCount] = await db

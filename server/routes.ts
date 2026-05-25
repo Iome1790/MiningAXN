@@ -1094,13 +1094,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
            updated_at = NOW()`,
         [user.id, slotId]
       );
-      // Give 1 Key instead of AXN for watching an ad
+      // Give 1 AXN for watching an ad slot
       await pool.query(
-        `UPDATE users SET key_balance = COALESCE(key_balance, 0) + 1 WHERE id = $1`,
+        `UPDATE users SET balance = COALESCE(balance::numeric, 0) + 1 WHERE id = $1`,
         [user.id]
       );
       const newCount = currentCount + 1;
-      res.json({ success: true, earned: 1, keysEarned: 1, watchedCount: newCount, maxWatches: slot.maxWatches });
+      res.json({ success: true, earned: 1, axnEarned: 1, watchedCount: newCount, maxWatches: slot.maxWatches });
     } catch (error) {
       console.error("Ad slot watch error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -1142,7 +1142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invite: "daily_invite_claimed",
         updates: "daily_updates_claimed",
       };
-      const keysMap: Record<string, number> = { checkin: 5, invite: 15, updates: 3 };
+      const axnMap: Record<string, number> = { checkin: 5, invite: 50, updates: 5 };
 
       const fieldName = claimedField[taskType];
       if (u[fieldName]) {
@@ -1154,13 +1154,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: "You need to invite at least 1 friend first!" });
       }
 
-      const keysEarned = keysMap[taskType];
+      const axnEarned = axnMap[taskType];
       await pool.query(
-        `UPDATE users SET ${fieldName} = TRUE, key_balance = COALESCE(key_balance, 0) + $1, daily_tasks_date = NOW() WHERE id = $2`,
-        [keysEarned, user.id]
+        `UPDATE users SET ${fieldName} = TRUE, balance = COALESCE(balance::numeric, 0) + $1, daily_tasks_date = NOW() WHERE id = $2`,
+        [axnEarned, user.id]
       );
 
-      return res.json({ success: true, keysEarned, message: `+${keysEarned} Keys earned!` });
+      return res.json({ success: true, axnEarned, message: `+${axnEarned} AXN earned!` });
     } catch (error) {
       console.error("Daily task claim error:", error);
       return res.status(500).json({ message: "Internal server error" });
@@ -1212,34 +1212,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const alreadyRes = await pool.query(`SELECT 1 FROM bounty_task_completions WHERE user_id = $1 AND task_id = $2`, [user.id, taskId]);
       if (alreadyRes.rows.length > 0) return res.status(400).json({ message: "Task already completed" });
 
-      // Check key balance
-      const userRes = await pool.query(`SELECT key_balance FROM users WHERE id = $1`, [user.id]);
-      const currentKeys = parseInt(userRes.rows[0]?.key_balance || "0");
-      if (currentKeys < task.key_cost) {
-        return res.status(400).json({ success: false, message: `Not enough Keys. You need ${task.key_cost} Keys.` });
-      }
-
-      // Deduct keys, add AXN reward, increment tasks_completed
+      // Add AXN reward and increment tasks_completed (no key cost)
       await pool.query(
-        `UPDATE users SET key_balance = COALESCE(key_balance, 0) - $1, balance = COALESCE(balance::numeric, 0) + $2, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $3`,
-        [task.key_cost, task.reward_axn, user.id]
+        `UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $2`,
+        [task.reward_axn, user.id]
       );
       await pool.query(`INSERT INTO bounty_task_completions (user_id, task_id) VALUES ($1, $2)`, [user.id, taskId]);
 
-      // Check referral verification: if invited user has completed 10+ tasks, mark referral active + give referrer 15 Keys
-      const userInfoRes = await pool.query(`SELECT tasks_completed, referred_by FROM users WHERE id = $1`, [user.id]);
-      const tasksNow = parseInt(userInfoRes.rows[0]?.tasks_completed || "0");
-      const referredBy = userInfoRes.rows[0]?.referred_by;
-      if (tasksNow >= 10 && referredBy) {
-        // Check if referral is still pending
-        const refRes = await pool.query(`SELECT id, status FROM referrals WHERE referee_id = $1 AND referrer_id = $2 AND status = 'pending'`, [user.id, referredBy]);
-        if (refRes.rows.length > 0) {
-          await pool.query(`UPDATE referrals SET status = 'completed' WHERE id = $1`, [refRes.rows[0].id]);
-          // Give referrer 15 Keys
-          await pool.query(`UPDATE users SET key_balance = COALESCE(key_balance, 0) + 15 WHERE id = $1`, [referredBy]);
-          console.log(`✅ Referral verified: user ${user.id} completed 10 tasks. Referrer ${referredBy} received 15 Keys.`);
-        }
-      }
+      // Referral verification is handled via ad-watch milestone (10 ads → 50 AXN to referrer)
+      // No separate task-based referral reward needed
 
       return res.json({ success: true, axnEarned: task.reward_axn, message: `+${task.reward_axn} AXN earned!` });
     } catch (error) {
@@ -1645,7 +1626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const referralRewardEnabled = getSetting('referral_reward_enabled', 'false') === 'true';
       const referralRewardTON = parseFloat(getSetting('referral_reward_ton', '0.0005'));
       const referralRewardAXN = parseInt(getSetting('referral_reward_axn', '50'));
-      const referralAdsRequired = parseInt(getSetting('referral_ads_required', '1')); // Ads needed for affiliate bonus
+      const referralAdsRequired = parseInt(getSetting('referral_ads_required', '10')); // Ads needed for referral bonus (10 ads = 50 AXN to referrer)
       
       // Daily task rewards (for TaskSection.tsx)
       const streakReward = parseInt(getSetting('streak_reward', '100')); // Daily streak claim reward in AXN
@@ -3403,7 +3384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referralRewardEnabled: getSetting('referral_reward_enabled', 'false') === 'true',
         referralRewardTON: parseFloat(getSetting('referral_reward_usd', '0.0005')),
         referralRewardAXN: parseInt(getSetting('referral_reward_axn', '50')),
-        referralAdsRequired: parseInt(getSetting('referral_ads_required', '1')),
+        referralAdsRequired: parseInt(getSetting('referral_ads_required', '10')),
         referralBoostPerInvite: parseFloat(getSetting('referral_boost_per_invite', '0.02')),
         streakReward: parseInt(getSetting('streak_reward', '100')),
         shareTaskReward: parseInt(getSetting('share_task_reward', '1000')),
@@ -5452,7 +5433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success: true, skipAuth: true });
       }
       
-      const { method, starPackage, amount: requestedAmount, withdrawalPackage } = req.body;
+      const { method, starPackage, amount: requestedAmount, withdrawalPackage, address: bodyAddress } = req.body;
 
       console.log('📝 Withdrawal request received:', { userId, method, starPackage, withdrawalPackage });
 
@@ -5493,6 +5474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             bugBalance: users.bugBalance,
             cwalletId: users.cwalletId,
             usdtWalletAddress: users.usdtWalletAddress,
+            tonWalletAddress: users.tonWalletAddress,
             telegramStarsUsername: users.telegramStarsUsername,
             friendsInvited: users.friendsInvited,
             telegram_id: users.telegram_id,
@@ -5684,10 +5666,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if user has appropriate wallet address based on method
         let walletAddress: string;
         if (method === 'TON') {
-          // Check for TON wallet first
-          walletAddress = user.usdtWalletAddress || user.cwalletId || '';
+          // Use address from request body first, fall back to saved tonWalletAddress
+          walletAddress = (bodyAddress && bodyAddress.trim()) || user.tonWalletAddress || '';
           if (!walletAddress) {
-            throw new Error('TON wallet address not set');
+            throw new Error('Please save your TON wallet address first');
           }
         } else if (method === 'STARS') {
           if (!user.telegramStarsUsername) {
@@ -5696,7 +5678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           walletAddress = user.telegramStarsUsername;
         } else {
           // Default to USDT/CWallet for legacy methods
-          walletAddress = user.usdtWalletAddress || user.cwalletId || '';
+          walletAddress = (bodyAddress && bodyAddress.trim()) || user.usdtWalletAddress || user.cwalletId || '';
           if (!walletAddress) {
             throw new Error('Wallet address not set');
           }
