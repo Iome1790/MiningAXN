@@ -28,7 +28,7 @@ import { eq, desc, and, gte, lt, sql } from "drizzle-orm";
 import crypto from "crypto";
 
 const FARMING_RATE = 0.01; // AXN per second
-const FARMING_DURATION = 2 * 60 * 60; // 2 hours in seconds
+const FARMING_DURATION = 3 * 60 * 60; // 3 hours in seconds
 
 // Payment system configuration
 export interface PaymentSystem {

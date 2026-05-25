@@ -479,8 +479,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const now = new Date();
       const lastClaim = new Date(user.lastMiningClaim || user.createdAt);
       
-      // Calculate total mining rate (boosts table removed)
-      const baseRate = 0.036 / 3600;
+      // Calculate total mining rate — base 0.01 AXN/sec
+      const baseRate = 0.01;
       const section1Boost = parseFloat(user.adSection1Boost || "0") / 3600;
       const section2Boost = parseFloat(user.adSection2Boost || "0") / 3600;
       const referralBoostHourly = parseFloat(user.referralMiningBoost || "0");
@@ -493,9 +493,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         currentMining: minedAmount,
         minedAmount: minedAmount,
-        miningRate: (totalRate * 3600).toFixed(4),
+        miningRate: totalRate.toFixed(4),
         rawMiningRate: totalRate,
-        baseRate: (baseRate * 3600).toFixed(4),
+        baseRate: baseRate.toFixed(4),
         section1Boost: (section1Boost * 3600).toFixed(4),
         section2Boost: (section2Boost * 3600).toFixed(4),
         referralBoost: referralBoostHourly.toFixed(4),
@@ -515,7 +515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "Not authenticated" });
       const now = new Date();
       const lastClaim = new Date(user.lastMiningClaim || user.createdAt);
-      const baseRate = 0.036 / 3600;
+      const baseRate = 0.01;
       const section1Boost = parseFloat(user.adSection1Boost || "0") / 3600;
       const section2Boost = parseFloat(user.adSection2Boost || "0") / 3600;
       const referralBoostPerSec = parseFloat(user.referralMiningBoost || "0") / 3600;
@@ -528,6 +528,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, claimed: mined, newBalance: updatedUser?.balance });
     } catch (error) {
       console.error("Error claiming mining:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // GET /api/ads/slot-cooldowns — return per-slot cooldown state for current user
+  app.get("/api/ads/slot-cooldowns", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS ad_slot_cooldowns (
+          id SERIAL PRIMARY KEY,
+          user_id VARCHAR NOT NULL,
+          slot INTEGER NOT NULL,
+          last_watched_at TIMESTAMP NOT NULL DEFAULT NOW(),
+          UNIQUE(user_id, slot)
+        )
+      `);
+      const rows = await db.execute(sql`
+        SELECT slot, last_watched_at FROM ad_slot_cooldowns WHERE user_id = ${user.id}
+      `);
+      const now = Date.now();
+      const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+      const cooldowns: Record<number, { availableAt: number; msLeft: number }> = {};
+      for (const row of rows.rows || []) {
+        const slot = Number((row as any).slot);
+        const lastWatched = new Date((row as any).last_watched_at).getTime();
+        const availableAt = lastWatched + COOLDOWN_MS;
+        const msLeft = Math.max(0, availableAt - now);
+        cooldowns[slot] = { availableAt, msLeft };
+      }
+      res.json({ cooldowns });
+    } catch (error) {
+      console.error("Slot cooldowns error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // POST /api/ads/slot-watch — watch ad for a specific slot (with 1hr cooldown)
+  app.post("/api/ads/slot-watch", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const { slot } = req.body;
+      if (!slot || typeof slot !== 'number') return res.status(400).json({ message: "Missing slot" });
+
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS ad_slot_cooldowns (
+          id SERIAL PRIMARY KEY,
+          user_id VARCHAR NOT NULL,
+          slot INTEGER NOT NULL,
+          last_watched_at TIMESTAMP NOT NULL DEFAULT NOW(),
+          UNIQUE(user_id, slot)
+        )
+      `);
+
+      const COOLDOWN_MS = 60 * 60 * 1000;
+      const rows = await db.execute(sql`
+        SELECT last_watched_at FROM ad_slot_cooldowns WHERE user_id = ${user.id} AND slot = ${slot}
+      `);
+      if (rows.rows && rows.rows.length > 0) {
+        const lastWatched = new Date((rows.rows[0] as any).last_watched_at).getTime();
+        const msLeft = Math.max(0, lastWatched + COOLDOWN_MS - Date.now());
+        if (msLeft > 0) {
+          const mins = Math.ceil(msLeft / 60000);
+          return res.status(429).json({ message: `Cooldown active. Available in ${mins} min.`, msLeft });
+        }
+      }
+
+      const AD_SLOT_REWARDS: Record<number, number> = { 1: 20, 2: 20, 3: 20, 4: 5, 5: 5 };
+      const rewardAmount = (AD_SLOT_REWARDS[slot] || 10).toString();
+
+      await db.execute(sql`
+        INSERT INTO ad_slot_cooldowns (user_id, slot, last_watched_at)
+        VALUES (${user.id}, ${slot}, NOW())
+        ON CONFLICT (user_id, slot) DO UPDATE SET last_watched_at = NOW()
+      `);
+
+      await storage.addEarning({
+        userId: user.id,
+        amount: rewardAmount,
+        source: "ad_slot_watch",
+        description: `Ad slot ${slot} reward`,
+      });
+
+      const updatedUser = await storage.getUser(user.id);
+      res.json({
+        success: true,
+        newBalance: updatedUser?.balance,
+        rewardAXN: rewardAmount,
+        slot,
+        cooldownMs: COOLDOWN_MS,
+      });
+    } catch (error) {
+      console.error("Slot watch error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // GET /api/referrals/new-count — count referrals after milestone baseline date
+  app.get("/api/referrals/new-count", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      // Only count referrals created after May 25 2026 (new milestone system)
+      const BASELINE_DATE = '2026-05-25';
+      const result = await db.execute(sql`
+        SELECT COUNT(*) as count FROM referrals r
+        JOIN users u ON u.id = r.referee_id
+        WHERE r.referrer_id = ${user.id}
+          AND r.status = 'completed'
+          AND u.banned = FALSE
+          AND r.created_at >= ${BASELINE_DATE}::date
+      `);
+      const count = parseInt((result.rows?.[0] as any)?.count || "0");
+      res.json({ count });
+    } catch (error) {
+      console.error("New referral count error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -557,15 +675,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existing.rows && existing.rows.length > 0) {
         return res.status(400).json({ message: "Already claimed", alreadyClaimed: true });
       }
-      // Check user has enough verified friends
+      // Check user has enough NEW verified friends (after baseline date)
+      const BASELINE_DATE = '2026-05-25';
       const friendsCount = await db.execute(sql`
         SELECT COUNT(*) as count FROM referrals r
         JOIN users u ON u.id = r.referee_id
-        WHERE r.referrer_id = ${user.id} AND r.status = 'completed' AND u.banned = FALSE
+        WHERE r.referrer_id = ${user.id}
+          AND r.status = 'completed'
+          AND u.banned = FALSE
+          AND r.created_at >= ${BASELINE_DATE}::date
       `);
       const verified = parseInt(friendsCount.rows?.[0]?.count || "0");
       if (verified < count) {
-        return res.status(400).json({ message: `Need ${count} verified friends, you have ${verified}` });
+        return res.status(400).json({ message: `Need ${count} new verified friends, you have ${verified}` });
       }
       // Insert claim record + credit balance atomically
       await db.execute(sql`
