@@ -22,12 +22,10 @@ declare global {
   }
 }
 
-const Home = lazy(() => import("@/pages/Home"));
 const Landing = lazy(() => import("@/pages/Landing"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const CountryControls = lazy(() => import("@/pages/CountryControls"));
 const GamesPage = lazy(() => import("@/pages/Games"));
-const WithdrawPage = lazy(() => import("@/pages/Withdraw"));
 const EarnPage = lazy(() => import("@/pages/Earn"));
 const WatchPage = lazy(() => import("@/pages/Earn"));
 const FriendPage = lazy(() => import("@/pages/Friend"));
@@ -201,7 +199,7 @@ function Router() {
           <Route path="/admin" component={Admin} />
           <Route path="/admin/country-controls" component={CountryControls} />
           <Route path="/game" component={GamesPage} />
-          <Route path="/withdraw" component={WithdrawPage} />
+          <Route path="/withdraw" component={() => { const [, setLocation] = useLocation(); setLocation("/wallet"); return null; }} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
