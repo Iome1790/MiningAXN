@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
@@ -46,7 +46,7 @@ const AD_TASKS = [
   { id: 5, reward: 5  },
 ];
 
-type AdState = 'idle' | 'loading' | 'claim' | 'claiming' | 'done';
+type AdState = 'idle' | 'cooldown' | 'loading' | 'claim' | 'claiming' | 'done';
 
 function PlayIcon({ size = 18 }: { size?: number }) {
   return (
@@ -57,9 +57,47 @@ function PlayIcon({ size = 18 }: { size?: number }) {
   );
 }
 
-function AdTaskRow({ task }: { task: typeof AD_TASKS[0] }) {
-  const [state, setState] = useState<AdState>('idle');
+function formatCooldown(msLeft: number): string {
+  if (msLeft <= 0) return '00:00';
+  const totalSec = Math.ceil(msLeft / 1000);
+  const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+  const s = (totalSec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function AdTaskRow({ task, cooldownMs }: { task: typeof AD_TASKS[0]; cooldownMs: number }) {
+  const [state, setState] = useState<AdState>(cooldownMs > 0 ? 'cooldown' : 'idle');
+  const [msLeft, setMsLeft] = useState(cooldownMs);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (cooldownMs > 0) {
+      setState('cooldown');
+      setMsLeft(cooldownMs);
+    } else if (state === 'cooldown') {
+      setState('idle');
+    }
+  }, [cooldownMs]);
+
+  useEffect(() => {
+    if (state === 'cooldown' && msLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setMsLeft(prev => {
+          const next = prev - 1000;
+          if (next <= 0) {
+            clearInterval(timerRef.current!);
+            setState('idle');
+            return 0;
+          }
+          return next;
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [state]);
 
   const handleStart = async () => {
     if (state !== 'idle') return;
@@ -72,67 +110,83 @@ function AdTaskRow({ task }: { task: typeof AD_TASKS[0] }) {
     if (state !== 'claim') return;
     setState('claiming');
     try {
-      const res = await apiRequest('POST', '/api/ads/extra-watch', {});
+      const res = await apiRequest('POST', '/api/ads/slot-watch', { slot: task.id });
       const data = await res.json();
       setState('done');
       showNotification(`+${data.rewardAXN ?? task.reward} AXN earned!`, 'success');
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-    } catch {
+      queryClient.invalidateQueries({ queryKey: ['/api/ads/slot-cooldowns'] });
+      const cd = data.cooldownMs ?? 3600000;
+      setMsLeft(cd);
+      setTimeout(() => setState('cooldown'), 100);
+    } catch (e: any) {
+      let msg = 'Failed to claim reward. Please try again.';
+      try { const p = JSON.parse(e.message); if (p.message) msg = p.message; } catch {}
       setState('claim');
-      showNotification('Failed to claim reward. Please try again.', 'error');
+      showNotification(msg, 'error');
     }
   };
+
+  const isCooldown = state === 'cooldown';
+  const isDone = state === 'done';
 
   return (
     <div style={{
       position: 'relative', display: 'flex', alignItems: 'center',
       background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14,
       marginBottom: 8, overflow: 'hidden',
-      boxShadow: state === 'done' ? '0 2px 12px rgba(74,222,128,0.08)' : '0 2px 12px rgba(37,99,235,0.08)',
+      boxShadow: isDone ? '0 2px 12px rgba(74,222,128,0.08)' : isCooldown ? '0 2px 12px rgba(255,165,0,0.05)' : '0 2px 12px rgba(37,99,235,0.08)',
     }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: `linear-gradient(180deg, transparent, ${state === 'done' ? '#4ade80' : BLUE}, transparent)`, opacity: state === 'done' ? 0.3 : 0.7 }} />
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: `linear-gradient(180deg, transparent, ${isDone ? '#4ade80' : isCooldown ? '#f59e0b' : BLUE}, transparent)`, opacity: isCooldown ? 0.5 : isDone ? 0.3 : 0.7 }} />
 
-      {/* Play icon — no colored box background */}
       <div style={{
         width: 50, height: 62, flexShrink: 0, marginLeft: 3,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: state === 'done' ? '#4ade80' : BLUE,
+        color: isDone ? '#4ade80' : isCooldown ? '#f59e0b' : BLUE,
       }}>
-        {state === 'done'
+        {isDone
           ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+          : isCooldown
+          ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           : <PlayIcon size={22} />
         }
       </div>
 
       <div style={{ flex: 1, padding: '0 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ color: state === 'done' ? TEXT_DIM : TEXT, fontSize: 13, fontWeight: 700 }}>
+          <span style={{ color: isDone || isCooldown ? TEXT_DIM : TEXT, fontSize: 13, fontWeight: 700 }}>
             Watch to Earn AXN
           </span>
         </div>
-        <div style={{ fontSize: 11, marginTop: 2, color: state === 'loading' ? BLUE : state === 'claim' ? '#fbbf24' : state === 'done' ? '#4ade80' : BLUE }}>
-          {state === 'loading' ? 'Loading ad...' : state === 'claim' ? 'Ad watched — claim reward' : state === 'done' ? 'Reward credited' : `+${task.reward} AXN`}
+        <div style={{ fontSize: 11, marginTop: 2, color: state === 'loading' ? BLUE : state === 'claim' ? '#fbbf24' : isDone ? '#4ade80' : isCooldown ? '#f59e0b' : BLUE }}>
+          {state === 'loading' ? 'Loading ad...'
+            : state === 'claim' ? 'Ad watched — claim reward'
+            : isDone ? 'Reward credited'
+            : isCooldown ? `Cooldown: ${formatCooldown(msLeft)}`
+            : `+${task.reward} AXN`}
         </div>
       </div>
 
       <div style={{ paddingRight: 12, flexShrink: 0 }}>
         <button
           onClick={state === 'idle' ? handleStart : state === 'claim' ? handleClaim : undefined}
-          disabled={state === 'done' || state === 'loading' || state === 'claiming'}
+          disabled={isDone || isCooldown || state === 'loading' || state === 'claiming'}
           style={{
-            background: state === 'done' ? 'rgba(74,222,128,0.08)'
+            background: isDone ? 'rgba(74,222,128,0.08)'
+              : isCooldown ? 'rgba(245,158,11,0.08)'
               : state === 'claim' ? 'linear-gradient(135deg, #16a34a, #22c55e)'
               : (state === 'loading' || state === 'claiming') ? 'rgba(255,255,255,0.05)'
               : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-            border: `1px solid ${state === 'done' ? 'rgba(74,222,128,0.18)' : state === 'claim' ? 'rgba(74,222,128,0.3)' : 'rgba(37,99,235,0.4)'}`,
-            color: state === 'done' ? '#4ade80' : '#fff',
+            border: `1px solid ${isDone ? 'rgba(74,222,128,0.18)' : isCooldown ? 'rgba(245,158,11,0.2)' : state === 'claim' ? 'rgba(74,222,128,0.3)' : 'rgba(37,99,235,0.4)'}`,
+            color: isDone ? '#4ade80' : isCooldown ? '#f59e0b' : '#fff',
             fontSize: 11, fontWeight: 800, padding: '7px 14px',
             cursor: state === 'idle' || state === 'claim' ? 'pointer' : 'not-allowed',
-            whiteSpace: 'nowrap', borderRadius: 50, opacity: (state === 'loading' || state === 'claiming') ? 0.5 : 1,
-            boxShadow: (state === 'done' || state === 'loading' || state === 'claiming') ? 'none' : '0 3px 10px rgba(37,99,235,0.35)',
+            whiteSpace: 'nowrap', borderRadius: 50,
+            opacity: (state === 'loading' || state === 'claiming') ? 0.5 : 1,
+            boxShadow: (isDone || isCooldown || state === 'loading' || state === 'claiming') ? 'none' : '0 3px 10px rgba(37,99,235,0.35)',
           }}
         >
-          {state === 'done' ? 'Done' : (state === 'loading' || state === 'claiming') ? '...' : state === 'claim' ? 'Claim' : 'Watch'}
+          {isDone ? 'Done' : isCooldown ? formatCooldown(msLeft) : (state === 'loading' || state === 'claiming') ? '...' : state === 'claim' ? 'Claim' : 'Watch'}
         </button>
       </div>
     </div>
@@ -162,11 +216,11 @@ function MissionRow({
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 1,
       }}>
         <span style={{ color: '#fff', fontSize: 14, fontWeight: 900, lineHeight: 1 }}>{count}</span>
-        <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 8, fontWeight: 700, textTransform: 'uppercase' }}>Friends</span>
+        <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 8, fontWeight: 700, textTransform: 'uppercase' }}>New</span>
       </div>
       <div style={{ flex: 1, padding: '10px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 5 }}>
-          <span style={{ color: claimed ? TEXT_DIM : TEXT, fontSize: 12, fontWeight: 700 }}>Invite {count} Verified Friends</span>
+          <span style={{ color: claimed ? TEXT_DIM : TEXT, fontSize: 12, fontWeight: 700 }}>Invite {count} New Friends</span>
           {badge(`${reward.toLocaleString()} AXN`)}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -211,16 +265,34 @@ export default function Earn() {
   useEffect(() => {
     if (user?.dailyInviteClaimed) setDailyClaimed(true);
   }, [user?.dailyInviteClaimed]);
+
   const { data: claimedData } = useQuery<{ claimed: number[] }>({
     queryKey: ['/api/milestone/claimed'],
     staleTime: 60000,
   });
 
-  const verifiedFriends = Number(user?.friendsInvited ?? 0);
+  const { data: cooldownData } = useQuery<{ cooldowns: Record<string, { availableAt: number; msLeft: number }> }>({
+    queryKey: ['/api/ads/slot-cooldowns'],
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  const { data: newReferralData } = useQuery<{ count: number }>({
+    queryKey: ['/api/referrals/new-count'],
+    staleTime: 60000,
+  });
+
   const todayInvites = Number(user?.todayReferrals ?? 0);
   const dailyProgress = Math.min(todayInvites, 3);
   const dailyComplete = dailyProgress >= 3;
   const claimedMilestones = new Set(claimedData?.claimed ?? []);
+  const newFriendsCount = newReferralData?.count ?? 0;
+
+  const getCooldownMs = (slot: number): number => {
+    const entry = cooldownData?.cooldowns?.[slot.toString()];
+    if (!entry) return 0;
+    return Math.max(0, entry.msLeft);
+  };
 
   const claimDailyMutation = useMutation({
     mutationFn: async () => (await apiRequest('POST', '/api/daily-tasks/claim/invite', {})).json(),
@@ -349,7 +421,7 @@ export default function Earn() {
                 {sectionLabel('Ad Rewards')}
                 {AD_TASKS.map((task, i) => (
                   <motion.div key={task.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                    <AdTaskRow task={task} />
+                    <AdTaskRow task={task} cooldownMs={getCooldownMs(task.id)} />
                   </motion.div>
                 ))}
 
@@ -415,11 +487,19 @@ export default function Earn() {
             {/* MILESTONES TAB */}
             {tab === 'mission' && (
               <>
-                {sectionLabel(`Invite Milestones · ${verifiedFriends} Verified`)}
+                {sectionLabel(`New Invite Milestones · ${newFriendsCount} New Friends`)}
+                <div style={{
+                  background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(59,130,246,0.15)',
+                  borderRadius: 12, padding: '10px 14px', marginBottom: 12,
+                }}>
+                  <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, margin: 0 }}>
+                    Only friends invited after May 25, 2026 count toward milestones.
+                  </p>
+                </div>
                 {MISSIONS.map(m => (
                   <MissionRow
                     key={m.count}
-                    count={m.count} reward={m.reward} progress={verifiedFriends}
+                    count={m.count} reward={m.reward} progress={newFriendsCount}
                     claimed={claimedMilestones.has(m.count)}
                     isClaiming={claimingMilestone === m.count}
                     onClaim={() => {

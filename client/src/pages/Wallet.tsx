@@ -134,6 +134,9 @@ export default function Wallet() {
   const [addressInput, setAddressInput] = useState('');
   const [addressEditing, setAddressEditing] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
+  const [chainTonBalance, setChainTonBalance] = useState<number | null>(null);
+  const [chainAxnBalance, setChainAxnBalance] = useState<number | null>(null);
+  const [chainLoading, setChainLoading] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -143,15 +146,15 @@ export default function Wallet() {
     staleTime: 30000,
   });
 
-  const axnBalance = Math.floor(parseFloat(user?.balance || '0'));
-  const tonBalance = parseFloat(user?.tonBalance || '0');
-  const AXN_PRICE_USD = tonPrice ? TON_PER_AXN * tonPrice : 0;
-  const axnUsdValue = tonPrice ? axnBalance * TON_PER_AXN * tonPrice : 0;
-  const tonUsdValue = tonPrice ? tonBalance * tonPrice : 0;
-  const totalUsd = axnUsdValue + tonUsdValue;
-
+  const poolAxnBalance = Math.floor(parseFloat(user?.balance || '0'));
   const savedAddress: string = user?.tonWalletAddress || '';
   const withdrawalHistory: any[] = withdrawalsData?.withdrawals ?? [];
+
+  const AXN_PRICE_USD = tonPrice ? TON_PER_AXN * tonPrice : 0;
+  const poolAxnUsd = tonPrice ? poolAxnBalance * TON_PER_AXN * tonPrice : 0;
+  const chainTonUsd = tonPrice && chainTonBalance !== null ? chainTonBalance * tonPrice : 0;
+  const chainAxnUsd = tonPrice && chainAxnBalance !== null ? chainAxnBalance * TON_PER_AXN * tonPrice : 0;
+  const totalUsd = poolAxnUsd + chainTonUsd + chainAxnUsd;
 
   useEffect(() => {
     if (user?.tonWalletAddress) {
@@ -167,6 +170,50 @@ export default function Wallet() {
       .catch(() => {})
       .finally(() => setTonLoading(false));
   }, []);
+
+  // Fetch real blockchain balances when wallet address is available
+  useEffect(() => {
+    const address = savedAddress || addressInput.trim();
+    if (!address || address.length < 10) {
+      setChainTonBalance(null);
+      setChainAxnBalance(null);
+      return;
+    }
+    setChainLoading(true);
+    // Fetch TON native balance from TonCenter API
+    fetch(`https://toncenter.com/api/v2/getAddressBalance?address=${encodeURIComponent(address)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d?.ok && d?.result) {
+          const nanotons = parseInt(d.result, 10);
+          setChainTonBalance(nanotons / 1e9);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setChainLoading(false));
+
+    // Fetch AXN Jetton balance — AXN contract on TON mainnet
+    // Uses TON API v2 jetton balance endpoint
+    const AXN_JETTON_MASTER = 'EQD0vdSA_NedR9uvbgN9OixH55vx673V4vCojeL-eCYih2D5';
+    fetch(`https://toncenter.com/api/v2/getTokenData?address=${encodeURIComponent(AXN_JETTON_MASTER)}`)
+      .catch(() => {});
+    // Attempt jetton balance via tonapi.io
+    fetch(`https://tonapi.io/v2/accounts/${encodeURIComponent(address)}/jettons?currencies=ton,usd`)
+      .then(r => r.json())
+      .then(d => {
+        const balances = d?.balances ?? [];
+        const axnEntry = balances.find((b: any) =>
+          b?.jetton?.symbol?.toUpperCase() === 'AXN' ||
+          b?.jetton?.name?.toLowerCase().includes('axionet')
+        );
+        if (axnEntry) {
+          const decimals = axnEntry.jetton?.decimals ?? 9;
+          const raw = parseInt(axnEntry.balance ?? '0', 10);
+          setChainAxnBalance(raw / Math.pow(10, decimals));
+        }
+      })
+      .catch(() => {});
+  }, [savedAddress, addressInput]);
 
   const handleSaveAddress = async () => {
     const trimmed = addressInput.trim();
@@ -416,11 +463,16 @@ export default function Wallet() {
           Assets
         </div>
 
+        {/* Holding Wallet — AXN on blockchain */}
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px', marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ color: TEXT_DIM, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+            Holding Wallet {savedAddress ? '· On-Chain' : '· Connect Wallet'}
+          </div>
+          {/* AXN Jetton on TON */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
-                width: 40, height: 40, borderRadius: '50%',
+                width: 38, height: 38, borderRadius: '50%',
                 border: '1px solid rgba(59,130,246,0.4)',
                 boxShadow: '0 0 12px rgba(59,130,246,0.3)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -429,44 +481,76 @@ export default function Wallet() {
                 <img src="/axn-icon.png" alt="AXN" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <div>
-                <div style={{ color: TEXT, fontSize: 14, fontWeight: 700 }}>Axionet</div>
-                <div style={{ color: TEXT_DIM, fontSize: 11 }}>
+                <div style={{ color: TEXT, fontSize: 13, fontWeight: 700 }}>AXN (Wallet)</div>
+                <div style={{ color: TEXT_DIM, fontSize: 10 }}>
                   {tonLoading ? '...' : AXN_PRICE_USD > 0 ? `$${AXN_PRICE_USD.toFixed(6)} / AXN` : 'AXN Token'}
                 </div>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ color: TEXT, fontSize: 15, fontWeight: 800 }}>{axnBalance.toLocaleString()}</div>
-              <div style={{ color: TEXT_DIM, fontSize: 11 }}>
-                {tonLoading ? '...' : axnUsdValue > 0 ? `$${axnUsdValue.toFixed(4)}` : ''}
+              <div style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>
+                {chainLoading ? '...' : chainAxnBalance !== null ? chainAxnBalance.toLocaleString(undefined, { maximumFractionDigits: 2 }) : (savedAddress ? '0' : '—')}
+              </div>
+              <div style={{ color: TEXT_DIM, fontSize: 10 }}>
+                {!chainLoading && chainAxnBalance !== null && chainAxnUsd > 0 ? `$${chainAxnUsd.toFixed(4)}` : ''}
               </div>
             </div>
           </div>
-        </div>
-
-        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px', marginBottom: 8 }}>
+          {/* TON native */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
-                width: 40, height: 40, borderRadius: '50%',
+                width: 38, height: 38, borderRadius: '50%',
                 background: 'linear-gradient(135deg, #0088cc, #005a99)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14l-4-4h3V8h2v4h3l-4 4z"/>
                 </svg>
               </div>
               <div>
-                <div style={{ color: TEXT, fontSize: 14, fontWeight: 700 }}>TON</div>
-                <div style={{ color: TEXT_DIM, fontSize: 11 }}>
+                <div style={{ color: TEXT, fontSize: 13, fontWeight: 700 }}>TON</div>
+                <div style={{ color: TEXT_DIM, fontSize: 10 }}>
                   {tonLoading ? '...' : tonPrice ? `$${tonPrice.toFixed(2)} / TON` : 'The Open Network'}
                 </div>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ color: TEXT, fontSize: 15, fontWeight: 800 }}>{tonBalance.toFixed(4)}</div>
-              <div style={{ color: TEXT_DIM, fontSize: 11 }}>
-                {tonLoading ? '...' : tonUsdValue > 0 ? `$${tonUsdValue.toFixed(2)}` : ''}
+              <div style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>
+                {chainLoading ? '...' : chainTonBalance !== null ? chainTonBalance.toFixed(4) : (savedAddress ? '0' : '—')}
+              </div>
+              <div style={{ color: TEXT_DIM, fontSize: 10 }}>
+                {!chainLoading && chainTonBalance !== null && chainTonUsd > 0 ? `$${chainTonUsd.toFixed(2)}` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Pool Reward — mined AXN in app */}
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px', marginBottom: 8 }}>
+          <div style={{ color: TEXT_DIM, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+            Pool Reward · Mining Balance
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: '50%',
+                border: '1px solid rgba(59,130,246,0.3)',
+                background: 'rgba(37,99,235,0.12)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                overflow: 'hidden',
+              }}>
+                <img src="/axn-icon.png" alt="AXN" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <div>
+                <div style={{ color: TEXT, fontSize: 13, fontWeight: 700 }}>AXN (Pool)</div>
+                <div style={{ color: TEXT_DIM, fontSize: 10 }}>Mining & App Rewards</div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>{poolAxnBalance.toLocaleString()}</div>
+              <div style={{ color: TEXT_DIM, fontSize: 10 }}>
+                {tonLoading ? '...' : poolAxnUsd > 0 ? `$${poolAxnUsd.toFixed(4)}` : ''}
               </div>
             </div>
           </div>
