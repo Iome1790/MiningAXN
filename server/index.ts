@@ -88,6 +88,17 @@ app.post('/api/emergency-fix-referrals', async (req: any, res) => {
   }
 });
 
+// Dynamic TonConnect manifest — always uses correct production/dev URL
+app.get('/tonconnect-manifest.json', (req: any, res) => {
+  const origin = `${req.protocol}://${req.get('host')}`;
+  res.setHeader('Content-Type', 'application/json');
+  res.json({
+    url: origin,
+    name: "Axionet - AXN Mining",
+    iconUrl: `${origin}/axn-coin-new.png`,
+  });
+});
+
 // Test endpoint
 app.get('/api/test-direct', (req: any, res) => {
   console.log('✅ Direct test route called!');
