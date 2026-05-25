@@ -1,153 +1,161 @@
 import { useLocation } from "wouter";
 
+const BLUE_L = "#60a5fa";
+const DIM = "rgba(255,255,255,0.3)";
+
+/* ── Icons ── */
+const EarnIcon = ({ c }: { c: string }) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <path d="M12 2L2 7l10 5 10-5-10-5z"
+      stroke={c} strokeWidth="2" strokeLinejoin="round" />
+    <path d="M2 17l10 5 10-5"
+      stroke={c} strokeWidth="2" strokeLinejoin="round" />
+    <path d="M2 12l10 5 10-5"
+      stroke={c} strokeWidth="2" strokeLinejoin="round" />
+  </svg>
+);
+
+const MineIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+    {/* Outer ring */}
+    <circle cx="12" cy="12" r="9"
+      stroke="white" strokeWidth="1.6"
+      fill="rgba(255,255,255,0.08)" />
+    {/* Tick mark */}
+    <path d="M8 12.5l2.5 2.5 5.5-5.5"
+      stroke="white" strokeWidth="2.2"
+      strokeLinecap="round" strokeLinejoin="round" />
+    {/* Cardinal dashes */}
+    <line x1="12" y1="3" x2="12" y2="1.5" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" strokeLinecap="round" />
+    <line x1="12" y1="21" x2="12" y2="22.5" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" strokeLinecap="round" />
+    <line x1="3" y1="12" x2="1.5" y2="12" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" strokeLinecap="round" />
+    <line x1="21" y1="12" x2="22.5" y2="12" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+);
+
+const ReferIcon = ({ c }: { c: string }) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <circle cx="9" cy="7" r="4" stroke={c} strokeWidth="1.9" />
+    <path d="M3 21c0-3.866 2.686-7 6-7"
+      stroke={c} strokeWidth="1.9" strokeLinecap="round" />
+    <circle cx="17" cy="9" r="3" stroke={c} strokeWidth="1.7" />
+    <path d="M13.5 21c0-2.761 1.567-5 3.5-5s3.5 2.239 3.5 5"
+      stroke={c} strokeWidth="1.7" strokeLinecap="round" />
+  </svg>
+);
+
+const WalletIcon = ({ c }: { c: string }) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <rect x="2" y="6" width="20" height="14" rx="3"
+      stroke={c} strokeWidth="1.9"
+      fill={c === BLUE_L ? "rgba(96,165,250,0.1)" : "none"} />
+    <path d="M2 11h20" stroke={c} strokeWidth="1.7" />
+    <rect x="15" y="13.5" width="4.5" height="3" rx="1.5" fill={c} />
+    <path d="M6 6V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1"
+      stroke={c} strokeWidth="1.6" />
+  </svg>
+);
+
+/* ── Tab config ── */
 const TABS = [
-  {
-    id: "earn",
-    label: "Earn",
-    path: "/earn",
-    icon: (active: boolean) => (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="9" fill={active ? "rgba(245,158,11,0.18)" : "transparent"} stroke={active ? "#f59e0b" : "rgba(255,255,255,0.35)"} strokeWidth="1.8"/>
-        <path d="M12 7v1m0 8v1M9.5 9.5A2.5 2.5 0 0 1 12 8a2.5 2.5 0 0 1 0 5 2.5 2.5 0 0 1 0 5 2.5 2.5 0 0 1-2.5-1.5" stroke={active ? "#f59e0b" : "rgba(255,255,255,0.35)"} strokeWidth="1.8" strokeLinecap="round"/>
-        <path d="M14.5 10.5A2.5 2.5 0 0 1 12 13" stroke={active ? "#f59e0b" : "rgba(255,255,255,0.35)"} strokeWidth="1.8" strokeLinecap="round"/>
-      </svg>
-    ),
-    activeColor: "#f59e0b",
-    activeBg: "rgba(245,158,11,0.18)",
-    activeBorder: "rgba(245,158,11,0.35)",
-    activeGlow: "rgba(245,158,11,0.22)",
-  },
-  {
-    id: "watch",
-    label: "Watch",
-    path: "/watch",
-    icon: (active: boolean) => (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-        <rect x="2" y="5" width="20" height="14" rx="3" fill={active ? "rgba(168,85,247,0.18)" : "transparent"} stroke={active ? "#a855f7" : "rgba(255,255,255,0.35)"} strokeWidth="1.8"/>
-        <path d="M10 9l5 3-5 3V9z" fill={active ? "#a855f7" : "rgba(255,255,255,0.35)"}/>
-      </svg>
-    ),
-    activeColor: "#a855f7",
-    activeBg: "rgba(168,85,247,0.18)",
-    activeBorder: "rgba(168,85,247,0.35)",
-    activeGlow: "rgba(168,85,247,0.22)",
-  },
-  {
-    id: "game",
-    label: "Game",
-    path: "/game",
-    icon: (active: boolean) => (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="6" width="20" height="12" rx="5" fill={active ? "rgba(255,255,255,0.15)" : "transparent"} stroke={active ? "#fff" : "rgba(255,255,255,0.38)"} strokeWidth="1.8"/>
-        <line x1="7" y1="12" x2="11" y2="12" stroke={active ? "#fff" : "rgba(255,255,255,0.38)"} strokeWidth="2.2"/>
-        <line x1="9" y1="10" x2="9" y2="14" stroke={active ? "#fff" : "rgba(255,255,255,0.38)"} strokeWidth="2.2"/>
-        <circle cx="15.5" cy="10.5" r="1.2" fill={active ? "#ef4444" : "rgba(255,255,255,0.38)"}/>
-        <circle cx="17.8" cy="12.5" r="1.2" fill={active ? "#3b82f6" : "rgba(255,255,255,0.38)"}/>
-        <circle cx="15.5" cy="14.5" r="1.2" fill={active ? "#22c55e" : "rgba(255,255,255,0.38)"}/>
-        <circle cx="13.2" cy="12.5" r="1.2" fill={active ? "#f59e0b" : "rgba(255,255,255,0.38)"}/>
-      </svg>
-    ),
-    activeColor: "#fff",
-    activeBg: "rgba(124,58,237,0.22)",
-    activeBorder: "rgba(124,58,237,0.35)",
-    activeGlow: "rgba(124,58,237,0.25)",
-  },
-  {
-    id: "friend",
-    label: "Friend",
-    path: "/friend",
-    icon: (active: boolean) => (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-        <circle cx="9" cy="7" r="3.5" fill={active ? "rgba(34,197,94,0.18)" : "transparent"} stroke={active ? "#22c55e" : "rgba(255,255,255,0.35)"} strokeWidth="1.8"/>
-        <path d="M3 20c0-3.314 2.686-6 6-6" stroke={active ? "#22c55e" : "rgba(255,255,255,0.35)"} strokeWidth="1.8" strokeLinecap="round"/>
-        <circle cx="17" cy="9" r="2.5" stroke={active ? "#22c55e" : "rgba(255,255,255,0.35)"} strokeWidth="1.6"/>
-        <path d="M13 20c0-2.21 1.79-4 4-4s4 1.79 4 4" stroke={active ? "#22c55e" : "rgba(255,255,255,0.35)"} strokeWidth="1.8" strokeLinecap="round"/>
-      </svg>
-    ),
-    activeColor: "#22c55e",
-    activeBg: "rgba(34,197,94,0.18)",
-    activeBorder: "rgba(34,197,94,0.35)",
-    activeGlow: "rgba(34,197,94,0.22)",
-  },
-  {
-    id: "wallet",
-    label: "Wallet",
-    path: "/wallet",
-    icon: (active: boolean) => (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-        <rect x="2" y="6" width="20" height="14" rx="3" fill={active ? "rgba(59,130,246,0.18)" : "transparent"} stroke={active ? "#3b82f6" : "rgba(255,255,255,0.35)"} strokeWidth="1.8"/>
-        <path d="M2 10h20" stroke={active ? "#3b82f6" : "rgba(255,255,255,0.35)"} strokeWidth="1.8"/>
-        <rect x="16" y="13" width="4" height="3" rx="1" fill={active ? "#3b82f6" : "rgba(255,255,255,0.35)"}/>
-        <path d="M6 4h12" stroke={active ? "#3b82f6" : "rgba(255,255,255,0.35)"} strokeWidth="1.8" strokeLinecap="round"/>
-      </svg>
-    ),
-    activeColor: "#3b82f6",
-    activeBg: "rgba(59,130,246,0.18)",
-    activeBorder: "rgba(59,130,246,0.35)",
-    activeGlow: "rgba(59,130,246,0.22)",
-  },
-];
+  { id: "earn",   label: "Earn",   path: "/earn"   },
+  { id: "game",   label: "Mine",   path: "/game",  center: true },
+  { id: "friend", label: "Refer",  path: "/friend" },
+  { id: "wallet", label: "Wallet", path: "/wallet" },
+] as const;
 
 export default function BottomNav() {
   const [location, setLocation] = useLocation();
 
-  const getActive = (tab: typeof TABS[0]) => {
-    if (tab.id === "game") return location.startsWith("/game");
-    return location === tab.path;
-  };
+  const isOn = (tab: typeof TABS[number]) =>
+    (tab as any).center ? location.startsWith("/game") : location === tab.path;
 
   return (
-    <div style={{
+    <nav style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 600,
-      display: "flex", justifyContent: "space-around", alignItems: "center",
-      height: 68, paddingBottom: "max(calc(env(safe-area-inset-bottom)), 4px)",
-      background: "linear-gradient(180deg, rgba(10,10,12,0.98) 0%, #000 100%)",
-      borderTop: "1px solid rgba(255,255,255,0.06)",
-      boxShadow: "0 -8px 32px rgba(0,0,0,0.8)",
+      display: "flex", alignItems: "center",
+      height: 66, paddingBottom: "max(env(safe-area-inset-bottom), 4px)",
+      background: "rgba(0,0,0,0.97)",
+      borderTop: "1px solid rgba(59,130,246,0.1)",
+      backdropFilter: "blur(20px)",
+      boxShadow: "0 -4px 20px rgba(0,0,0,0.8)",
     }}>
       {TABS.map((tab) => {
-        const active = getActive(tab);
-        return (
-          <button
-            key={tab.id}
-            onClick={() => setLocation(tab.path)}
-            style={{
+        const on = isOn(tab);
+
+        /* ── Center raised button ── */
+        if ((tab as any).center) {
+          return (
+            <button key={tab.id} onClick={() => setLocation(tab.path)} style={{
               flex: 1, height: "100%", border: "none", background: "transparent",
               cursor: "pointer", display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center", gap: 3,
-              touchAction: "manipulation", position: "relative",
-            }}
-          >
-            {active && (
+              alignItems: "center", justifyContent: "center",
+              gap: 2, touchAction: "manipulation",
+            }}>
               <div style={{
-                position: "absolute", top: 0, left: "20%", right: "20%", height: 2,
-                background: `linear-gradient(90deg, transparent, ${tab.activeColor}, transparent)`,
-                borderRadius: "0 0 2px 2px",
-                boxShadow: `0 0 8px ${tab.activeColor}`,
+                width: 54, height: 54, borderRadius: "50%",
+                background: on
+                  ? "linear-gradient(145deg, #2563eb, #1d4ed8)"
+                  : "linear-gradient(145deg, #1e40af, #1e3a8a)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                marginTop: -16,
+                border: "2.5px solid rgba(96,165,250,0.35)",
+                boxShadow: on
+                  ? "0 0 0 4px rgba(37,99,235,0.2), 0 6px 24px rgba(37,99,235,0.65), 0 2px 8px rgba(0,0,0,0.6)"
+                  : "0 0 0 3px rgba(37,99,235,0.12), 0 6px 20px rgba(0,0,0,0.7)",
+                transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+              }}>
+                <MineIcon />
+              </div>
+              <span style={{
+                fontSize: 9, fontWeight: 700, letterSpacing: "0.06em",
+                textTransform: "uppercase", marginTop: 1,
+                color: on ? BLUE_L : "rgba(255,255,255,0.25)",
+              }}>{tab.label}</span>
+            </button>
+          );
+        }
+
+        /* ── Regular tabs ── */
+        const c = on ? BLUE_L : DIM;
+
+        return (
+          <button key={tab.id} onClick={() => setLocation(tab.path)} style={{
+            flex: 1, height: "100%", border: "none", background: "transparent",
+            cursor: "pointer", display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            gap: 4, touchAction: "manipulation", position: "relative",
+          }}>
+            {/* Top line when active */}
+            {on && (
+              <div style={{
+                position: "absolute", top: 0, left: "15%", right: "15%",
+                height: 2, borderRadius: "0 0 4px 4px",
+                background: `linear-gradient(90deg, transparent, ${BLUE_L}, transparent)`,
               }} />
             )}
+
+            {/* Icon area */}
             <div style={{
-              width: 48, height: 32, borderRadius: 10,
-              background: active ? tab.activeBg : "transparent",
-              border: active ? `1px solid ${tab.activeBorder}` : "1px solid transparent",
+              width: 44, height: 34, borderRadius: 11,
+              background: on ? "rgba(59,130,246,0.1)" : "transparent",
               display: "flex", alignItems: "center", justifyContent: "center",
               transition: "all 0.2s",
-              boxShadow: active ? `0 0 14px ${tab.activeGlow}` : "none",
             }}>
-              {tab.icon(active)}
+              {tab.id === "earn"   && <EarnIcon   c={c} />}
+              {tab.id === "friend" && <ReferIcon  c={c} />}
+              {tab.id === "wallet" && <WalletIcon c={c} />}
             </div>
+
             <span style={{
-              fontSize: 9, fontWeight: active ? 900 : 600,
-              color: active ? tab.activeColor : "rgba(255,255,255,0.3)",
-              letterSpacing: 0.5,
-              textTransform: "uppercase",
+              fontSize: 9, fontWeight: on ? 800 : 500,
+              letterSpacing: "0.06em", textTransform: "uppercase",
+              color: on ? BLUE_L : "rgba(255,255,255,0.25)",
               lineHeight: 1,
-            }}>
-              {tab.label}
-            </span>
+            }}>{tab.label}</span>
           </button>
         );
       })}
-    </div>
+    </nav>
   );
 }
