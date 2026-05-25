@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import Header from "@/components/Header";
-import InvitePopup from "@/components/InvitePopup";
 import MenuPopup from "@/components/MenuPopup";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
@@ -427,7 +426,6 @@ export default function Earn() {
         </AnimatePresence>
       </div>
 
-      {inviteOpen && <InvitePopup onClose={() => setInviteOpen(false)} />}
       {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}
     </div>
   );
