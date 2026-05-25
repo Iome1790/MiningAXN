@@ -27,10 +27,6 @@ const Landing = lazy(() => import("@/pages/Landing"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const CountryControls = lazy(() => import("@/pages/CountryControls"));
 const GamesPage = lazy(() => import("@/pages/Games"));
-const FlipSensePage = lazy(() => import("@/pages/FlipSense"));
-const SlidingSensePage = lazy(() => import("@/pages/SlidingSense"));
-const CalculusFestPage = lazy(() => import("@/pages/CalculusFest"));
-const OffersPage = lazy(() => import("@/pages/Offers"));
 const WithdrawPage = lazy(() => import("@/pages/Withdraw"));
 const EarnPage = lazy(() => import("@/pages/Earn"));
 const WatchPage = lazy(() => import("@/pages/Earn"));
@@ -205,10 +201,6 @@ function Router() {
           <Route path="/admin" component={Admin} />
           <Route path="/admin/country-controls" component={CountryControls} />
           <Route path="/game" component={GamesPage} />
-          <Route path="/game/flip" component={FlipSensePage} />
-          <Route path="/game/sliding" component={SlidingSensePage} />
-          <Route path="/game/calculus" component={CalculusFestPage} />
-          <Route path="/offers" component={OffersPage} />
           <Route path="/withdraw" component={WithdrawPage} />
           <Route component={NotFound} />
         </Switch>
