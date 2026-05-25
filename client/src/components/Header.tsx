@@ -40,8 +40,8 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
           style={{
             margin: "0 12px 8px",
             borderRadius: 20,
-            background: "rgba(18, 13, 36, 0.92)",
-            border: "1px solid rgba(139, 92, 246, 0.15)",
+            background: "rgba(0,0,0,0.97)",
+            border: "1px solid rgba(255,255,255,0.06)",
             backdropFilter: "blur(20px)",
             padding: "10px 14px",
             display: "flex",
@@ -63,8 +63,8 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
-                background: "rgba(124, 58, 237, 0.15)",
-                border: "1.5px solid rgba(124, 58, 237, 0.3)",
+                background: "rgba(255,255,255,0.06)",
+                border: "1.5px solid rgba(255,255,255,0.1)",
               }}
               className="active:scale-90 transition-transform"
             >
@@ -86,7 +86,7 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
                   }}
                 />
               ) : (
-                <span style={{ color: "#A78BFA", fontSize: 13, fontWeight: 900 }}>{initials}</span>
+                <span style={{ color: "#fff", fontSize: 13, fontWeight: 900 }}>{initials}</span>
               )}
             </button>
 
@@ -105,7 +105,7 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
               </p>
               {username && (
                 <p style={{
-                  color: "rgba(167,139,250,0.7)",
+                  color: "rgba(255,255,255,0.4)",
                   fontSize: 11,
                   fontWeight: 600,
                   margin: 0,
@@ -127,8 +127,8 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(91,33,182,0.2))",
-              border: "1px solid rgba(124,58,237,0.3)",
+              background: "rgba(37,99,235,0.12)",
+              border: "1px solid rgba(59,130,246,0.25)",
               borderRadius: 50,
               padding: "7px 14px",
               flexShrink: 0,
@@ -145,7 +145,7 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
               {axnBalance.toLocaleString()}
             </span>
             <span style={{
-              color: "rgba(167,139,250,0.8)",
+              color: "rgba(96,165,250,0.8)",
               fontSize: 10,
               fontWeight: 700,
               textTransform: "uppercase",
