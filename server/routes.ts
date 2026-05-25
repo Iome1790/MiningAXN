@@ -508,6 +508,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/mining/claim — claim accumulated mined AXN
+  app.post("/api/mining/claim", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const now = new Date();
+      const lastClaim = new Date(user.lastMiningClaim || user.createdAt);
+      const baseRate = 0.036 / 3600;
+      const section1Boost = parseFloat(user.adSection1Boost || "0") / 3600;
+      const section2Boost = parseFloat(user.adSection2Boost || "0") / 3600;
+      const referralBoostPerSec = parseFloat(user.referralMiningBoost || "0") / 3600;
+      const totalRate = baseRate + section1Boost + section2Boost + referralBoostPerSec;
+      const secondsPassed = Math.floor((now.getTime() - lastClaim.getTime()) / 1000);
+      const mined = parseFloat((secondsPassed * totalRate).toFixed(5));
+      if (mined <= 0) return res.status(400).json({ message: "Nothing to claim yet" });
+      await db.execute(sql`UPDATE users SET balance = balance + ${mined}, last_mining_claim = NOW() WHERE id = ${user.id}`);
+      const updatedUser = await storage.getUser(user.id);
+      res.json({ success: true, claimed: mined, newBalance: updatedUser?.balance });
+    } catch (error) {
+      console.error("Error claiming mining:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // POST /api/milestone/claim — persistent invite milestone claim
+  app.post("/api/milestone/claim", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const { count, reward } = req.body;
+      if (!count || !reward) return res.status(400).json({ message: "Missing count or reward" });
+      // Ensure table exists
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS referral_milestone_claims (
+          id SERIAL PRIMARY KEY,
+          user_id VARCHAR NOT NULL,
+          milestone_count INTEGER NOT NULL,
+          reward INTEGER NOT NULL,
+          claimed_at TIMESTAMP DEFAULT NOW(),
+          UNIQUE(user_id, milestone_count)
+        )
+      `);
+      // Check already claimed
+      const existing = await db.execute(sql`
+        SELECT id FROM referral_milestone_claims WHERE user_id = ${user.id} AND milestone_count = ${count}
+      `);
+      if (existing.rows && existing.rows.length > 0) {
+        return res.status(400).json({ message: "Already claimed", alreadyClaimed: true });
+      }
+      // Check user has enough verified friends
+      const friendsCount = await db.execute(sql`
+        SELECT COUNT(*) as count FROM referrals r
+        JOIN users u ON u.id = r.referee_id
+        WHERE r.referrer_id = ${user.id} AND r.status = 'completed' AND u.banned = FALSE
+      `);
+      const verified = parseInt(friendsCount.rows?.[0]?.count || "0");
+      if (verified < count) {
+        return res.status(400).json({ message: `Need ${count} verified friends, you have ${verified}` });
+      }
+      // Insert claim record + credit balance atomically
+      await db.execute(sql`
+        INSERT INTO referral_milestone_claims (user_id, milestone_count, reward) VALUES (${user.id}, ${count}, ${reward})
+      `);
+      await db.execute(sql`UPDATE users SET balance = balance + ${reward} WHERE id = ${user.id}`);
+      res.json({ success: true, claimed: reward });
+    } catch (error: any) {
+      if (error?.code === '23505') return res.status(400).json({ message: "Already claimed", alreadyClaimed: true });
+      console.error("Error claiming milestone:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // GET /api/milestone/claimed — get list of claimed milestones
+  app.get("/api/milestone/claimed", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      try {
+        const rows = await db.execute(sql`
+          SELECT milestone_count FROM referral_milestone_claims WHERE user_id = ${user.id}
+        `);
+        const claimed = (rows.rows || []).map((r: any) => Number(r.milestone_count));
+        res.json({ claimed });
+      } catch {
+        res.json({ claimed: [] });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.get("/api/deposits", authenticateTelegram, async (_req: any, res) => {
     res.json([]);
   });
