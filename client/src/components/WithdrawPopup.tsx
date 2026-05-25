@@ -28,7 +28,6 @@ interface Props {
 export default function WithdrawPopup({ onClose, userBalance, connectedAddress }: Props) {
   const [address, setAddress] = useState(connectedAddress || '');
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState<'TON' | 'USDT'>('TON');
   const queryClient = useQueryClient();
 
   const withdrawMutation = useMutation({
@@ -36,7 +35,7 @@ export default function WithdrawPopup({ onClose, userBalance, connectedAddress }
       const res = await apiRequest('POST', '/api/withdrawals', {
         address: address.trim(),
         amount: amount,
-        method: method === 'TON' ? 'TON' : 'USDT-BSC',
+        method: 'TON',
       });
       return res.json();
     },
@@ -134,38 +133,19 @@ export default function WithdrawPopup({ onClose, userBalance, connectedAddress }
           ))}
         </div>
 
-        {/* Method toggle */}
-        <div style={{
-          display: 'flex', gap: 6, marginBottom: 14,
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 50, padding: 4,
-        }}>
-          {(['TON', 'USDT'] as const).map(m => (
-            <button key={m} onClick={() => setMethod(m)} style={{
-              flex: 1, padding: '8px 0', border: 'none', borderRadius: 50,
-              background: method === m ? 'linear-gradient(135deg, #2563eb, #2563eb)' : 'transparent',
-              color: method === m ? '#fff' : 'rgba(255,255,255,0.35)',
-              fontSize: 12, fontWeight: method === m ? 800 : 600, cursor: 'pointer',
-              boxShadow: method === m ? '0 2px 10px rgba(37,99,235,0.3)' : 'none',
-              transition: 'all 0.2s',
-            }}>{m === 'TON' ? 'TON Network' : 'USDT (BEP-20)'}</button>
-          ))}
-        </div>
-
         {/* Wallet address */}
         <div style={{ marginBottom: 10 }}>
           <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {method === 'TON' ? 'TON Wallet Address' : 'USDT Address (BEP-20)'}
+            TON Wallet Address
           </div>
           <input
             type="text" value={address} onChange={e => setAddress(e.target.value)}
-            placeholder={method === 'TON' ? 'Enter TON wallet address' : '0x... BSC address'}
+            placeholder="EQ... or UQ... TON address"
             style={{
               width: '100%', height: 46,
               background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(37,99,235,0.2)',
               color: '#fff', fontSize: 13, padding: '0 14px', outline: 'none',
-              boxSizing: 'border-box', borderRadius: 12,
-              fontFamily: method === 'USDT' ? 'monospace' : 'inherit',
+              boxSizing: 'border-box', borderRadius: 12, fontFamily: 'monospace',
             }}
           />
         </div>
