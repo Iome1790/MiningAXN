@@ -672,7 +672,11 @@ function WithdrawSection({ payoutData, pendingData }: { payoutData: any; pending
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                   <div>
                     <p className="text-[9px] text-gray-600 uppercase tracking-wide">Address</p>
-                    <p className="text-[10px] text-blue-300 font-mono truncate max-w-[120px]" title={address}>{address}</p>
+                    <p
+                      className="text-[10px] text-blue-300 font-mono break-all cursor-pointer"
+                      title="Tap to copy"
+                      onClick={() => { navigator.clipboard?.writeText(address); }}
+                    >{address}</p>
                   </div>
                   <div>
                     <p className="text-[9px] text-gray-600 uppercase tracking-wide">Date</p>

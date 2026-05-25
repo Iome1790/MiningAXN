@@ -1,12 +1,100 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, Component, ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
-import { useTonConnectUI, useTonWallet } from "@tonconnect/ui-react";
+import { useTonConnectUI, useTonWallet, useTonAddress } from "@tonconnect/ui-react";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/Header";
 import MenuPopup from "@/components/MenuPopup";
 import WithdrawPopup from "@/components/WithdrawPopup";
+
+// ── TonConnect isolation ──────────────────────────────────────────
+// Hooks are in this sub-component; if the SDK throws during init
+// only this button fails — the rest of the Wallet page stays up.
+class TonConnectErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { crashed: boolean }
+> {
+  state = { crashed: false };
+  static getDerivedStateFromError() { return { crashed: true }; }
+  componentDidCatch(e: unknown) { console.warn("[TonConnect]", e); }
+  render() {
+    return this.state.crashed ? this.props.fallback : this.props.children;
+  }
+}
+
+function ConnectWalletButton({ onConnected }: { onConnected?: (addr: string) => void }) {
+  const [tonConnectUI] = useTonConnectUI();
+  const wallet = useTonWallet();
+  // useTonAddress returns the user-friendly EQ.../UQ... format (not raw hex)
+  const friendlyAddress = useTonAddress();
+
+  useEffect(() => {
+    if (friendlyAddress && onConnected) {
+      onConnected(friendlyAddress);
+    }
+  }, [friendlyAddress]);
+
+  if (wallet) {
+    return (
+      <button
+        onClick={() => tonConnectUI.disconnect()}
+        style={{
+          width: '100%', padding: '13px 0', border: '1px solid rgba(255,255,255,0.1)',
+          background: 'rgba(255,255,255,0.04)', borderRadius: 14,
+          color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 700,
+          cursor: 'pointer', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', gap: 7,
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+          <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+          <path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>
+        </svg>
+        Disconnect Wallet
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => tonConnectUI.openModal()}
+      style={{
+        width: '100%', padding: '13px 0', border: '1px solid rgba(59,130,246,0.3)',
+        background: 'rgba(255,255,255,0.04)', borderRadius: 14,
+        color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 700,
+        cursor: 'pointer', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', gap: 7,
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round">
+        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+        <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+        <path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>
+      </svg>
+      Connect TON Wallet
+    </button>
+  );
+}
+
+function ConnectWalletSection({ onConnected }: { onConnected?: (addr: string) => void }) {
+  return (
+    <TonConnectErrorBoundary
+      fallback={
+        <div style={{
+          width: '100%', padding: '13px 0', border: '1px solid rgba(255,255,255,0.06)',
+          background: 'rgba(255,255,255,0.03)', borderRadius: 14,
+          color: 'rgba(255,255,255,0.3)', fontSize: 12, fontWeight: 600,
+          textAlign: 'center',
+        }}>
+          Wallet connection unavailable
+        </div>
+      }
+    >
+      <ConnectWalletButton onConnected={onConnected} />
+    </TonConnectErrorBoundary>
+  );
+}
 
 const TEXT = '#fff';
 const TEXT_DIM = 'rgba(255,255,255,0.35)';
@@ -14,41 +102,7 @@ const CARD = 'rgba(255,255,255,0.04)';
 const BORDER = 'rgba(255,255,255,0.07)';
 const BLUE = '#3b82f6';
 const BLUE_D = '#2563eb';
-
 const TON_PER_AXN = 0.00001;
-
-function rawToFriendlyAddress(raw: string): string {
-  try {
-    if (!raw.includes(':')) return raw;
-    const parts = raw.split(':');
-    if (parts.length !== 2) return raw;
-    const workchain = parseInt(parts[0]);
-    const hexAddr = parts[1];
-    if (hexAddr.length !== 64) return raw;
-    const tag = 0x51;
-    const bytes = new Uint8Array(36);
-    bytes[0] = tag;
-    bytes[1] = workchain & 0xff;
-    for (let i = 0; i < 32; i++) {
-      bytes[i + 2] = parseInt(hexAddr.slice(i * 2, i * 2 + 2), 16);
-    }
-    let crc = 0;
-    for (let i = 0; i < 34; i++) {
-      crc ^= bytes[i] << 8;
-      for (let j = 0; j < 8; j++) {
-        if (crc & 0x8000) crc = ((crc << 1) ^ 0x1021) & 0xffff;
-        else crc = (crc << 1) & 0xffff;
-      }
-    }
-    bytes[34] = (crc >> 8) & 0xff;
-    bytes[35] = crc & 0xff;
-    const b64 = btoa(String.fromCharCode(...bytes))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-    return b64;
-  } catch {
-    return raw;
-  }
-}
 
 function shortAddress(addr: string): string {
   if (addr.length > 12) return addr.slice(0, 6) + '...' + addr.slice(-4);
@@ -77,11 +131,11 @@ export default function Wallet() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [tonPrice, setTonPrice] = useState<number | null>(null);
   const [tonLoading, setTonLoading] = useState(true);
+  const [addressInput, setAddressInput] = useState('');
+  const [addressEditing, setAddressEditing] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
 
-  const [tonConnectUI] = useTonConnectUI();
-  const wallet = useTonWallet();
   const queryClient = useQueryClient();
-  const savedRef = useRef(false);
 
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
   const { data: withdrawalsData } = useQuery<any>({
@@ -96,11 +150,14 @@ export default function Wallet() {
   const tonUsdValue = tonPrice ? tonBalance * tonPrice : 0;
   const totalUsd = axnUsdValue + tonUsdValue;
 
-  const rawWalletAddress = wallet?.account?.address || user?.tonWalletAddress || '';
-  const friendlyAddress = rawWalletAddress ? rawToFriendlyAddress(rawWalletAddress) : '';
-  const connectedAddress = friendlyAddress;
-
+  const savedAddress: string = user?.tonWalletAddress || '';
   const withdrawalHistory: any[] = withdrawalsData?.withdrawals ?? [];
+
+  useEffect(() => {
+    if (user?.tonWalletAddress) {
+      setAddressInput(user.tonWalletAddress);
+    }
+  }, [user?.tonWalletAddress]);
 
   useEffect(() => {
     setTonLoading(true);
@@ -111,29 +168,38 @@ export default function Wallet() {
       .finally(() => setTonLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (wallet?.account?.address && !savedRef.current) {
-      savedRef.current = true;
-      apiRequest('POST', '/api/wallet/save', { tonWalletAddress: wallet.account.address })
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-          showNotification('Wallet connected!', 'success');
-        })
-        .catch(() => {});
+  const handleSaveAddress = async () => {
+    const trimmed = addressInput.trim();
+    if (!trimmed) {
+      showNotification('Please enter a wallet address', 'error');
+      return;
     }
-    if (!wallet) savedRef.current = false;
-  }, [wallet?.account?.address]);
-
-  const handleConnect = () => {
-    tonConnectUI.openModal();
+    setSavingAddress(true);
+    try {
+      await apiRequest('POST', '/api/wallet/save', { tonWalletAddress: trimmed });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      setAddressEditing(false);
+      showNotification('Wallet address saved!', 'success');
+    } catch {
+      showNotification('Failed to save address. Try again.', 'error');
+    } finally {
+      setSavingAddress(false);
+    }
   };
 
-  const handleDisconnect = async () => {
-    await tonConnectUI.disconnect();
-    savedRef.current = false;
-    await apiRequest('POST', '/api/wallet/save', { tonWalletAddress: '' }).catch(() => {});
-    queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-    showNotification('Wallet disconnected', 'info');
+  const handleRemoveAddress = async () => {
+    setSavingAddress(true);
+    try {
+      await apiRequest('POST', '/api/wallet/save', { tonWalletAddress: '' });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      setAddressInput('');
+      setAddressEditing(false);
+      showNotification('Wallet address removed', 'info');
+    } catch {
+      showNotification('Failed to remove address', 'error');
+    } finally {
+      setSavingAddress(false);
+    }
   };
 
   return (
@@ -142,7 +208,7 @@ export default function Wallet() {
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px', paddingBottom: 90, paddingTop: 88 }}>
 
-        {/* ── Portfolio section ── */}
+        {/* ── Portfolio ── */}
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <div style={{ color: TEXT_DIM, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
             Total Portfolio
@@ -152,77 +218,152 @@ export default function Wallet() {
             <span style={{ color: TEXT_DIM, fontSize: 14, fontWeight: 500, marginLeft: 8 }}>USD</span>
           </div>
 
-          {/* Connected wallet pill */}
-          {connectedAddress ? (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.18)',
-              borderRadius: 50, padding: '4px 12px', marginBottom: 14, marginTop: 4,
-            }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
-              <span style={{ color: '#4ade80', fontSize: 11, fontWeight: 700 }}>Connected</span>
-              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, fontFamily: 'monospace' }}>
-                {shortAddress(connectedAddress)}
-              </span>
-            </div>
-          ) : null}
-
-          {/* Action buttons */}
-          <div style={{ display: 'flex', gap: 10, marginTop: connectedAddress ? 0 : 14 }}>
-            {connectedAddress ? (
-              <button
-                onClick={handleDisconnect}
-                className="active:scale-95 transition-transform"
+          {/* Saved address display */}
+          {savedAddress && !addressEditing && (
+            <div style={{ marginBottom: 10, marginTop: 4 }}>
+              {/* Status pill */}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.18)',
+                borderRadius: 50, padding: '4px 12px', marginBottom: 8,
+              }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
+                <span style={{ color: '#4ade80', fontSize: 11, fontWeight: 700 }}>Wallet Connected</span>
+              </div>
+              {/* Short address with copy */}
+              <div
+                onClick={() => {
+                  navigator.clipboard?.writeText(savedAddress)
+                    .then(() => showNotification('Address copied!', 'success'))
+                    .catch(() => showNotification('Copy failed', 'error'));
+                }}
                 style={{
-                  flex: 1, padding: '13px 0', border: '1px solid rgba(255,255,255,0.1)',
-                  background: 'rgba(255,255,255,0.04)', borderRadius: 14,
-                  color: TEXT_DIM, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(34,197,94,0.2)', borderRadius: 50,
+                  padding: '5px 12px', cursor: 'pointer',
                 }}
               >
-                Disconnect
-              </button>
-            ) : (
-              <button
-                onClick={handleConnect}
-                className="active:scale-95 transition-transform"
-                style={{
-                  flex: 1, padding: '13px 0',
-                  border: `1px solid rgba(59,130,246,0.35)`,
-                  background: 'rgba(37,99,235,0.1)', borderRadius: 14,
-                  color: BLUE, fontSize: 13, fontWeight: 800, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  boxShadow: '0 2px 12px rgba(37,99,235,0.15)',
-                }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                <span style={{ color: '#4ade80', fontSize: 12, fontFamily: 'monospace' }}>
+                  {shortAddress(savedAddress)}
+                </span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.5)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                 </svg>
-                Connect Wallet
-              </button>
+              </div>
+            </div>
+          )}
+
+          {/* Wallet address input */}
+          <div style={{ marginTop: savedAddress && !addressEditing ? 6 : 14, marginBottom: 6 }}>
+            {addressEditing || !savedAddress ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{
+                  fontSize: 11, color: TEXT_DIM, textAlign: 'left', marginBottom: 2,
+                }}>
+                  Enter your TON wallet address for withdrawals
+                </div>
+                <input
+                  value={addressInput}
+                  onChange={e => setAddressInput(e.target.value)}
+                  placeholder="EQ... or UQ... wallet address"
+                  style={{
+                    width: '100%', padding: '12px 14px', background: CARD,
+                    border: `1px solid rgba(59,130,246,0.35)`, borderRadius: 12,
+                    color: TEXT, fontSize: 13, fontFamily: 'monospace',
+                    outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={handleSaveAddress}
+                    disabled={savingAddress}
+                    style={{
+                      flex: 1, padding: '12px 0', border: 'none', cursor: 'pointer',
+                      background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
+                      borderRadius: 12, color: '#fff', fontSize: 13, fontWeight: 800,
+                      opacity: savingAddress ? 0.6 : 1,
+                    }}
+                  >
+                    {savingAddress ? 'Saving...' : 'Save Address'}
+                  </button>
+                  {savedAddress && (
+                    <button
+                      onClick={() => { setAddressEditing(false); setAddressInput(savedAddress); }}
+                      style={{
+                        padding: '12px 16px', background: CARD,
+                        border: `1px solid ${BORDER}`, borderRadius: 12,
+                        color: TEXT_DIM, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setAddressEditing(true)}
+                  style={{
+                    flex: 1, padding: '12px 0',
+                    border: `1px solid rgba(255,255,255,0.1)`,
+                    background: CARD, borderRadius: 12,
+                    color: TEXT_DIM, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Change Address
+                </button>
+                <button
+                  onClick={handleRemoveAddress}
+                  disabled={savingAddress}
+                  style={{
+                    padding: '12px 16px', background: 'rgba(239,68,68,0.08)',
+                    border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12,
+                    color: '#f87171', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
             )}
-            <button
-              onClick={() => setWithdrawOpen(true)}
-              className="active:scale-95 transition-transform"
-              style={{
-                flex: 1, padding: '13px 0', border: 'none',
-                background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-                borderRadius: 14,
-                color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                boxShadow: '0 4px 20px rgba(37,99,235,0.35)',
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                <polyline points="17 6 23 6 23 12"/>
-              </svg>
-              Withdraw AXIONET
-            </button>
           </div>
+
+          {/* Connect TON Wallet — SDK button, safely isolated */}
+          <div style={{ marginTop: 10 }}>
+            <ConnectWalletSection
+              onConnected={(addr) => {
+                setAddressInput(addr);
+                apiRequest('POST', '/api/wallet/save', { tonWalletAddress: addr })
+                  .then(() => queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }))
+                  .catch(() => {});
+              }}
+            />
+          </div>
+
+          {/* Withdraw button — always visible */}
+          <button
+            onClick={() => setWithdrawOpen(true)}
+            className="active:scale-95 transition-transform"
+            style={{
+              width: '100%', marginTop: 10, padding: '14px 0', border: 'none',
+              background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
+              borderRadius: 14, color: '#fff', fontSize: 14, fontWeight: 800,
+              cursor: 'pointer', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', gap: 6,
+              boxShadow: '0 4px 20px rgba(37,99,235,0.35)',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+              <polyline points="17 6 23 6 23 12"/>
+            </svg>
+            Withdraw AXIONET
+          </button>
         </div>
 
-        {/* ── Quick shortcuts: Route & White Paper only ── */}
+        {/* ── Quick shortcuts ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
           {[
             {
@@ -270,13 +411,12 @@ export default function Wallet() {
           ))}
         </div>
 
-        {/* ── Assets section ── */}
+        {/* ── Assets ── */}
         <div style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
           Assets
         </div>
 
-        {/* AXN Asset Row */}
-        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px 14px', marginBottom: 8 }}>
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
@@ -284,8 +424,7 @@ export default function Wallet() {
                 border: '1px solid rgba(59,130,246,0.4)',
                 boxShadow: '0 0 12px rgba(59,130,246,0.3)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                overflow: 'hidden',
-                background: '#000',
+                overflow: 'hidden', background: '#000',
               }}>
                 <img src="/axn-icon.png" alt="AXN" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
@@ -305,8 +444,7 @@ export default function Wallet() {
           </div>
         </div>
 
-        {/* TON Asset Row */}
-        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px 14px', marginBottom: 8 }}>
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
@@ -394,7 +532,7 @@ export default function Wallet() {
             queryClient.invalidateQueries({ queryKey: ['/api/withdrawals'] });
           }}
           userBalance={axnBalance}
-          connectedAddress={connectedAddress || undefined}
+          connectedAddress={savedAddress || undefined}
         />
       )}
       {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}

@@ -8,7 +8,6 @@ import MenuPopup from "@/components/MenuPopup";
 import { useLocation } from "wouter";
 
 const FARMING_DURATION_MS = 3 * 60 * 60 * 1000;
-const MINING_RATE = 0.01;
 const TON_PER_AXN = 0.00001;
 
 const animStyles = `
@@ -99,15 +98,17 @@ export default function Games() {
     }
   }, [baseAmount]);
 
+  const perSecRate = parseFloat(miningState?.rawMiningRate?.toString() ?? '0');
+
   useEffect(() => {
     setDisplayed(baseAmount);
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (!isFarming || farmingDone) return;
     intervalRef.current = setInterval(() => {
-      setDisplayed(prev => parseFloat((prev + MINING_RATE).toFixed(4)));
+      setDisplayed(prev => parseFloat((prev + perSecRate).toFixed(5)));
     }, 1000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [baseAmount, isFarming, farmingDone]);
+  }, [baseAmount, isFarming, farmingDone, perSecRate]);
 
   const claimMutation = useMutation({
     mutationFn: async () => {
@@ -124,13 +125,10 @@ export default function Games() {
       queryClient.invalidateQueries({ queryKey: ['/api/mining/state'] });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
     },
-    onError: () => {
-      showNotification(`${displayed.toFixed(4)} AXN claimed!`, 'success');
-      setDisplayed(0);
-      setSessionDelta(0);
-      localStorage.setItem('last_mined_amount', '0');
-      setFarmingStartTime(null);
-      localStorage.removeItem('farming_start_time');
+    onError: (error: any) => {
+      let msg = 'Claim failed. Please try again.';
+      try { const p = JSON.parse(error.message); if (p.message) msg = p.message; } catch {}
+      showNotification(msg, 'error');
     },
   });
 
@@ -150,25 +148,25 @@ export default function Games() {
 
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '58px 20px 68px',
+        justifyContent: 'center', padding: '68px 20px 68px',
       }}>
 
         {/* ── Total Balance ── */}
-        <div style={{ textAlign: 'center', marginBottom: 6 }}>
+        <div style={{ textAlign: 'center', marginBottom: 4 }}>
           <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
             Total Balance
           </span>
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: 2 }}>
-          <span style={{ color: '#fff', fontSize: 44, fontWeight: 900, letterSpacing: '-2px', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ color: '#fff', fontSize: 32, fontWeight: 900, letterSpacing: '-1px', fontVariantNumeric: 'tabular-nums' }}>
             {axnBalance.toLocaleString()}
           </span>
-          <span style={{ color: 'rgba(96,165,250,0.85)', fontSize: 18, fontWeight: 700, marginLeft: 8 }}>AXN</span>
+          <span style={{ color: 'rgba(96,165,250,0.85)', fontSize: 16, fontWeight: 700, marginLeft: 6 }}>AXN</span>
         </div>
 
-        <div style={{ textAlign: 'center', marginBottom: 26 }}>
-          <span style={{ color: 'rgba(255,255,255,0.28)', fontSize: 14, fontWeight: 500 }}>
+        <div style={{ textAlign: 'center', marginBottom: 22 }}>
+          <span style={{ color: 'rgba(255,255,255,0.28)', fontSize: 13, fontWeight: 500 }}>
             {tonPrice ? `≈ $${axnUsdValue.toFixed(4)} USD` : '— USD'}
           </span>
         </div>
@@ -227,7 +225,7 @@ export default function Games() {
               Mining Power
             </span>
             <span style={{ color: '#3b82f6', fontSize: 11, fontWeight: 800, fontFamily: 'monospace' }}>
-              {MINING_RATE.toFixed(2)}/sec
+              {parseFloat(miningState?.miningRate ?? '0.036').toFixed(4)}/h
             </span>
           </div>
 

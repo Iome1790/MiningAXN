@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
@@ -46,7 +46,7 @@ const AD_TASKS = [
   { id: 5, reward: 5  },
 ];
 
-type AdState = 'idle' | 'loading' | 'claim' | 'done';
+type AdState = 'idle' | 'loading' | 'claim' | 'claiming' | 'done';
 
 function PlayIcon({ size = 18 }: { size?: number }) {
   return (
@@ -59,12 +59,28 @@ function PlayIcon({ size = 18 }: { size?: number }) {
 
 function AdTaskRow({ task }: { task: typeof AD_TASKS[0] }) {
   const [state, setState] = useState<AdState>('idle');
+  const queryClient = useQueryClient();
 
   const handleStart = async () => {
     if (state !== 'idle') return;
     setState('loading');
     try { await showRewardedInterstitial(); } catch {}
     setState('claim');
+  };
+
+  const handleClaim = async () => {
+    if (state !== 'claim') return;
+    setState('claiming');
+    try {
+      const res = await apiRequest('POST', '/api/ads/extra-watch', {});
+      const data = await res.json();
+      setState('done');
+      showNotification(`+${data.rewardAXN ?? task.reward} AXN earned!`, 'success');
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+    } catch {
+      setState('claim');
+      showNotification('Failed to claim reward. Please try again.', 'error');
+    }
   };
 
   return (
@@ -93,31 +109,30 @@ function AdTaskRow({ task }: { task: typeof AD_TASKS[0] }) {
           <span style={{ color: state === 'done' ? TEXT_DIM : TEXT, fontSize: 13, fontWeight: 700 }}>
             Watch to Earn AXN
           </span>
-          {badge(`${task.reward} AXN`)}
         </div>
-        <div style={{ fontSize: 11, marginTop: 2, color: state === 'loading' ? BLUE : state === 'claim' ? '#fbbf24' : state === 'done' ? '#4ade80' : TEXT_DIM }}>
-          {state === 'loading' ? 'Loading ad...' : state === 'claim' ? 'Ad watched — claim reward' : state === 'done' ? 'Reward credited' : 'Watch to earn AXN'}
+        <div style={{ fontSize: 11, marginTop: 2, color: state === 'loading' ? BLUE : state === 'claim' ? '#fbbf24' : state === 'done' ? '#4ade80' : BLUE }}>
+          {state === 'loading' ? 'Loading ad...' : state === 'claim' ? 'Ad watched — claim reward' : state === 'done' ? 'Reward credited' : `+${task.reward} AXN`}
         </div>
       </div>
 
       <div style={{ paddingRight: 12, flexShrink: 0 }}>
         <button
-          onClick={state === 'idle' ? handleStart : state === 'claim' ? () => setState('done') : undefined}
-          disabled={state === 'done' || state === 'loading'}
+          onClick={state === 'idle' ? handleStart : state === 'claim' ? handleClaim : undefined}
+          disabled={state === 'done' || state === 'loading' || state === 'claiming'}
           style={{
             background: state === 'done' ? 'rgba(74,222,128,0.08)'
               : state === 'claim' ? 'linear-gradient(135deg, #16a34a, #22c55e)'
-              : state === 'loading' ? 'rgba(255,255,255,0.05)'
+              : (state === 'loading' || state === 'claiming') ? 'rgba(255,255,255,0.05)'
               : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
             border: `1px solid ${state === 'done' ? 'rgba(74,222,128,0.18)' : state === 'claim' ? 'rgba(74,222,128,0.3)' : 'rgba(37,99,235,0.4)'}`,
             color: state === 'done' ? '#4ade80' : '#fff',
             fontSize: 11, fontWeight: 800, padding: '7px 14px',
             cursor: state === 'idle' || state === 'claim' ? 'pointer' : 'not-allowed',
-            whiteSpace: 'nowrap', borderRadius: 50, opacity: state === 'loading' ? 0.5 : 1,
-            boxShadow: (state === 'done' || state === 'loading') ? 'none' : '0 3px 10px rgba(37,99,235,0.35)',
+            whiteSpace: 'nowrap', borderRadius: 50, opacity: (state === 'loading' || state === 'claiming') ? 0.5 : 1,
+            boxShadow: (state === 'done' || state === 'loading' || state === 'claiming') ? 'none' : '0 3px 10px rgba(37,99,235,0.35)',
           }}
         >
-          {state === 'done' ? 'Done' : state === 'loading' ? '...' : state === 'claim' ? 'Claim' : 'Watch'}
+          {state === 'done' ? 'Done' : (state === 'loading' || state === 'claiming') ? '...' : state === 'claim' ? 'Claim' : 'Watch'}
         </button>
       </div>
     </div>
@@ -192,6 +207,10 @@ export default function Earn() {
 
   const queryClient = useQueryClient();
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
+
+  useEffect(() => {
+    if (user?.dailyInviteClaimed) setDailyClaimed(true);
+  }, [user?.dailyInviteClaimed]);
   const { data: claimedData } = useQuery<{ claimed: number[] }>({
     queryKey: ['/api/milestone/claimed'],
     staleTime: 60000,
@@ -365,7 +384,18 @@ export default function Earn() {
                     </div>
                     <div style={{ paddingRight: 12, flexShrink: 0 }}>
                       <button
-                        onClick={() => { window.open('https://axionet.io', '_blank'); setTimeout(() => setTaskDone(true), 2000); }}
+                        onClick={() => {
+                          window.open('https://axionet.io', '_blank');
+                          setTimeout(async () => {
+                            try {
+                              const res = await apiRequest('POST', '/api/ads/extra-watch', {});
+                              const data = await res.json();
+                              showNotification(`+${data.rewardAXN ?? 10} AXN earned!`, 'success');
+                              queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+                            } catch {}
+                            setTaskDone(true);
+                          }, 2000);
+                        }}
                         disabled={taskDone}
                         style={{
                           background: taskDone ? 'rgba(74,222,128,0.07)' : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
