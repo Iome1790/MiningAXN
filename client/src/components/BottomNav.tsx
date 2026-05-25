@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 
-const GOLD = "#F5C400";
+const BLUE = "#3b82f6";
 const DIM = "rgba(255,255,255,0.28)";
 
 const MineIcon = ({ c }: { c: string }) => (
@@ -63,7 +63,7 @@ export default function BottomNav() {
     }}>
       {TABS.map((tab) => {
         const on = isOn(tab);
-        const c = on ? GOLD : DIM;
+        const c = on ? BLUE : DIM;
 
         return (
           <button
@@ -81,14 +81,15 @@ export default function BottomNav() {
               <div style={{
                 position: "absolute", top: 0, left: "22%", right: "22%",
                 height: 2.5, borderRadius: "0 0 4px 4px",
-                background: GOLD,
-                boxShadow: `0 0 10px ${GOLD}88`,
+                background: BLUE,
+                boxShadow: `0 0 12px ${BLUE}cc, 0 0 24px ${BLUE}66`,
               }} />
             )}
 
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "center",
               width: 40, height: 32,
+              filter: on ? `drop-shadow(0 0 6px ${BLUE}99)` : 'none',
             }}>
               <tab.Icon c={c} />
             </div>
@@ -96,8 +97,9 @@ export default function BottomNav() {
             <span style={{
               fontSize: 10, fontWeight: on ? 800 : 500,
               letterSpacing: "0.04em",
-              color: on ? GOLD : DIM,
+              color: on ? BLUE : DIM,
               lineHeight: 1,
+              textShadow: on ? `0 0 10px ${BLUE}88` : 'none',
             }}>
               {tab.label}
             </span>

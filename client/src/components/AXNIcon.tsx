@@ -6,17 +6,21 @@ interface AXNIconProps {
 export function AXNIcon({ size = 20, className = "" }: AXNIconProps) {
   return (
     <span
-      className={`flex-shrink-0 inline-block rounded-full overflow-hidden ${className}`}
+      className={`flex-shrink-0 inline-block ${className}`}
       style={{
         width: size,
         height: size,
         minWidth: size,
         minHeight: size,
-        boxShadow: '0 0 0 1.5px rgba(59,130,246,0.7)',
+        borderRadius: '50%',
+        overflow: 'hidden',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
       <img
-        src="/axn-coin.jpg"
+        src="/axn-icon.png"
         alt="AXN"
         style={{
           width: "100%",
@@ -24,8 +28,6 @@ export function AXNIcon({ size = 20, className = "" }: AXNIconProps) {
           objectFit: "cover",
           objectPosition: "center",
           display: "block",
-          transform: "scale(1.25)",
-          transformOrigin: "center center",
         }}
       />
     </span>
