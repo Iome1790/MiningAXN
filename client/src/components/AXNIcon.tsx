@@ -14,20 +14,22 @@ export function AXNIcon({ size = 20, className = "" }: AXNIconProps) {
         minHeight: size,
         borderRadius: '50%',
         overflow: 'hidden',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        display: 'inline-block',
+        position: 'relative',
       }}
     >
       <img
-        src="/axn-icon.png"
+        src="/axn-coin-new.png"
         alt="AXN"
         style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          objectPosition: "center",
-          display: "block",
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%) scale(1.18)',
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
         }}
       />
     </span>
