@@ -3,7 +3,6 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppNotification from "@/components/AppNotification";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useEffect, lazy, Suspense, useState, memo, useCallback, useRef, createContext } from "react";
 import { useLocation } from "wouter";
 import BottomNav from "@/components/BottomNav";
@@ -81,6 +80,14 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
       style={{ background: '#000000', zIndex: 9999, opacity, pointerEvents: opacity < 0.05 ? 'none' : 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
     >
       <style>{`
+        @keyframes axn-ring-pulse {
+          0%, 100% { opacity: 0.55; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.06); }
+        }
+        @keyframes axn-ring-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
         @keyframes axn-coin-float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-10px); }
@@ -90,43 +97,47 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
           40% { transform: translateY(-8px); opacity: 1; }
         }
         @keyframes axn-glow-pulse {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.75; transform: scale(1.08); }
-        }
-        @keyframes axn-ripple-1 {
-          0% { transform: scale(0.9); opacity: 0.55; }
-          100% { transform: scale(1.35); opacity: 0; }
-        }
-        @keyframes axn-ripple-2 {
-          0% { transform: scale(0.9); opacity: 0.35; }
-          100% { transform: scale(1.55); opacity: 0; }
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.7; }
         }
       `}</style>
-      {/* Soft glow orb */}
+      {/* Outer glow orb */}
       <div style={{
-        position: 'absolute', width: 300, height: 300, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(59,130,246,0.2) 0%, transparent 70%)',
-        animation: 'axn-glow-pulse 2.4s ease-in-out infinite',
+        position: 'absolute',
+        width: 280,
+        height: 280,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(230,126,0,0.18) 0%, transparent 70%)',
+        animation: 'axn-glow-pulse 2.2s ease-in-out infinite',
       }} />
-      {/* Ripple ring 1 */}
+      {/* Spinning ring */}
       <div style={{
-        position: 'absolute', width: 150, height: 150, borderRadius: '50%',
-        border: '1.5px solid rgba(59,130,246,0.55)',
-        animation: 'axn-ripple-1 2.2s ease-out infinite',
+        position: 'absolute',
+        width: 160,
+        height: 160,
+        borderRadius: '50%',
+        border: '2px solid transparent',
+        borderTopColor: 'rgba(230,126,0,0.8)',
+        borderRightColor: 'rgba(245,158,11,0.4)',
+        animation: 'axn-ring-spin 1.6s linear infinite',
       }} />
-      {/* Ripple ring 2 */}
+      {/* Static glowing ring */}
       <div style={{
-        position: 'absolute', width: 150, height: 150, borderRadius: '50%',
-        border: '1px solid rgba(59,130,246,0.3)',
-        animation: 'axn-ripple-2 2.2s ease-out 0.8s infinite',
+        position: 'absolute',
+        width: 148,
+        height: 148,
+        borderRadius: '50%',
+        border: '1px solid rgba(230,126,0,0.25)',
+        boxShadow: '0 0 24px rgba(230,126,0,0.3), inset 0 0 24px rgba(230,126,0,0.08)',
+        animation: 'axn-ring-pulse 2s ease-in-out infinite',
       }} />
       {/* AXN Image */}
-      <div style={{ animation: 'axn-coin-float 3s ease-in-out infinite', position: 'relative', zIndex: 2 }}>
+      <div style={{ animation: 'axn-coin-float 2.8s ease-in-out infinite', position: 'relative', zIndex: 2 }}>
         <div style={{
-          width: 140, height: 140, borderRadius: '50%',
+          width: 110, height: 110, borderRadius: '50%',
           overflow: 'hidden', position: 'relative',
-          border: '2px solid rgba(59,130,246,0.35)',
-          boxShadow: '0 0 36px rgba(59,130,246,0.4), 0 0 80px rgba(59,130,246,0.15)',
+          border: '2px solid rgba(230,126,0,0.4)',
+          boxShadow: '0 0 28px rgba(230,126,0,0.35)',
         }}>
           <img
             src="/axn-coin-new.png"
@@ -164,7 +175,7 @@ function Router() {
           <Route path="/earn" component={EarnPage} />
           <Route path="/watch" component={WatchPage} />
           <Route path="/friend" component={FriendPage} />
-          <Route path="/wallet" component={() => <ErrorBoundary><WalletPage /></ErrorBoundary>} />
+          <Route path="/wallet" component={WalletPage} />
           <Route path="/landing" component={Landing} />
           <Route path="/admin" component={Admin} />
           <Route path="/admin/country-controls" component={CountryControls} />
