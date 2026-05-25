@@ -283,11 +283,10 @@ export default function Wallet() {
                 width: 40, height: 40, borderRadius: '50%',
                 border: '1px solid rgba(59,130,246,0.4)',
                 boxShadow: '0 0 12px rgba(59,130,246,0.3)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                overflow: 'hidden',
-                background: '#000',
+                flexShrink: 0, overflow: 'hidden',
+                background: '#000', position: 'relative',
               }}>
-                <img src="/axn-icon.png" alt="AXN" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src="/axn-coin-new.png" alt="AXN" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.18)', width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               </div>
               <div>
                 <div style={{ color: TEXT, fontSize: 14, fontWeight: 700 }}>Axionet</div>
