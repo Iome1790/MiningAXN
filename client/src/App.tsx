@@ -33,7 +33,7 @@ const CalculusFestPage = lazy(() => import("@/pages/CalculusFest"));
 const OffersPage = lazy(() => import("@/pages/Offers"));
 const WithdrawPage = lazy(() => import("@/pages/Withdraw"));
 const EarnPage = lazy(() => import("@/pages/Earn"));
-const WatchPage = lazy(() => import("@/pages/Watch"));
+const WatchPage = lazy(() => import("@/pages/Earn"));
 const FriendPage = lazy(() => import("@/pages/Friend"));
 const WalletPage = lazy(() => import("@/pages/Wallet"));
 const NotFound = lazy(() => import("@/pages/not-found"));
@@ -186,7 +186,7 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
   );
 }
 
-const NAV_ROUTES = new Set(["/", "/earn", "/watch", "/game", "/friend", "/wallet"]);
+const NAV_ROUTES = new Set(["/", "/earn", "/game", "/friend", "/wallet"]);
 
 function Router() {
   const [location] = useLocation();
