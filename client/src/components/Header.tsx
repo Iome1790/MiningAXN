@@ -99,9 +99,7 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
         ref={innerRef}
         className="fixed top-0 left-0 right-0 z-40"
         style={{
-          background: "rgba(10,10,10,0.97)",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
-          backdropFilter: "blur(20px)",
+          background: "#0a0a0a",
           paddingTop: `${overlayTop + 28}px`,
         }}
       >

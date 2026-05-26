@@ -4,20 +4,22 @@ const ACTIVE = "#ffffff";
 const DIM = "rgba(255,255,255,0.38)";
 
 const HomeIcon = ({ active, c }: { active: boolean; c: string }) => (
-  <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
     {active ? (
       <>
-        <path d="M14 3L3 12.5V25a1.5 1.5 0 0 0 1.5 1.5H10v-7.5h8V26.5h5.5A1.5 1.5 0 0 0 25 25V12.5L14 3z" fill={c} />
-        <rect x="10" y="19" width="8" height="7.5" rx="1.5" fill={c} opacity="0.6"/>
-        <path d="M14 3L3 12.5" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
-        <path d="M14 3L25 12.5" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
-        <circle cx="14" cy="12" r="2.5" fill="rgba(0,0,0,0.3)"/>
+        {/* Hexagon filled */}
+        <path d="M12 2L21.5 7.5V16.5L12 22L2.5 16.5V7.5Z" fill={c} opacity="0.15"/>
+        <path d="M12 2L21.5 7.5V16.5L12 22L2.5 16.5V7.5Z" stroke={c} strokeWidth="1.8" strokeLinejoin="round"/>
+        {/* Inner dot + ring */}
+        <circle cx="12" cy="12" r="2.5" fill={c}/>
+        <circle cx="12" cy="12" r="4.5" stroke={c} strokeWidth="1.2" opacity="0.4"/>
       </>
     ) : (
       <>
-        <path d="M4 13.5L14 5l10 8.5" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M6.5 11.5V23a1 1 0 0 0 1 1H11v-6h6v6h3.5a1 1 0 0 0 1-1V11.5" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <circle cx="14" cy="13" r="1.8" stroke={c} strokeWidth="1.4"/>
+        {/* Hexagon outline */}
+        <path d="M12 2L21.5 7.5V16.5L12 22L2.5 16.5V7.5Z" stroke={c} strokeWidth="1.8" strokeLinejoin="round"/>
+        {/* Center dot */}
+        <circle cx="12" cy="12" r="2" fill={c} opacity="0.6"/>
       </>
     )}
   </svg>
@@ -78,9 +80,7 @@ export default function BottomNav() {
       display: "flex", alignItems: "stretch",
       height: 72,
       paddingBottom: "max(var(--tg-content-safe-area-inset-bottom, var(--tg-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))), 6px)",
-      background: "rgba(10,10,10,0.97)",
-      borderTop: "1px solid rgba(255,255,255,0.08)",
-      backdropFilter: "blur(20px)",
+      background: "#0a0a0a",
     }}>
       {TABS.map((tab) => {
         const on = isOn(tab);
