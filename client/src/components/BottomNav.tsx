@@ -1,56 +1,71 @@
 import { useLocation } from "wouter";
 
-const BLUE = "#3b82f6";
-const DIM = "rgba(255,255,255,0.28)";
+const ACTIVE = "#ffffff";
+const DIM = "rgba(255,255,255,0.38)";
 
-const MineIcon = ({ c }: { c: string }) => (
+const HomeIcon = ({ active, c }: { active: boolean; c: string }) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <path d="M12 2C10.9 2 10 2.9 10 4v1H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h1v1.5L5.5 16H4a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-1.5L15 12.5V11h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2V4c0-1.1-.9-2-2-2z"
-      stroke={c} strokeWidth="1.6" strokeLinejoin="round" fill="none"/>
-    <rect x="8" y="7" width="8" height="4" rx="1" stroke={c} strokeWidth="1.4" fill="none"/>
-    <circle cx="10" cy="9" r="0.8" fill={c}/>
-    <circle cx="14" cy="9" r="0.8" fill={c}/>
-    <path d="M10 18h4" stroke={c} strokeWidth="1.6" strokeLinecap="round"/>
+    {active ? (
+      <>
+        <path d="M12 2.5L2 10.5V21a1 1 0 0 0 1 1h6v-6h6v6h6a1 1 0 0 0 1-1V10.5L12 2.5z" fill={c} />
+      </>
+    ) : (
+      <>
+        <path d="M3 12L12 4l9 8" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M5 10v9a1 1 0 0 0 1 1h4v-5h4v5h4a1 1 0 0 0 1-1v-9" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      </>
+    )}
   </svg>
 );
 
-const TasksIcon = ({ c }: { c: string }) => (
+const TasksIcon = ({ active, c }: { active: boolean; c: string }) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <rect x="3" y="4" width="18" height="16" rx="3" stroke={c} strokeWidth="1.8" />
-    <path d="M8 9h8M8 13h5M8 17h3" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+    {active ? (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="3" fill={c} opacity="0.15"/>
+        <rect x="3" y="4" width="18" height="16" rx="3" stroke={c} strokeWidth="1.8"/>
+        <path d="M8 9h8M8 13h5M8 17h3" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+      </>
+    ) : (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="3" stroke={c} strokeWidth="1.8"/>
+        <path d="M8 9h8M8 13h5M8 17h3" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+      </>
+    )}
   </svg>
 );
 
-const FriendsIcon = ({ c }: { c: string }) => (
+const FriendsIcon = ({ active, c }: { active: boolean; c: string }) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <circle cx="9" cy="7" r="4" stroke={c} strokeWidth="1.8" />
-    <path d="M3 21c0-3.866 2.686-7 6-7h0c3.314 0 6 3.134 6 7" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
-    <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
-    <path d="M21 21c0-3.866-1.79-7-4-7" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
-  </svg>
-);
-
-const WalletIcon = ({ c }: { c: string }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <rect x="2" y="6" width="20" height="14" rx="3" stroke={c} strokeWidth="1.8" />
-    <path d="M2 10h20" stroke={c} strokeWidth="1.6" />
-    <rect x="15" y="13" width="4" height="3" rx="1.5" fill={c} />
-    <path d="M6 6V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1" stroke={c} strokeWidth="1.6" />
+    {active ? (
+      <>
+        <circle cx="9" cy="7" r="4" fill={c} opacity="0.2" stroke={c} strokeWidth="1.8"/>
+        <path d="M3 21c0-3.866 2.686-7 6-7s6 3.134 6 7" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+        <path d="M21 21c0-3.866-1.79-7-4-7" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+      </>
+    ) : (
+      <>
+        <circle cx="9" cy="7" r="4" stroke={c} strokeWidth="1.8"/>
+        <path d="M3 21c0-3.866 2.686-7 6-7s6 3.134 6 7" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+        <path d="M21 21c0-3.866-1.79-7-4-7" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+      </>
+    )}
   </svg>
 );
 
 const TABS = [
-  { id: "game",   label: "Mine",    path: "/game",   Icon: MineIcon    },
-  { id: "earn",   label: "Tasks",   path: "/earn",   Icon: TasksIcon   },
-  { id: "friend", label: "Friends", path: "/friend", Icon: FriendsIcon },
-  { id: "wallet", label: "Wallet",  path: "/wallet", Icon: WalletIcon  },
+  { id: "game",   label: "Home",    path: "/game",   },
+  { id: "earn",   label: "Tasks",   path: "/earn",   },
+  { id: "friend", label: "Friends", path: "/friend", },
 ] as const;
 
 export default function BottomNav() {
   const [location, setLocation] = useLocation();
 
   const isOn = (tab: typeof TABS[number]) =>
-    location === tab.path || (tab.id === "game" && location.startsWith("/game"));
+    location === tab.path || (tab.id === "game" && (location === "/" || location.startsWith("/game")));
 
   return (
     <nav style={{
@@ -58,12 +73,13 @@ export default function BottomNav() {
       display: "flex", alignItems: "stretch",
       height: 72,
       paddingBottom: "max(env(safe-area-inset-bottom), 6px)",
-      background: "#0d0d0d",
-      borderTop: "1px solid rgba(255,255,255,0.07)",
+      background: "rgba(10,10,10,0.97)",
+      borderTop: "1px solid rgba(255,255,255,0.08)",
+      backdropFilter: "blur(20px)",
     }}>
       {TABS.map((tab) => {
         const on = isOn(tab);
-        const c = on ? BLUE : DIM;
+        const c = on ? ACTIVE : DIM;
 
         return (
           <button
@@ -79,27 +95,26 @@ export default function BottomNav() {
           >
             {on && (
               <div style={{
-                position: "absolute", top: 0, left: "22%", right: "22%",
-                height: 2.5, borderRadius: "0 0 4px 4px",
-                background: BLUE,
-                boxShadow: `0 0 12px ${BLUE}cc, 0 0 24px ${BLUE}66`,
+                position: "absolute", top: 0, left: "25%", right: "25%",
+                height: 2, borderRadius: "0 0 3px 3px",
+                background: ACTIVE,
               }} />
             )}
 
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "center",
-              width: 40, height: 32,
-              filter: on ? `drop-shadow(0 0 6px ${BLUE}99)` : 'none',
+              width: 40, height: 30,
             }}>
-              <tab.Icon c={c} />
+              {tab.id === "game"   && <HomeIcon    active={on} c={c} />}
+              {tab.id === "earn"   && <TasksIcon   active={on} c={c} />}
+              {tab.id === "friend" && <FriendsIcon active={on} c={c} />}
             </div>
 
             <span style={{
-              fontSize: 10, fontWeight: on ? 800 : 500,
-              letterSpacing: "0.04em",
-              color: on ? BLUE : DIM,
+              fontSize: 10, fontWeight: on ? 700 : 500,
+              letterSpacing: "0.03em",
+              color: c,
               lineHeight: 1,
-              textShadow: on ? `0 0 10px ${BLUE}88` : 'none',
             }}>
               {tab.label}
             </span>
