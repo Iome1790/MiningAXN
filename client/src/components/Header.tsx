@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { forwardRef } from "react";
+import { forwardRef, useImperativeHandle } from "react";
 
 interface HeaderProps {
   onMenuOpen?: () => void;
@@ -21,6 +21,10 @@ function statusColor(status: string) {
 const Header = forwardRef<HTMLDivElement, HeaderProps>(
   ({ onMenuOpen }, ref) => {
     const [notifOpen, setNotifOpen] = useState(false);
+    const [overlayTop, setOverlayTop] = useState(0);
+    const innerRef = useRef<HTMLDivElement>(null);
+
+    useImperativeHandle(ref, () => innerRef.current!);
 
     const { data: user } = useQuery<any>({ queryKey: ["/api/auth/user"], retry: false });
     const { data: withdrawalsData } = useQuery<any>({
@@ -30,7 +34,6 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
     });
 
     const firstName: string = user?.firstName || user?.username || "Miner";
-    const username: string = user?.username ? `@${user.username}` : "";
     const profileImageUrl: string | null =
       user?.profileImageUrl ||
       (typeof window !== "undefined" && (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.photo_url) ||
@@ -40,18 +43,73 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
     const withdrawals: any[] = withdrawalsData?.withdrawals ?? [];
     const pendingCount = withdrawals.filter(w => w.status === 'pending').length;
 
+    // Read Telegram safe area directly in React — re-renders component on change
+    useEffect(() => {
+      const tg = (window as any).Telegram?.WebApp;
+      if (!tg) return;
+
+      const measure = () => {
+        const ct: number = tg.contentSafeAreaInset?.top ?? 0;
+        const st: number = tg.safeAreaInset?.top ?? 0;
+        const isFs: boolean = tg.isFullscreen ?? false;
+
+        let top: number;
+        if (ct > st + 10) {
+          // Bot API 8.0+: contentSafeAreaInset includes the full Telegram bar
+          top = ct;
+        } else if (isFs) {
+          // Fullscreen but contentSafeAreaInset unavailable — estimate Telegram bar ~52px
+          top = st + 52;
+        } else {
+          top = Math.max(ct, st);
+        }
+
+        setOverlayTop(top);
+        document.documentElement.style.setProperty('--tg-overlay-top', `${top}px`);
+      };
+
+      measure();
+      tg.onEvent?.('safeAreaChanged', measure);
+      tg.onEvent?.('contentSafeAreaChanged', measure);
+      tg.onEvent?.('fullscreenChanged', measure);
+      tg.onEvent?.('viewportChanged', measure);
+
+      // Poll for 3s — values often arrive async after fullscreen activates
+      const interval = setInterval(measure, 150);
+      const stop = setTimeout(() => clearInterval(interval), 3000);
+      return () => { clearInterval(interval); clearTimeout(stop); };
+    }, []);
+
+    // Measure real header height → CSS var so all pages auto-adjust
+    useEffect(() => {
+      const el = innerRef.current;
+      if (!el) return;
+      const update = () => {
+        const h = el.getBoundingClientRect().height;
+        document.documentElement.style.setProperty('--header-height', `${Math.ceil(h)}px`);
+      };
+      update();
+      const ro = new ResizeObserver(update);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, [overlayTop]); // re-measure whenever overlayTop changes
+
     return (
-      <div ref={ref} className="fixed top-0 left-0 right-0 z-40" style={{ paddingTop: "max(env(safe-area-inset-top), 10px)" }}>
-        <div style={{
-          margin: "0 12px 8px",
-          borderRadius: 20,
-          background: "rgba(0,0,0,0.97)",
-          border: "1px solid rgba(255,255,255,0.06)",
+      <div
+        ref={innerRef}
+        className="fixed top-0 left-0 right-0 z-40"
+        style={{
+          background: "rgba(10,10,10,0.97)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
           backdropFilter: "blur(20px)",
-          padding: "10px 14px",
+          paddingTop: `${overlayTop + 16}px`,
+        }}
+      >
+        <div style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          padding: "10px 16px 12px",
           gap: 10,
         }}>
 
@@ -63,8 +121,8 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
               overflow: "hidden", display: "flex",
               alignItems: "center", justifyContent: "center",
               flexShrink: 0,
-              background: "rgba(255,255,255,0.06)",
-              border: "1.5px solid rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.08)",
+              border: "1.5px solid rgba(255,255,255,0.12)",
             }}
             className="active:scale-90 transition-transform"
           >
@@ -105,8 +163,8 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
               className="active:scale-90 transition-transform"
               style={{
                 width: 36, height: 36, borderRadius: '50%',
-                background: notifOpen ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.06)',
-                border: notifOpen ? '1.5px solid rgba(59,130,246,0.4)' : '1.5px solid rgba(255,255,255,0.1)',
+                background: notifOpen ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.08)',
+                border: notifOpen ? '1.5px solid rgba(59,130,246,0.4)' : '1.5px solid rgba(255,255,255,0.12)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 position: 'relative', cursor: 'pointer',
               }}
@@ -135,7 +193,7 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
                 <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setNotifOpen(false)} />
                 <div style={{
                   position: 'fixed',
-                  top: 'calc(max(env(safe-area-inset-top), 10px) + 62px)',
+                  top: 'calc(var(--header-height, 62px) + 4px)',
                   right: 12, width: 290, zIndex: 999,
                   background: '#0d0d0f',
                   border: '1px solid rgba(255,255,255,0.08)',

@@ -72,7 +72,7 @@ export default function BottomNav() {
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 600,
       display: "flex", alignItems: "stretch",
       height: 72,
-      paddingBottom: "max(env(safe-area-inset-bottom), 6px)",
+      paddingBottom: "max(var(--tg-content-safe-area-inset-bottom, var(--tg-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))), 6px)",
       background: "rgba(10,10,10,0.97)",
       borderTop: "1px solid rgba(255,255,255,0.08)",
       backdropFilter: "blur(20px)",
