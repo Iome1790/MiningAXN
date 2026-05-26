@@ -471,66 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/mining/state", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-
-      const now = new Date();
-      const lastClaim = new Date(user.lastMiningClaim || user.createdAt);
-      
-      // Calculate total mining rate — base 0.01 AXN/sec
-      const baseRate = 0.01;
-      const section1Boost = parseFloat(user.adSection1Boost || "0") / 3600;
-      const section2Boost = parseFloat(user.adSection2Boost || "0") / 3600;
-      const referralBoostHourly = parseFloat(user.referralMiningBoost || "0");
-      const referralBoostPerSec = referralBoostHourly / 3600;
-      const totalRate = baseRate + section1Boost + section2Boost + referralBoostPerSec;
-
-      const secondsPassed = Math.floor((now.getTime() - lastClaim.getTime()) / 1000);
-      const minedAmount = (secondsPassed * totalRate).toFixed(5);
-
-      res.json({
-        currentMining: minedAmount,
-        minedAmount: minedAmount,
-        miningRate: totalRate.toFixed(4),
-        rawMiningRate: totalRate,
-        baseRate: baseRate.toFixed(4),
-        section1Boost: (section1Boost * 3600).toFixed(4),
-        section2Boost: (section2Boost * 3600).toFixed(4),
-        referralBoost: referralBoostHourly.toFixed(4),
-        lastClaim: lastClaim,
-        boosts: []
-      });
-    } catch (error) {
-      console.error("Error getting mining state:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // POST /api/mining/claim — claim accumulated mined AXN
-  app.post("/api/mining/claim", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      const now = new Date();
-      const lastClaim = new Date(user.lastMiningClaim || user.createdAt);
-      const baseRate = 0.01;
-      const section1Boost = parseFloat(user.adSection1Boost || "0") / 3600;
-      const section2Boost = parseFloat(user.adSection2Boost || "0") / 3600;
-      const referralBoostPerSec = parseFloat(user.referralMiningBoost || "0") / 3600;
-      const totalRate = baseRate + section1Boost + section2Boost + referralBoostPerSec;
-      const secondsPassed = Math.floor((now.getTime() - lastClaim.getTime()) / 1000);
-      const mined = parseFloat((secondsPassed * totalRate).toFixed(5));
-      if (mined <= 0) return res.status(400).json({ message: "Nothing to claim yet" });
-      await db.execute(sql`UPDATE users SET balance = balance + ${mined}, last_mining_claim = NOW() WHERE id = ${user.id}`);
-      const updatedUser = await storage.getUser(user.id);
-      res.json({ success: true, claimed: mined, newBalance: updatedUser?.balance });
-    } catch (error) {
-      console.error("Error claiming mining:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
+  // Mining system removed — rewards are milestone-based only
 
   // GET /api/ads/slot-cooldowns — return per-slot cooldown state for current user
   app.get("/api/ads/slot-cooldowns", authenticateTelegram, async (req: any, res) => {
@@ -550,14 +491,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         SELECT slot, last_watched_at FROM ad_slot_cooldowns WHERE user_id = ${user.id}
       `);
       const now = Date.now();
-      const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+      const todayUTC = new Date(); todayUTC.setUTCHours(0,0,0,0);
+      const tomorrowUTC = new Date(todayUTC.getTime() + 86400000);
       const cooldowns: Record<number, { availableAt: number; msLeft: number }> = {};
       for (const row of rows.rows || []) {
         const slot = Number((row as any).slot);
-        const lastWatched = new Date((row as any).last_watched_at).getTime();
-        const availableAt = lastWatched + COOLDOWN_MS;
-        const msLeft = Math.max(0, availableAt - now);
-        cooldowns[slot] = { availableAt, msLeft };
+        const lastWatched = new Date((row as any).last_watched_at);
+        if (lastWatched >= todayUTC) {
+          const msLeft = Math.max(0, tomorrowUTC.getTime() - now);
+          cooldowns[slot] = { availableAt: tomorrowUTC.getTime(), msLeft };
+        }
       }
       res.json({ cooldowns });
     } catch (error) {
@@ -584,16 +527,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         )
       `);
 
-      const COOLDOWN_MS = 60 * 60 * 1000;
+      const todayUTCd = new Date(); todayUTCd.setUTCHours(0,0,0,0);
+      const tomorrowUTCd = new Date(todayUTCd.getTime() + 86400000);
       const rows = await db.execute(sql`
         SELECT last_watched_at FROM ad_slot_cooldowns WHERE user_id = ${user.id} AND slot = ${slot}
       `);
       if (rows.rows && rows.rows.length > 0) {
-        const lastWatched = new Date((rows.rows[0] as any).last_watched_at).getTime();
-        const msLeft = Math.max(0, lastWatched + COOLDOWN_MS - Date.now());
-        if (msLeft > 0) {
-          const mins = Math.ceil(msLeft / 60000);
-          return res.status(429).json({ message: `Cooldown active. Available in ${mins} min.`, msLeft });
+        const lastWatched = new Date((rows.rows[0] as any).last_watched_at);
+        if (lastWatched >= todayUTCd) {
+          const msLeft = Math.max(0, tomorrowUTCd.getTime() - Date.now());
+          const hours = Math.ceil(msLeft / 3600000);
+          return res.status(429).json({ message: `Already watched today. Resets in ${hours}h.`, msLeft });
         }
       }
 
@@ -614,12 +558,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const updatedUser = await storage.getUser(user.id);
+      const tomorrowMidnightMs = new Date(new Date().setUTCHours(24,0,0,0)).getTime();
+      const cooldownMs = Math.max(0, tomorrowMidnightMs - Date.now());
       res.json({
         success: true,
         newBalance: updatedUser?.balance,
         rewardAXN: rewardAmount,
         slot,
-        cooldownMs: COOLDOWN_MS,
+        cooldownMs,
       });
     } catch (error) {
       console.error("Slot watch error:", error);
@@ -1132,29 +1078,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/mining/claim", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      
-      const miningState = await storage.getMiningState(user.id);
-      const minClaimAmount = 1;
-      
-      if (parseFloat(miningState.currentMining) < minClaimAmount) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Minimum claim amount is ${minClaimAmount} AXN. Keep mining to reach the threshold.` 
-        });
-      }
-
-      const result = await storage.claimMining(user.id);
-      res.json(result);
-    } catch (error) {
-      console.error("Mining claim error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
   // ============================================================
   // FARMING ROUTES
   // ============================================================
@@ -1340,9 +1263,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: "Already claimed today. Come back tomorrow!" });
       }
 
-      // Extra check: invite task requires at least 1 friend invited
-      if (taskType === "invite" && (!u.friends_invited || parseInt(u.friends_invited) < 1)) {
-        return res.status(400).json({ success: false, message: "You need to invite at least 1 friend first!" });
+      // Daily invite milestone: requires 3 friends who completed 10 ads today
+      if (taskType === "invite") {
+        const todayUTC = new Date();
+        todayUTC.setUTCHours(0, 0, 0, 0);
+        const completedTodayRes = await pool.query(
+          `SELECT COUNT(*) as count FROM referrals WHERE referrer_id = $1 AND status = 'completed' AND completed_at >= $2`,
+          [user.id, todayUTC.toISOString()]
+        );
+        const completedToday = parseInt(completedTodayRes.rows[0]?.count || '0');
+        if (completedToday < 3) {
+          return res.status(400).json({
+            success: false,
+            message: `You need 3 friends to complete 10 ads today. Currently: ${completedToday}/3`,
+          });
+        }
       }
 
       const axnEarned = axnMap[taskType];
@@ -1710,17 +1645,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(users.id, userId));
       }
 
-      // Count referrals created TODAY (for daily invite goal)
+      // Count referrals COMPLETED TODAY (friends who finished 10 ads today) — for daily milestone goal
       const todayStart = new Date();
       todayStart.setUTCHours(0, 0, 0, 0);
-      const todayReferralsRes = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(referrals)
-        .where(and(
-          eq(referrals.referrerId, userId),
-          sql`${referrals.createdAt} >= ${todayStart.toISOString()}`
-        ));
-      const todayReferrals = Number(todayReferralsRes[0]?.count || 0);
+      const todayReferralsRes = await db.execute(sql`
+        SELECT COUNT(*) as count FROM referrals
+        WHERE referrer_id = ${userId}
+          AND status = 'completed'
+          AND completed_at >= ${todayStart.toISOString()}::timestamptz
+      `);
+      const todayReferrals = Number((todayReferralsRes.rows?.[0] as any)?.count || 0);
       
       // Add referral link - use /start flow for reliable referral tracking
       const botUsername = await getBotUsername();
@@ -2041,29 +1975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("⚠️ Referral bonus processing failed (non-critical):", bonusError);
         }
         
-        // Process 10% referral commission for referrer (if user was referred)
-        if (user.referredBy) {
-          try {
-            // CRITICAL: Validate referrer exists before adding commission
-            const referrer = await storage.getUserByReferralCode(user.referredBy);
-            if (referrer) {
-              const referralCommissionAXN = Math.round(adRewardAXN * 0.1);
-              await storage.addEarning({
-                userId: referrer.id,
-                amount: String(referralCommissionAXN),
-                source: 'referral_commission',
-                description: `10% commission from ${user.username || user.telegram_id}'s ad watch`,
-              });
-            } else {
-              // Referrer no longer exists - clean up orphaned reference
-              console.warn(`⚠️ Referrer ${user.referredBy} no longer exists, clearing orphaned referral for user ${userId}`);
-              await storage.clearOrphanedReferral(userId);
-            }
-          } catch (commissionError) {
-            // Log but don't fail the request if commission processing fails
-            console.error("⚠️ Referral commission processing failed (non-critical):", commissionError);
-          }
-        }
+        // No percentage-based referral commission — rewards are milestone-based only (150 AXN per friend)
       } catch (earningError) {
         console.error("❌ Critical error adding earning:", earningError);
         // Even if earning fails, still try to return success to avoid user-facing errors
