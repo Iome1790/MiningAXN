@@ -122,6 +122,10 @@ export const users = pgTable("users", {
   dailyUpdatesClaimed: boolean("daily_updates_claimed").default(false),
   dailyTasksDate: timestamp("daily_tasks_date"),
   mysteryBoxDate: timestamp("mystery_box_date"),
+  miningBalance: decimal("mining_balance", { precision: 20, scale: 0 }).default("0"),
+  walletBalance: decimal("wallet_balance", { precision: 20, scale: 0 }).default("0"),
+  migrationCompleted: boolean("migration_completed").default(false),
+  migrationIntroSeen: boolean("migration_intro_seen").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
