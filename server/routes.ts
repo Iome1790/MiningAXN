@@ -790,6 +790,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/daily-checkin — claim 5 AXN daily bonus
+  app.post('/api/daily-checkin', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { pool: dbPool } = await import('./db');
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const userRow = await dbPool.query(
+        `SELECT daily_tasks_date, daily_checkin_claimed FROM users WHERE id = $1`,
+        [user.id]
+      );
+      const row = userRow.rows[0];
+      const lastDate = row?.daily_tasks_date ? new Date(row.daily_tasks_date).toISOString().slice(0, 10) : null;
+
+      if (lastDate === todayKey && row?.daily_checkin_claimed) {
+        return res.status(400).json({ success: false, message: 'Already claimed today' });
+      }
+
+      const reward = 5;
+      if (lastDate !== todayKey) {
+        await dbPool.query(
+          `UPDATE users SET daily_tasks_date = NOW(), daily_checkin_claimed = TRUE, balance = balance + $1 WHERE id = $2`,
+          [reward, user.id]
+        );
+      } else {
+        await dbPool.query(
+          `UPDATE users SET daily_checkin_claimed = TRUE, balance = balance + $1 WHERE id = $2`,
+          [reward, user.id]
+        );
+      }
+
+      res.json({ success: true, reward, message: `Daily check-in! +${reward} AXN` });
+    } catch (error) {
+      console.error('Daily checkin error:', error);
+      res.status(500).json({ success: false, message: 'Failed to claim daily check-in' });
+    }
+  });
+
+  // POST /api/mystery-box — claim random AXN (1–100) once per day
+  app.post('/api/mystery-box', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { pool: dbPool } = await import('./db');
+      const todayKey = new Date().toISOString().slice(0, 10);
+
+      const userRow = await dbPool.query(
+        `SELECT mystery_box_date FROM users WHERE id = $1`,
+        [user.id]
+      );
+      const row = userRow.rows[0];
+      const lastDate = row?.mystery_box_date ? new Date(row.mystery_box_date).toISOString().slice(0, 10) : null;
+
+      if (lastDate === todayKey) {
+        return res.status(400).json({ success: false, message: 'Mystery box already opened today' });
+      }
+
+      const reward = Math.floor(Math.random() * 100) + 1;
+
+      await dbPool.query(
+        `UPDATE users SET mystery_box_date = NOW(), balance = balance + $1 WHERE id = $2`,
+        [reward, user.id]
+      );
+
+      res.json({ success: true, reward, message: `You won ${reward} AXN from the mystery box!` });
+    } catch (error) {
+      console.error('Mystery box error:', error);
+      res.status(500).json({ success: false, message: 'Failed to open mystery box' });
+    }
+  });
+
   // Project Statistics endpoint
   app.get('/api/project/stats', async (req: any, res) => {
     try {
