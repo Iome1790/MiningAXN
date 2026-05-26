@@ -121,6 +121,7 @@ export const users = pgTable("users", {
   dailyInviteClaimed: boolean("daily_invite_claimed").default(false),
   dailyUpdatesClaimed: boolean("daily_updates_claimed").default(false),
   dailyTasksDate: timestamp("daily_tasks_date"),
+  mysteryBoxDate: timestamp("mystery_box_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
