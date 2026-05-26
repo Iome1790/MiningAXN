@@ -161,7 +161,7 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
   );
 }
 
-const NAV_ROUTES = new Set(["/", "/earn", "/game", "/friend", "/wallet"]);
+const NAV_ROUTES = new Set(["/", "/earn", "/game", "/friend"]);
 
 function Router() {
   const [location] = useLocation();
@@ -180,7 +180,8 @@ function Router() {
           <Route path="/admin" component={Admin} />
           <Route path="/admin/country-controls" component={CountryControls} />
           <Route path="/game" component={GamesPage} />
-          <Route path="/withdraw" component={() => { const [, setLocation] = useLocation(); setLocation("/wallet"); return null; }} />
+          <Route path="/withdraw" component={() => { const [, setLocation] = useLocation(); setLocation("/game"); return null; }} />
+          <Route path="/profile" component={() => { const [, setLocation] = useLocation(); setLocation("/game"); return null; }} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
