@@ -52,7 +52,7 @@ export default function Friend() {
     setIsSharing(true);
     try {
       const tg = (window as any).Telegram?.WebApp;
-      const url = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent('Mine AXN with me on Axionet! Get 150 AXN on signup.')}`;
+      const url = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent('Join Axionet! I earn 150 AXN for every friend who completes 10 tasks. Start earning now!')}`;
       if (tg?.openTelegramLink) tg.openTelegramLink(url);
       else window.open(url, '_blank');
     } catch {}
@@ -70,7 +70,7 @@ export default function Friend() {
           <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>
             Invite &amp; <span style={{ color: BLUE }}>Earn</span>
           </div>
-          <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 3 }}>Earn 150 AXN per friend + 10% lifetime commission</div>
+          <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 3 }}>Earn 150 AXN per friend who completes 10 ad tasks</div>
         </div>
 
         {/* Stats row */}
@@ -140,22 +140,22 @@ export default function Friend() {
           </button>
         </div>
 
-        {/* Commission perk */}
+        {/* Reward info */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 14,
           background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px 16px', marginBottom: 20,
         }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
           </svg>
           <div style={{ flex: 1 }}>
-            <div style={{ color: TEXT, fontSize: 14, fontWeight: 700 }}>Lifetime Commission</div>
-            <div style={{ color: TEXT_DIM, fontSize: 12 }}>Earn 10% of your friends' mining forever</div>
+            <div style={{ color: TEXT, fontSize: 14, fontWeight: 700 }}>One-Time Invite Reward</div>
+            <div style={{ color: TEXT_DIM, fontSize: 12 }}>150 AXN when your friend completes 10 ad tasks</div>
           </div>
           <span style={{
-            background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)',
-            borderRadius: 8, padding: '5px 12px', color: '#fbbf24', fontSize: 13, fontWeight: 900, flexShrink: 0,
-          }}>10%</span>
+            background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)',
+            borderRadius: 8, padding: '5px 12px', color: '#4ade80', fontSize: 13, fontWeight: 900, flexShrink: 0,
+          }}>150 AXN</span>
         </div>
 
         {/* Friends list */}
@@ -179,8 +179,8 @@ export default function Friend() {
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
               <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
-            <p style={{ color: TEXT, fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>No miners yet</p>
-            <p style={{ color: TEXT_DIM, fontSize: 12, margin: 0 }}>Share your link to start earning 10% forever.</p>
+            <p style={{ color: TEXT, fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>No friends yet</p>
+            <p style={{ color: TEXT_DIM, fontSize: 12, margin: 0 }}>Share your link. Earn 150 AXN when each friend completes 10 ad tasks.</p>
           </div>
         ) : (
           referrals.map((r, i) => (
