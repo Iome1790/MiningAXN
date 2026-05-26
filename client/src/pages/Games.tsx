@@ -8,7 +8,7 @@ import { useLocation } from "wouter";
 import { showRewardedInterstitial } from "@/lib/showAd";
 import WithdrawPopup from "@/components/WithdrawPopup";
 
-const USD_PER_AXN = 0.0001;
+const USD_PER_AXN = 0.0001; // 1000 AXN = $0.10
 
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -37,7 +37,7 @@ export default function Games() {
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
   const { data: botInfo } = useQuery<{ username: string }>({ queryKey: ['/api/bot-info'], staleTime: 3600000 });
 
-  const axnBalance = Math.floor(parseFloat(user?.balance || '0'));
+  const axnBalance = Math.floor(parseFloat(user?.walletBalance || '0'));
   const axnUsdValue = axnBalance * USD_PER_AXN;
 
   const firstName: string = user?.firstName || user?.username || "User";
@@ -139,16 +139,17 @@ export default function Games() {
 
       {/* ── Balance Section ── */}
       <div style={{
-        padding: 'calc(var(--header-height, 62px) + 20px) 16px 16px',
+        padding: 'calc(var(--header-height, 62px) + 32px) 16px 20px',
         textAlign: 'center',
       }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>
-            Balance
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
+            Wallet Balance
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 2 }}>
-            <span style={{ fontSize: 42, fontWeight: 900, color: '#fff', letterSpacing: '-2px', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-              {balanceHidden ? '••••' : axnBalance.toLocaleString()}
+          {/* USD Value — primary big text */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 44, fontWeight: 900, color: '#fff', letterSpacing: '-2px', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+              {balanceHidden ? '$••••' : `$${axnUsdValue.toFixed(2)}`}
             </span>
             <button onClick={() => setBalanceHidden(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, marginTop: 4 }}>
               {balanceHidden ? (
@@ -159,8 +160,9 @@ export default function Games() {
             </button>
           </div>
 
-          <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14, fontWeight: 600, marginBottom: 24 }}>
-            AXN
+          {/* AXN amount — subtitle text */}
+          <div style={{ color: 'rgba(255,255,255,0.38)', fontSize: 15, fontWeight: 600, marginBottom: 28 }}>
+            {balanceHidden ? '•••• AXN' : `${axnBalance.toLocaleString()} AXN`}
           </div>
 
           {/* ── Action Buttons ── */}
