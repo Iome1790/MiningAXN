@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import Header from "@/components/Header";
 import MenuPopup from "@/components/MenuPopup";
@@ -10,8 +9,8 @@ import { showRewardedInterstitial } from "@/lib/showAd";
 
 const BLUE = '#3b82f6';
 const BLUE_D = '#2563eb';
-const CARD = 'rgba(10,10,10,0.97)';
-const BORDER = 'rgba(255,255,255,0.07)';
+const CARD = 'rgba(255,255,255,0.07)';
+const BORDER = 'rgba(255,255,255,0.1)';
 const TEXT = '#fff';
 const TEXT_DIM = 'rgba(255,255,255,0.38)';
 
@@ -131,65 +130,53 @@ function AdTaskRow({ task, cooldownMs }: { task: typeof AD_TASKS[0]; cooldownMs:
   const isCooldown = state === 'cooldown';
   const isDone = state === 'done';
 
+  const iconColor = isDone ? '#4ade80' : isCooldown ? '#f59e0b' : '#60a5fa';
+
   return (
     <div style={{
-      position: 'relative', display: 'flex', alignItems: 'center',
-      background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14,
-      marginBottom: 8, overflow: 'hidden',
-      boxShadow: isDone ? '0 2px 12px rgba(74,222,128,0.08)' : isCooldown ? '0 2px 12px rgba(255,165,0,0.05)' : '0 2px 12px rgba(37,99,235,0.08)',
+      display: 'flex', alignItems: 'center', gap: 14,
+      background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16,
+      marginBottom: 8, padding: '14px 16px',
     }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: `linear-gradient(180deg, transparent, ${isDone ? '#4ade80' : isCooldown ? '#f59e0b' : BLUE}, transparent)`, opacity: isCooldown ? 0.5 : isDone ? 0.3 : 0.7 }} />
-
-      <div style={{
-        width: 50, height: 62, flexShrink: 0, marginLeft: 3,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: isDone ? '#4ade80' : isCooldown ? '#f59e0b' : BLUE,
-      }}>
+      <div style={{ flexShrink: 0 }}>
         {isDone
-          ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+          ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           : isCooldown
-          ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          : <PlayIcon size={22} />
+          ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="#60a5fa" stroke="none"/></svg>
         }
       </div>
 
-      <div style={{ flex: 1, padding: '0 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ color: isDone || isCooldown ? TEXT_DIM : TEXT, fontSize: 13, fontWeight: 700 }}>
-            Watch to Earn AXN
-          </span>
-        </div>
-        <div style={{ fontSize: 11, marginTop: 2, color: state === 'loading' ? BLUE : state === 'claim' ? '#fbbf24' : isDone ? '#4ade80' : isCooldown ? '#f59e0b' : BLUE }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ color: isDone || isCooldown ? TEXT_DIM : TEXT, fontSize: 14, fontWeight: 700 }}>Watch to Earn AXN</div>
+        <div style={{ fontSize: 12, marginTop: 2, color: state === 'loading' ? BLUE : state === 'claim' ? '#fbbf24' : isDone ? '#4ade80' : isCooldown ? '#f59e0b' : 'rgba(255,255,255,0.35)' }}>
           {state === 'loading' ? 'Loading ad...'
-            : state === 'claim' ? 'Ad watched — claim reward'
+            : state === 'claim' ? 'Ad watched — tap Claim'
             : isDone ? 'Reward credited'
-            : isCooldown ? `Cooldown: ${formatCooldown(msLeft)}`
+            : isCooldown ? `Ready in ${formatCooldown(msLeft)}`
             : `+${task.reward} AXN`}
         </div>
       </div>
 
-      <div style={{ paddingRight: 12, flexShrink: 0 }}>
-        <button
-          onClick={state === 'idle' ? handleStart : state === 'claim' ? handleClaim : undefined}
-          disabled={isDone || isCooldown || state === 'loading' || state === 'claiming'}
-          style={{
-            background: isDone ? 'rgba(74,222,128,0.08)'
-              : isCooldown ? 'rgba(245,158,11,0.08)'
-              : state === 'claim' ? 'linear-gradient(135deg, #16a34a, #22c55e)'
-              : (state === 'loading' || state === 'claiming') ? 'rgba(255,255,255,0.05)'
-              : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-            border: `1px solid ${isDone ? 'rgba(74,222,128,0.18)' : isCooldown ? 'rgba(245,158,11,0.2)' : state === 'claim' ? 'rgba(74,222,128,0.3)' : 'rgba(37,99,235,0.4)'}`,
-            color: isDone ? '#4ade80' : isCooldown ? '#f59e0b' : '#fff',
-            fontSize: 11, fontWeight: 800, padding: '7px 14px',
-            cursor: state === 'idle' || state === 'claim' ? 'pointer' : 'not-allowed',
-            whiteSpace: 'nowrap', borderRadius: 50,
-            opacity: (state === 'loading' || state === 'claiming') ? 0.5 : 1,
-            boxShadow: (isDone || isCooldown || state === 'loading' || state === 'claiming') ? 'none' : '0 3px 10px rgba(37,99,235,0.35)',
-          }}
-        >
-          {isDone ? 'Done' : isCooldown ? formatCooldown(msLeft) : (state === 'loading' || state === 'claiming') ? '...' : state === 'claim' ? 'Claim' : 'Watch'}
-        </button>
-      </div>
+      <button
+        onClick={state === 'idle' ? handleStart : state === 'claim' ? handleClaim : undefined}
+        disabled={isDone || isCooldown || state === 'loading' || state === 'claiming'}
+        style={{
+          background: isDone ? 'rgba(255,255,255,0.06)'
+            : isCooldown ? 'rgba(255,255,255,0.06)'
+            : state === 'claim' ? 'linear-gradient(135deg, #16a34a, #22c55e)'
+            : (state === 'loading' || state === 'claiming') ? 'rgba(255,255,255,0.06)'
+            : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
+          border: isDone || isCooldown ? '1px solid rgba(255,255,255,0.08)' : 'none',
+          color: isDone ? TEXT_DIM : isCooldown ? '#f59e0b' : '#fff',
+          fontSize: 12, fontWeight: 800, padding: '9px 16px',
+          cursor: state === 'idle' || state === 'claim' ? 'pointer' : 'not-allowed',
+          whiteSpace: 'nowrap', borderRadius: 10, flexShrink: 0,
+          boxShadow: (isDone || isCooldown || state === 'loading' || state === 'claiming') ? 'none' : '0 2px 12px rgba(37,99,235,0.4)',
+        }}
+      >
+        {isDone ? 'Done' : isCooldown ? formatCooldown(msLeft) : (state === 'loading' || state === 'claiming') ? '...' : state === 'claim' ? 'Claim' : 'Watch'}
+      </button>
     </div>
   );
 }
@@ -205,47 +192,40 @@ function MissionRow({
 
   return (
     <div style={{
-      position: 'relative', display: 'flex', alignItems: 'center',
-      background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14,
-      marginBottom: 8, overflow: 'hidden',
-      boxShadow: done ? '0 2px 14px rgba(37,99,235,0.12)' : 'none',
+      display: 'flex', alignItems: 'center', gap: 14,
+      background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16,
+      marginBottom: 8, padding: '14px 16px',
     }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: `linear-gradient(180deg, transparent, ${BLUE}, transparent)`, opacity: done ? 1 : 0.35 }} />
-      <div style={{
-        width: 54, height: 58, flexShrink: 0, marginLeft: 3,
-        background: `linear-gradient(160deg, ${BLUE_D}bb, ${BLUE_D}55)`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 1,
-      }}>
-        <span style={{ color: '#fff', fontSize: 14, fontWeight: 900, lineHeight: 1 }}>{count}</span>
-        <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 8, fontWeight: 700, textTransform: 'uppercase' }}>New</span>
-      </div>
-      <div style={{ flex: 1, padding: '10px 10px' }}>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={claimed ? '#4ade80' : done ? '#60a5fa' : 'rgba(255,255,255,0.25)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 5 }}>
-          <span style={{ color: claimed ? TEXT_DIM : TEXT, fontSize: 12, fontWeight: 700 }}>Invite {count} New Friends</span>
+          <span style={{ color: claimed ? TEXT_DIM : TEXT, fontSize: 14, fontWeight: 700 }}>Invite {count} Friends</span>
           {badge(`${reward.toLocaleString()} AXN`)}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.05)', borderRadius: 9999, overflow: 'hidden' }}>
+          <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 9999, overflow: 'hidden' }}>
             <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg, ${BLUE_D}, ${BLUE})`, borderRadius: 9999, transition: 'width 0.5s' }} />
           </div>
           <span style={{ color: TEXT_DIM, fontSize: 10, whiteSpace: 'nowrap' }}>{Math.min(progress, count)}/{count}</span>
         </div>
       </div>
-      <div style={{ paddingRight: 12, flexShrink: 0 }}>
+      <div style={{ flexShrink: 0 }}>
         {claimed ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-            <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 800 }}>Claimed</span>
-          </div>
+          <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 700 }}>✓ Done</span>
         ) : done ? (
           <button onClick={onClaim} disabled={isClaiming} style={{
             background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-            color: '#fff', border: 'none', fontSize: 11, fontWeight: 800,
-            padding: '7px 14px', cursor: 'pointer', borderRadius: 50,
-            boxShadow: '0 2px 10px rgba(37,99,235,0.4)', opacity: isClaiming ? 0.6 : 1,
+            color: '#fff', border: 'none', fontSize: 12, fontWeight: 800,
+            padding: '9px 16px', cursor: 'pointer', borderRadius: 10,
+            boxShadow: '0 2px 12px rgba(37,99,235,0.4)', opacity: isClaiming ? 0.6 : 1,
           }}>{isClaiming ? '...' : 'Claim'}</button>
         ) : (
-          <span style={{ fontSize: 10, color: TEXT_DIM }}>Pending</span>
+          <span style={{ fontSize: 11, color: TEXT_DIM }}>—</span>
         )}
       </div>
     </div>
@@ -342,28 +322,33 @@ export default function Earn() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#000000', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column' }}>
 
       <Header
         onMenuOpen={() => setMenuOpen(true)}
         onInviteOpen={() => setInviteOpen(true)}
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px', paddingBottom: 86, paddingTop: 'calc(var(--header-height, 62px) + 8px)' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingBottom: 86, paddingTop: 'calc(var(--header-height, 62px) + 12px)' }}>
+
+        {/* Page title */}
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>
+            Earn in the <span style={{ color: '#3b82f6' }}>Axionet</span>
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>Watch ads, complete tasks, hit milestones</div>
+        </div>
 
         {/* Daily Goal */}
         {sectionLabel('Daily Network Goal')}
         <div style={{
-          position: 'relative', overflow: 'hidden',
-          background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, marginBottom: 14,
-          boxShadow: dailyComplete ? '0 4px 20px rgba(37,99,235,0.18)' : 'none',
+          background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, marginBottom: 14, overflow: 'hidden',
         }}>
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(180deg, transparent, #60a5fa, transparent)' }} />
-          <div style={{ padding: '13px 13px 13px 18px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 3 }}>
                 <span style={{ color: TEXT, fontSize: 13, fontWeight: 700 }}>Referral Bonus</span>
-                {badge('50 AXN')}
+                {badge('150 AXN')}
               </div>
               <p style={{ color: TEXT_DIM, fontSize: 11, margin: '0 0 10px' }}>Invite 3 new friends today</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -412,128 +397,102 @@ export default function Earn() {
           ))}
         </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
+          {/* ACTIVE TAB */}
+          {tab === 'tasks' && (
+            <>
+              {sectionLabel('Ad Rewards')}
+              {AD_TASKS.map(task => (
+                <AdTaskRow key={task.id} task={task} cooldownMs={getCooldownMs(task.id)} />
+              ))}
 
-            {/* ACTIVE TAB */}
-            {tab === 'tasks' && (
-              <>
-                {sectionLabel('Ad Rewards')}
-                {AD_TASKS.map((task, i) => (
-                  <motion.div key={task.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                    <AdTaskRow task={task} cooldownMs={getCooldownMs(task.id)} />
-                  </motion.div>
-                ))}
-
-                <div style={{ marginTop: 14 }}>
-                  {sectionLabel('Official Task')}
-                  <div style={{
-                    position: 'relative', display: 'flex', alignItems: 'center',
-                    background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14,
-                    overflow: 'hidden',
-                    boxShadow: taskDone ? '0 2px 12px rgba(74,222,128,0.08)' : '0 2px 12px rgba(37,99,235,0.08)',
-                  }}>
-                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: `linear-gradient(180deg, transparent, ${taskDone ? '#4ade80' : BLUE}, transparent)` }} />
-                    <div style={{
-                      width: 58, height: 62, flexShrink: 0, marginLeft: 3,
-                      background: taskDone ? 'rgba(74,222,128,0.12)' : `linear-gradient(160deg, ${BLUE_D}cc, ${BLUE_D}88)`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {taskDone
-                        ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-                        : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
-                            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                          </svg>
-                      }
+              <div style={{ marginTop: 14 }}>
+                {sectionLabel('Official Task')}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px 16px',
+                }}>
+                  {taskDone
+                    ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round">
+                        <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                      </svg>
+                  }
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <span style={{ color: taskDone ? TEXT_DIM : TEXT, fontSize: 14, fontWeight: 700 }}>Visit Website</span>
+                      {badge('10 AXN')}
                     </div>
-                    <div style={{ flex: 1, padding: '0 10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <span style={{ color: taskDone ? TEXT_DIM : TEXT, fontSize: 13, fontWeight: 700 }}>Visit Website</span>
-                        {badge('10 AXN')}
-                      </div>
-                      <span style={{ color: TEXT_DIM, fontSize: 11 }}>Visit official Axionet website</span>
-                    </div>
-                    <div style={{ paddingRight: 12, flexShrink: 0 }}>
-                      <button
-                        onClick={() => {
-                          window.open('https://axionet.io', '_blank');
-                          setTimeout(async () => {
-                            try {
-                              const res = await apiRequest('POST', '/api/ads/extra-watch', {});
-                              const data = await res.json();
-                              showNotification(`+${data.rewardAXN ?? 10} AXN earned!`, 'success');
-                              queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-                            } catch {}
-                            setTaskDone(true);
-                          }, 2000);
-                        }}
-                        disabled={taskDone}
-                        style={{
-                          background: taskDone ? 'rgba(74,222,128,0.07)' : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-                          color: taskDone ? '#4ade80' : '#fff',
-                          border: taskDone ? '1px solid rgba(74,222,128,0.2)' : 'none',
-                          fontSize: 11, fontWeight: 800, padding: '7px 14px',
-                          cursor: taskDone ? 'default' : 'pointer', borderRadius: 50,
-                          boxShadow: taskDone ? 'none' : '0 3px 10px rgba(37,99,235,0.35)',
-                        }}
-                      >{taskDone ? 'Done' : 'Visit'}</button>
-                    </div>
+                    <span style={{ color: TEXT_DIM, fontSize: 12 }}>Visit official Axionet website</span>
                   </div>
-                </div>
-              </>
-            )}
-
-            {/* MILESTONES TAB */}
-            {tab === 'mission' && (
-              <>
-                {sectionLabel(`New Invite Milestones · ${newFriendsCount} New Friends`)}
-                <div style={{
-                  background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(59,130,246,0.15)',
-                  borderRadius: 12, padding: '10px 14px', marginBottom: 12,
-                }}>
-                  <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, margin: 0 }}>
-                    Only friends invited after May 25, 2026 count toward milestones.
-                  </p>
-                </div>
-                {MISSIONS.map(m => (
-                  <MissionRow
-                    key={m.count}
-                    count={m.count} reward={m.reward} progress={newFriendsCount}
-                    claimed={claimedMilestones.has(m.count)}
-                    isClaiming={claimingMilestone === m.count}
-                    onClaim={() => {
-                      setClaimingMilestone(m.count);
-                      claimMilestoneMutation.mutate({ count: m.count, reward: m.reward });
+                  <button
+                    onClick={() => {
+                      window.open('https://axionet.io', '_blank');
+                      setTimeout(async () => {
+                        try {
+                          const res = await apiRequest('POST', '/api/ads/extra-watch', {});
+                          const data = await res.json();
+                          showNotification(`+${data.rewardAXN ?? 10} AXN earned!`, 'success');
+                          queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+                        } catch {}
+                        setTaskDone(true);
+                      }, 2000);
                     }}
-                  />
-                ))}
-              </>
-            )}
-
-            {/* PARTNER TAB */}
-            {tab === 'partner' && (
-              <div style={{
-                background: CARD, border: `1px solid ${BORDER}`,
-                borderRadius: 18, padding: '40px 24px', textAlign: 'center',
-                position: 'relative', overflow: 'hidden',
-              }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: `linear-gradient(180deg, transparent, ${BLUE}, transparent)`, opacity: 0.4 }} />
-                <div style={{
-                  width: 56, height: 56, borderRadius: 16, margin: '0 auto 16px',
-                  background: `linear-gradient(160deg, ${BLUE_D}cc, ${BLUE_D}66)`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                  </svg>
+                    disabled={taskDone}
+                    style={{
+                      background: taskDone ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
+                      color: taskDone ? '#4ade80' : '#fff',
+                      border: taskDone ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                      fontSize: 12, fontWeight: 800, padding: '9px 16px',
+                      cursor: taskDone ? 'default' : 'pointer', borderRadius: 10, flexShrink: 0,
+                      boxShadow: taskDone ? 'none' : '0 2px 12px rgba(37,99,235,0.4)',
+                    }}
+                  >{taskDone ? 'Done' : 'Visit'}</button>
                 </div>
-                <p style={{ color: TEXT, fontSize: 16, fontWeight: 800, margin: '0 0 8px' }}>Coming Soon</p>
-                <p style={{ color: TEXT_DIM, fontSize: 12, margin: 0 }}>Partner offers coming soon. Stay tuned for exclusive AXN opportunities.</p>
               </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+            </>
+          )}
+
+          {/* MILESTONES TAB */}
+          {tab === 'mission' && (
+            <>
+              {sectionLabel(`Invite Milestones · ${newFriendsCount} new friends`)}
+              <div style={{
+                background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(59,130,246,0.12)',
+                borderRadius: 12, padding: '10px 14px', marginBottom: 12,
+              }}>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: 0 }}>
+                  Only friends invited after May 25, 2026 count toward milestones.
+                </p>
+              </div>
+              {MISSIONS.map(m => (
+                <MissionRow
+                  key={m.count}
+                  count={m.count} reward={m.reward} progress={newFriendsCount}
+                  claimed={claimedMilestones.has(m.count)}
+                  isClaiming={claimingMilestone === m.count}
+                  onClaim={() => {
+                    setClaimingMilestone(m.count);
+                    claimMilestoneMutation.mutate({ count: m.count, reward: m.reward });
+                  }}
+                />
+              ))}
+            </>
+          )}
+
+          {/* PARTNER TAB */}
+          {tab === 'partner' && (
+            <div style={{
+              background: CARD, border: `1px solid ${BORDER}`,
+              borderRadius: 18, padding: '40px 24px', textAlign: 'center',
+            }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(96,165,250,0.5)" strokeWidth="2" strokeLinecap="round" style={{ marginBottom: 16 }}>
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+              <p style={{ color: TEXT, fontSize: 16, fontWeight: 800, margin: '0 0 8px' }}>Coming Soon</p>
+              <p style={{ color: TEXT_DIM, fontSize: 12, margin: 0 }}>Partner offers coming soon. Stay tuned for exclusive AXN opportunities.</p>
+            </div>
+          )}
       </div>
 
       {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}

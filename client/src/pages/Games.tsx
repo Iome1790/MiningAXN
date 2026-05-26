@@ -255,23 +255,13 @@ export default function Games() {
         }}>
           {/* Daily Checking */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 14, flexShrink: 0,
-              background: 'rgba(99,102,241,0.12)',
-              border: '1px solid rgba(99,102,241,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-                <polyline points="9 16 11 18 15 14"/>
-              </svg>
-            </div>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
             <div style={{ flex: 1 }}>
               <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>Daily Checking</div>
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Earn 5 AXN · Watch ad to claim</div>
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Earn 5 AXN</div>
             </div>
             <button
               onClick={handleDailyCheck}
@@ -302,22 +292,14 @@ export default function Games() {
 
           {/* Mystery Box */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 14, flexShrink: 0,
-              background: 'rgba(245,158,11,0.1)',
-              border: '1px solid rgba(245,158,11,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="21 8 21 21 3 21 3 8"/>
-                <rect x="1" y="3" width="22" height="5"/>
-                <line x1="12" y1="12" x2="12" y2="21"/>
-                <path d="M12 8c0-2 1.5-3 3-2s1.5 3 0 4l-3 2-3-2c-1.5-1-1.5-3 0-4s3 0 3 2z"/>
-              </svg>
-            </div>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
             <div style={{ flex: 1 }}>
               <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>Mystery Box</div>
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Win 1–50 AXN · Watch ad to claim</div>
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Win upto 1–100 AXN</div>
             </div>
             <button
               onClick={handleMysteryOpen}
@@ -325,14 +307,14 @@ export default function Games() {
               style={{
                 background: mysteryOpened
                   ? 'rgba(255,255,255,0.06)'
-                  : 'linear-gradient(135deg, #d97706, #f59e0b)',
+                  : 'linear-gradient(135deg, #2563eb, #3b82f6)',
                 color: mysteryOpened ? 'rgba(255,255,255,0.3)' : '#fff',
                 border: mysteryOpened ? '1px solid rgba(255,255,255,0.08)' : 'none',
                 borderRadius: 10, padding: '9px 16px',
                 fontSize: 12, fontWeight: 800,
                 cursor: mysteryOpened ? 'not-allowed' : 'pointer',
                 flexShrink: 0, letterSpacing: '0.03em',
-                boxShadow: mysteryOpened ? 'none' : '0 2px 12px rgba(217,119,6,0.5)',
+                boxShadow: mysteryOpened ? 'none' : '0 2px 12px rgba(37,99,235,0.4)',
               }}
               className="active:scale-95 transition-transform"
             >
@@ -355,24 +337,16 @@ export default function Games() {
         }}>
           <div style={{ padding: '16px 16px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-              <div style={{
-                width: 48, height: 48, borderRadius: 14, flexShrink: 0,
-                background: 'rgba(124,58,237,0.12)',
-                border: '1px solid rgba(124,58,237,0.25)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 12 20 22 4 22 4 12"/>
-                  <rect x="2" y="7" width="20" height="5"/>
-                  <line x1="12" y1="22" x2="12" y2="7"/>
-                  <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
-                  <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
-                </svg>
-              </div>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
               <div>
                 <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>Invite Friends</div>
                 <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>
-                  Earn per referral <span style={{ color: '#a78bfa', fontWeight: 700 }}>50 AXN</span>
+                  Earn per referral <span style={{ color: '#60a5fa', fontWeight: 700 }}>150 AXN</span>
                 </div>
               </div>
             </div>
@@ -443,134 +417,97 @@ export default function Games() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 950, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <style>{`
             @keyframes spin { to { transform: rotate(360deg); } }
-            @keyframes boxShake {
-              0%,100% { transform: rotate(0deg) scale(1); }
-              15% { transform: rotate(-8deg) scale(1.05); }
-              30% { transform: rotate(8deg) scale(1.08); }
-              45% { transform: rotate(-6deg) scale(1.06); }
-              60% { transform: rotate(6deg) scale(1.09); }
-              75% { transform: rotate(-4deg) scale(1.07); }
-              90% { transform: rotate(3deg) scale(1.05); }
+            @keyframes boxPulse {
+              0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37,99,235,0.4); }
+              50% { transform: scale(1.06); box-shadow: 0 0 0 12px rgba(37,99,235,0); }
             }
-            @keyframes lidPop {
-              0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-              60% { transform: translateY(-40px) rotate(-25deg); opacity: 0.8; }
-              100% { transform: translateY(-80px) rotate(-40deg); opacity: 0; }
-            }
-            @keyframes rewardPop {
-              0% { transform: scale(0.3) translateY(20px); opacity: 0; }
-              60% { transform: scale(1.15) translateY(-5px); opacity: 1; }
-              80% { transform: scale(0.95) translateY(0); }
-              100% { transform: scale(1) translateY(0); opacity: 1; }
-            }
-            @keyframes sparkle {
-              0%,100% { opacity: 0; transform: scale(0); }
-              50% { opacity: 1; transform: scale(1); }
-            }
-            @keyframes donePulse {
-              0% { transform: scale(0.5); opacity: 0; }
-              70% { transform: scale(1.2); opacity: 1; }
+            @keyframes rewardIn {
+              0% { transform: scale(0.6); opacity: 0; }
+              70% { transform: scale(1.08); opacity: 1; }
               100% { transform: scale(1); opacity: 1; }
             }
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           `}</style>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.88)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)' }} />
           <div style={{
-            position: 'relative', width: '88%', maxWidth: 340,
-            background: 'linear-gradient(160deg, #111 0%, #1a1008 100%)',
-            border: '1px solid rgba(245,158,11,0.25)',
-            borderRadius: 28, padding: '38px 28px 32px',
+            position: 'relative', width: '85%', maxWidth: 320,
+            background: '#111', border: '1px solid rgba(37,99,235,0.3)',
+            borderRadius: 24, padding: '36px 24px 28px',
             textAlign: 'center', zIndex: 951,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(245,158,11,0.1)',
+            boxShadow: '0 0 60px rgba(37,99,235,0.12)',
           }}>
-            {/* Title */}
-            <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', marginBottom: 28, letterSpacing: '-0.02em' }}>
-              🎁 Mystery Box
-            </div>
 
             {/* Box animation area */}
-            <div style={{ position: 'relative', height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28 }}>
+            <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+
               {mysteryPhase === 'opening' && (
-                <>
-                  {/* Lid flying off */}
-                  <div style={{
-                    position: 'absolute', top: 10, width: 90, height: 22,
-                    background: 'linear-gradient(135deg, #d97706, #f59e0b)',
-                    borderRadius: 6,
-                    animation: 'lidPop 0.8s ease-out 0.6s forwards',
-                    boxShadow: '0 4px 16px rgba(217,119,6,0.6)',
-                    zIndex: 2,
-                  }} />
-                  {/* Box shaking */}
-                  <div style={{
-                    width: 90, height: 80, marginTop: 30,
-                    background: 'linear-gradient(160deg, #b45309, #d97706)',
-                    borderRadius: 10,
-                    animation: 'boxShake 0.4s ease-in-out 0.1s 3',
-                    boxShadow: '0 8px 24px rgba(217,119,6,0.5)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <div style={{ fontSize: 28 }}>📦</div>
-                  </div>
-                  {/* Sparkles */}
-                  {[...Array(6)].map((_, i) => (
-                    <div key={i} style={{
-                      position: 'absolute',
-                      top: `${20 + Math.sin(i * 60 * Math.PI / 180) * 50}%`,
-                      left: `${50 + Math.cos(i * 60 * Math.PI / 180) * 40}%`,
-                      width: 8, height: 8, borderRadius: '50%',
-                      background: i % 2 === 0 ? '#fbbf24' : '#f59e0b',
-                      animation: `sparkle 0.5s ease-in-out ${0.6 + i * 0.1}s both`,
-                    }} />
-                  ))}
-                </>
+                <div style={{
+                  width: 80, height: 80, borderRadius: 20,
+                  background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  animation: 'boxPulse 0.6s ease-in-out infinite',
+                }}>
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                  </svg>
+                </div>
               )}
 
               {(mysteryPhase === 'revealed' || mysteryPhase === 'claiming') && (
-                <div style={{ animation: 'rewardPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both' }}>
-                  <div style={{ fontSize: 52, lineHeight: 1, marginBottom: 12 }}>🌟</div>
-                  <div style={{ fontSize: 42, fontWeight: 900, color: '#fbbf24', lineHeight: 1, letterSpacing: '-0.03em' }}>
+                <div style={{ animation: 'rewardIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+                  <div style={{ fontSize: 46, fontWeight: 900, color: '#fff', lineHeight: 1, letterSpacing: '-2px' }}>
                     {mysteryReward}
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: 'rgba(251,191,36,0.75)', marginTop: 4 }}>AXN</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#3b82f6', marginTop: 6, letterSpacing: '0.05em' }}>AXN</div>
                 </div>
               )}
 
               {mysteryPhase === 'done' && (
-                <div style={{ animation: 'donePulse 0.5s cubic-bezier(0.34,1.56,0.64,1) both' }}>
-                  <div style={{ fontSize: 60 }}>✅</div>
+                <div style={{ animation: 'rewardIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+                  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
                 </div>
               )}
             </div>
 
-            {/* Sub-text */}
-            <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginBottom: 22, minHeight: 18 }}>
-              {mysteryPhase === 'opening' && 'Opening your mystery box...'}
-              {mysteryPhase === 'revealed' && `You won ${mysteryReward} AXN! Watch an ad to claim.`}
-              {mysteryPhase === 'claiming' && 'Watching ad...'}
-              {mysteryPhase === 'done' && `${mysteryReward} AXN credited to your balance!`}
+            {/* Title & status */}
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginBottom: 6 }}>
+              {mysteryPhase === 'opening' && 'Opening...'}
+              {(mysteryPhase === 'revealed') && 'You won!'}
+              {mysteryPhase === 'claiming' && 'Claiming...'}
+              {mysteryPhase === 'done' && 'Claimed!'}
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>
+              {mysteryPhase === 'opening' && 'Revealing your reward'}
+              {mysteryPhase === 'revealed' && `${mysteryReward} AXN is waiting for you`}
+              {mysteryPhase === 'claiming' && 'Watch a short ad to receive reward'}
+              {mysteryPhase === 'done' && `${mysteryReward} AXN added to your balance`}
             </div>
 
-            {/* Claim button — shown only when revealed */}
             {mysteryPhase === 'revealed' && (
               <button
                 onClick={handleMysteryClaim}
                 style={{
-                  width: '100%', padding: '15px',
-                  background: 'linear-gradient(135deg, #d97706, #f59e0b)',
-                  border: 'none', borderRadius: 16, color: '#fff',
-                  fontSize: 15, fontWeight: 900, cursor: 'pointer',
-                  boxShadow: '0 6px 24px rgba(217,119,6,0.5)',
-                  letterSpacing: '0.04em',
+                  width: '100%', padding: '14px',
+                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                  border: 'none', borderRadius: 14, color: '#fff',
+                  fontSize: 14, fontWeight: 800, cursor: 'pointer',
+                  boxShadow: '0 4px 20px rgba(37,99,235,0.4)',
                 }}
                 className="active:scale-95 transition-transform"
               >
-                🎬 Watch Ad & Claim {mysteryReward} AXN
+                Claim {mysteryReward} AXN
               </button>
             )}
+
             {(mysteryPhase === 'opening' || mysteryPhase === 'claiming') && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
-                <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#fbbf24', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
-                Please wait...
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(59,130,246,0.3)', borderTopColor: '#3b82f6', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>Please wait</span>
               </div>
             )}
           </div>
