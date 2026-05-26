@@ -85,63 +85,82 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
     >
       <style>{`
         @keyframes axn-ring-pulse {
-          0%, 100% { opacity: 0.55; transform: scale(1); }
+          0%, 100% { opacity: 0.4; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.06); }
         }
         @keyframes axn-ring-spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        @keyframes axn-ring-spin-rev {
+          from { transform: rotate(360deg); }
+          to { transform: rotate(0deg); }
+        }
         @keyframes axn-coin-float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-10px); }
         }
         @keyframes axn-dot-bounce {
-          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-          40% { transform: translateY(-8px); opacity: 1; }
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+          40% { transform: translateY(-9px); opacity: 1; }
         }
         @keyframes axn-glow-pulse {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.7; }
+          0%, 100% { opacity: 0.2; transform: scale(0.95); }
+          50% { opacity: 0.6; transform: scale(1.05); }
+        }
+        @keyframes axn-text-fade {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.8; }
         }
       `}</style>
       {/* Outer glow orb */}
       <div style={{
         position: 'absolute',
-        width: 280,
-        height: 280,
+        width: 300,
+        height: 300,
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(230,126,0,0.18) 0%, transparent 70%)',
-        animation: 'axn-glow-pulse 2.2s ease-in-out infinite',
+        background: 'radial-gradient(circle, rgba(37,99,235,0.22) 0%, rgba(59,130,246,0.08) 50%, transparent 70%)',
+        animation: 'axn-glow-pulse 2.4s ease-in-out infinite',
       }} />
-      {/* Spinning ring */}
+      {/* Outer spinning ring */}
       <div style={{
         position: 'absolute',
-        width: 160,
-        height: 160,
+        width: 172,
+        height: 172,
         borderRadius: '50%',
-        border: '2px solid transparent',
-        borderTopColor: 'rgba(230,126,0,0.8)',
-        borderRightColor: 'rgba(245,158,11,0.4)',
-        animation: 'axn-ring-spin 1.6s linear infinite',
+        border: '1.5px solid transparent',
+        borderTopColor: 'rgba(59,130,246,0.9)',
+        borderRightColor: 'rgba(37,99,235,0.3)',
+        animation: 'axn-ring-spin 1.5s linear infinite',
+      }} />
+      {/* Inner counter-spinning ring */}
+      <div style={{
+        position: 'absolute',
+        width: 152,
+        height: 152,
+        borderRadius: '50%',
+        border: '1px solid transparent',
+        borderBottomColor: 'rgba(96,165,250,0.7)',
+        borderLeftColor: 'rgba(59,130,246,0.25)',
+        animation: 'axn-ring-spin-rev 2.2s linear infinite',
       }} />
       {/* Static glowing ring */}
       <div style={{
         position: 'absolute',
-        width: 148,
-        height: 148,
+        width: 140,
+        height: 140,
         borderRadius: '50%',
-        border: '1px solid rgba(230,126,0,0.25)',
-        boxShadow: '0 0 24px rgba(230,126,0,0.3), inset 0 0 24px rgba(230,126,0,0.08)',
-        animation: 'axn-ring-pulse 2s ease-in-out infinite',
+        border: '1px solid rgba(37,99,235,0.2)',
+        boxShadow: '0 0 32px rgba(37,99,235,0.35), inset 0 0 20px rgba(37,99,235,0.08)',
+        animation: 'axn-ring-pulse 2.2s ease-in-out infinite',
       }} />
       {/* AXN Image */}
       <div style={{ animation: 'axn-coin-float 2.8s ease-in-out infinite', position: 'relative', zIndex: 2 }}>
         <div style={{
-          width: 110, height: 110, borderRadius: '50%',
+          width: 108, height: 108, borderRadius: '50%',
           overflow: 'hidden', position: 'relative',
-          border: '2px solid rgba(230,126,0,0.4)',
-          boxShadow: '0 0 28px rgba(230,126,0,0.35)',
+          border: '2px solid rgba(37,99,235,0.45)',
+          boxShadow: '0 0 32px rgba(37,99,235,0.45), 0 0 60px rgba(59,130,246,0.15)',
         }}>
           <img
             src="/axn-coin-new.png"
@@ -151,16 +170,23 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
         </div>
       </div>
       {/* Bouncing dots */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 32, position: 'relative', zIndex: 2 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 36, position: 'relative', zIndex: 2 }}>
         {[0, 1, 2].map(i => (
           <div key={i} style={{
             width: 7, height: 7, borderRadius: '50%',
-            background: 'rgba(230,126,0,0.8)',
+            background: 'rgba(59,130,246,0.85)',
             animation: `axn-dot-bounce 1.2s ease-in-out infinite`,
-            animationDelay: `${i * 0.18}s`,
+            animationDelay: `${i * 0.2}s`,
           }} />
         ))}
       </div>
+      {/* Loading label */}
+      <div style={{
+        marginTop: 18, fontSize: 12, fontWeight: 700,
+        color: 'rgba(255,255,255,0.3)', letterSpacing: '0.15em', textTransform: 'uppercase',
+        position: 'relative', zIndex: 2,
+        animation: 'axn-text-fade 2s ease-in-out infinite',
+      }}>Axionet</div>
     </div>
   );
 }
