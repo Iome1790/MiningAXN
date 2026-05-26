@@ -346,10 +346,9 @@ export default function Earn() {
       <Header
         onMenuOpen={() => setMenuOpen(true)}
         onInviteOpen={() => setInviteOpen(true)}
-        onWithdrawOpen={() => setLocation('/wallet')}
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px', paddingBottom: 86, paddingTop: 88 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px', paddingBottom: 86, paddingTop: 'calc(var(--header-height, 62px) + 8px)' }}>
 
         {/* Daily Goal */}
         {sectionLabel('Daily Network Goal')}

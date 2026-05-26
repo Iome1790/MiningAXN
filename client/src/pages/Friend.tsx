@@ -60,9 +60,9 @@ export default function Friend() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#000000', display: 'flex', flexDirection: 'column' }}>
-      <Header onMenuOpen={() => setMenuOpen(true)} onWithdrawOpen={() => setLocation('/wallet')} />
+      <Header onMenuOpen={() => setMenuOpen(true)} />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px', paddingBottom: 86, paddingTop: 88 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px', paddingBottom: 86, paddingTop: 'calc(var(--header-height, 62px) + 8px)' }}>
 
         {/* Hero banner */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{

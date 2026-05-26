@@ -114,7 +114,8 @@ export default function Games() {
 
       {/* ── Balance Section ── */}
       <div style={{
-        padding: '120px 20px 28px', textAlign: 'center',
+        padding: 'calc(var(--header-height, 62px) + 20px) 20px 28px',
+        textAlign: 'center',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 6 }}>
           <span style={{ fontSize: 44, fontWeight: 900, color: '#fff', letterSpacing: '-1.5px', fontVariantNumeric: 'tabular-nums' }}>
@@ -147,14 +148,14 @@ export default function Games() {
             <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>Send</span>
           </div>
 
-          {/* Receive — large purple */}
+          {/* Receive — blue */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <button onClick={() => setShowReceivePopup(true)} style={{
               width: 56, height: 56, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+              background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
               border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 20px rgba(79,70,229,0.5)',
+              boxShadow: '0 4px 20px rgba(37,99,235,0.5)',
             }} className="active:scale-90 transition-transform">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
@@ -238,14 +239,14 @@ export default function Games() {
               style={{
                 background: dailyChecked
                   ? 'rgba(255,255,255,0.06)'
-                  : 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                  : 'linear-gradient(135deg, #2563eb, #3b82f6)',
                 color: dailyChecked ? 'rgba(255,255,255,0.3)' : '#fff',
                 border: dailyChecked ? '1px solid rgba(255,255,255,0.08)' : 'none',
                 borderRadius: 10, padding: '9px 18px',
                 fontSize: 12, fontWeight: 800,
                 cursor: dailyChecked ? 'not-allowed' : 'pointer',
                 flexShrink: 0, letterSpacing: '0.03em',
-                boxShadow: dailyChecked ? 'none' : '0 2px 12px rgba(79,70,229,0.4)',
+                boxShadow: dailyChecked ? 'none' : '0 2px 12px rgba(37,99,235,0.4)',
               }}
               className="active:scale-95 transition-transform"
             >
@@ -281,14 +282,14 @@ export default function Games() {
               style={{
                 background: mysteryOpened
                   ? 'rgba(255,255,255,0.06)'
-                  : 'linear-gradient(135deg, #d97706, #f59e0b)',
+                  : 'linear-gradient(135deg, #2563eb, #3b82f6)',
                 color: mysteryOpened ? 'rgba(255,255,255,0.3)' : '#fff',
                 border: mysteryOpened ? '1px solid rgba(255,255,255,0.08)' : 'none',
                 borderRadius: 10, padding: '9px 18px',
                 fontSize: 12, fontWeight: 800,
                 cursor: mysteryOpened ? 'not-allowed' : 'pointer',
                 flexShrink: 0, letterSpacing: '0.03em',
-                boxShadow: mysteryOpened ? 'none' : '0 2px 12px rgba(245,158,11,0.35)',
+                boxShadow: mysteryOpened ? 'none' : '0 2px 12px rgba(37,99,235,0.4)',
               }}
               className="active:scale-95 transition-transform"
             >
@@ -339,11 +340,11 @@ export default function Games() {
                 disabled={!referralLink || isSharing}
                 style={{
                   flex: 1, padding: '13px 0',
-                  background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
                   border: 'none', borderRadius: 14, color: '#fff',
                   fontSize: 14, fontWeight: 800, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  boxShadow: '0 4px 20px rgba(79,70,229,0.4)',
+                  boxShadow: '0 4px 20px rgba(37,99,235,0.4)',
                   opacity: !referralLink ? 0.6 : 1,
                 }}
                 className="active:scale-95 transition-transform"
