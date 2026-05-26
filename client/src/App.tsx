@@ -29,7 +29,6 @@ const GamesPage = lazy(() => import("@/pages/Games"));
 const EarnPage = lazy(() => import("@/pages/Earn"));
 const WatchPage = lazy(() => import("@/pages/Earn"));
 const FriendPage = lazy(() => import("@/pages/Friend"));
-const WalletPage = lazy(() => import("@/pages/Wallet"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const PageLoader = memo(function PageLoader() {
@@ -77,7 +76,12 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
   return (
     <div
       className="fixed inset-0 overflow-hidden"
-      style={{ background: '#000000', zIndex: 9999, opacity, pointerEvents: opacity < 0.05 ? 'none' : 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+      style={{
+        background: '#000000', zIndex: 9999, opacity,
+        pointerEvents: opacity < 0.05 ? 'none' : 'auto',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        paddingTop: 'var(--tg-content-safe-area-inset-top, var(--tg-safe-area-inset-top, 0px))',
+      }}
     >
       <style>{`
         @keyframes axn-ring-pulse {
@@ -175,7 +179,6 @@ function Router() {
           <Route path="/earn" component={EarnPage} />
           <Route path="/watch" component={WatchPage} />
           <Route path="/friend" component={FriendPage} />
-          <Route path="/wallet" component={WalletPage} />
           <Route path="/landing" component={Landing} />
           <Route path="/admin" component={Admin} />
           <Route path="/admin/country-controls" component={CountryControls} />
@@ -497,6 +500,26 @@ function App() {
     const tg = window.Telegram?.WebApp;
     if (tg) {
       tg.ready();
+      tg.expand();
+
+      const setTgCssVars = () => {
+        const contentTop = (tg as any).contentSafeAreaInset?.top ?? 0;
+        const safeTop = (tg as any).safeAreaInset?.top ?? 0;
+        const overlayTop = Math.max(contentTop, safeTop);
+        const r = document.documentElement;
+        r.style.setProperty('--tg-overlay-top', `${overlayTop}px`);
+        r.style.setProperty('--tg-content-safe-area-inset-top', `${contentTop}px`);
+        r.style.setProperty('--tg-safe-area-inset-top', `${safeTop}px`);
+        const contentBottom = (tg as any).contentSafeAreaInset?.bottom ?? 0;
+        const safeBottom = (tg as any).safeAreaInset?.bottom ?? 0;
+        r.style.setProperty('--tg-content-safe-area-inset-bottom', `${Math.max(contentBottom, safeBottom)}px`);
+        r.style.setProperty('--tg-safe-area-inset-bottom', `${safeBottom}px`);
+      };
+      setTgCssVars();
+      (tg as any).onEvent?.('safeAreaChanged', setTgCssVars);
+      (tg as any).onEvent?.('contentSafeAreaChanged', setTgCssVars);
+      (tg as any).onEvent?.('viewportChanged', setTgCssVars);
+      (tg as any).onEvent?.('fullscreenChanged', setTgCssVars);
       
       if (tg.initDataUnsafe?.user) {
         localStorage.setItem("tg_user", JSON.stringify(tg.initDataUnsafe.user));
