@@ -27,7 +27,6 @@ const badge = (txt: string) => (
 );
 
 const MISSIONS = [
-  { count: 3,   reward: 150  },
   { count: 10,  reward: 100  },
   { count: 25,  reward: 250  },
   { count: 50,  reward: 500  },
@@ -60,9 +59,11 @@ function PlayIcon({ size = 18 }: { size?: number }) {
 function formatCooldown(msLeft: number): string {
   if (msLeft <= 0) return '00:00';
   const totalSec = Math.ceil(msLeft / 1000);
-  const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
-  const s = (totalSec % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}m`;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
 function AdTaskRow({ task, cooldownMs }: { task: typeof AD_TASKS[0]; cooldownMs: number }) {
@@ -340,17 +341,17 @@ export default function Earn() {
         </div>
 
         {/* Daily Goal */}
-        {sectionLabel('Daily Network Goal')}
+        {sectionLabel('Daily Milestone Bonus')}
         <div style={{
           background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, marginBottom: 14, overflow: 'hidden',
         }}>
           <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 3 }}>
-                <span style={{ color: TEXT, fontSize: 13, fontWeight: 700 }}>Referral Bonus</span>
-                {badge('150 AXN')}
+                <span style={{ color: TEXT, fontSize: 13, fontWeight: 700 }}>Daily Milestone</span>
+                {badge('50 AXN')}
               </div>
-              <p style={{ color: TEXT_DIM, fontSize: 11, margin: '0 0 10px' }}>Invite 3 new friends today</p>
+              <p style={{ color: TEXT_DIM, fontSize: 11, margin: '0 0 10px' }}>3 different friends each complete 10 ad tasks today</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} style={{
