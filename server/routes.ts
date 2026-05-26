@@ -8662,5 +8662,125 @@ ${walletAddress}
     }
   });
 
+  // ── Season 2 Migration Routes ──
+
+  // Mark intro as seen
+  app.post('/api/migration/intro-seen', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      await db.execute(sql`UPDATE users SET migration_intro_seen = TRUE WHERE id = ${userId}`);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to update intro seen' });
+    }
+  });
+
+  // Swap mining balance to wallet balance (fee: 500 AXN, min: 2000 AXN)
+  app.post('/api/migration/swap', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      const userResult = await db.execute(sql`
+        SELECT id, balance, mining_balance, migration_completed
+        FROM users WHERE id = ${userId}
+      `);
+      const user = userResult.rows[0];
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.migration_completed) return res.status(400).json({ error: 'Migration already completed' });
+
+      const miningBal = Math.floor(parseFloat(String(user.mining_balance || user.balance || '0')));
+      const MIGRATION_FEE = 500;
+      const MIN_SWAP = 2000;
+
+      if (miningBal < MIN_SWAP) {
+        return res.status(400).json({ error: `Minimum swap amount is ${MIN_SWAP} AXN` });
+      }
+
+      const walletReceives = miningBal - MIGRATION_FEE;
+
+      await db.execute(sql`
+        UPDATE users
+        SET
+          mining_balance = 0,
+          wallet_balance = ${walletReceives},
+          balance = 0,
+          migration_completed = TRUE,
+          migration_intro_seen = TRUE,
+          updated_at = NOW()
+        WHERE id = ${userId}
+      `);
+
+      res.json({
+        success: true,
+        miningBalance: miningBal,
+        fee: MIGRATION_FEE,
+        walletBalance: walletReceives,
+      });
+    } catch (err) {
+      console.error('Migration swap error:', err);
+      res.status(500).json({ error: 'Failed to process migration' });
+    }
+  });
+
+  // Burn mining balance (no reward)
+  app.post('/api/migration/burn', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      const userResult = await db.execute(sql`
+        SELECT id, migration_completed FROM users WHERE id = ${userId}
+      `);
+      const user = userResult.rows[0];
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.migration_completed) return res.status(400).json({ error: 'Migration already completed' });
+
+      await db.execute(sql`
+        UPDATE users
+        SET
+          mining_balance = 0,
+          wallet_balance = 0,
+          balance = 0,
+          migration_completed = TRUE,
+          migration_intro_seen = TRUE,
+          updated_at = NOW()
+        WHERE id = ${userId}
+      `);
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error('Migration burn error:', err);
+      res.status(500).json({ error: 'Failed to process burn' });
+    }
+  });
+
+  // Get migration status
+  app.get('/api/migration/status', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      const result = await db.execute(sql`
+        SELECT balance, mining_balance, wallet_balance, migration_completed, migration_intro_seen
+        FROM users WHERE id = ${userId}
+      `);
+      const user = result.rows[0];
+      if (!user) return res.status(404).json({ error: 'User not found' });
+
+      const miningBalance = Math.floor(parseFloat(String(user.mining_balance || user.balance || '0')));
+
+      res.json({
+        miningBalance,
+        walletBalance: Math.floor(parseFloat(String(user.wallet_balance || '0'))),
+        migrationCompleted: user.migration_completed ?? false,
+        migrationIntroSeen: user.migration_intro_seen ?? false,
+      });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to get migration status' });
+    }
+  });
+
   return httpServer;
 }

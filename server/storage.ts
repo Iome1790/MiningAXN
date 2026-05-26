@@ -321,14 +321,14 @@ export class DatabaseStorage implements IStorage {
           INSERT INTO users (
             telegram_id, email, first_name, last_name, username, personal_code, 
             withdraw_balance, total_earnings, ads_watched, daily_ads_watched, 
-            daily_earnings, level, flagged, banned
+            daily_earnings, level, flagged, banned, migration_completed
           )
           VALUES (
             ${telegramId}, ${finalEmail}, ${sanitizedData.firstName}, ${sanitizedData.lastName}, 
             ${sanitizedData.username}, ${sanitizedData.personalCode}, ${'0'}, 
             ${'0'}, ${sanitizedData.adsWatched}, ${sanitizedData.dailyAdsWatched}, 
             ${sanitizedData.dailyEarnings}, ${sanitizedData.level}, ${sanitizedData.flagged}, 
-            ${sanitizedData.banned}
+            ${sanitizedData.banned}, TRUE
           )
           RETURNING *
         `);
@@ -367,14 +367,14 @@ export class DatabaseStorage implements IStorage {
             INSERT INTO users (
               telegram_id, email, first_name, last_name, username, personal_code, 
               withdraw_balance, total_earnings, ads_watched, daily_ads_watched, 
-              daily_earnings, level, flagged, banned
+              daily_earnings, level, flagged, banned, migration_completed
             )
             VALUES (
               ${telegramId}, ${finalEmail}, ${sanitizedData.firstName}, ${sanitizedData.lastName}, 
               ${sanitizedData.username}, ${sanitizedData.personalCode}, ${'0'}, 
               ${'0'}, ${sanitizedData.adsWatched}, ${sanitizedData.dailyAdsWatched}, 
               ${sanitizedData.dailyEarnings}, ${sanitizedData.level}, ${sanitizedData.flagged}, 
-              ${sanitizedData.banned}
+              ${sanitizedData.banned}, TRUE
             )
             RETURNING *
           `);
