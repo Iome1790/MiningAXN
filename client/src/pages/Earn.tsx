@@ -28,6 +28,7 @@ const badge = (txt: string) => (
 );
 
 const MISSIONS = [
+  { count: 3,   reward: 150  },
   { count: 10,  reward: 100  },
   { count: 25,  reward: 250  },
   { count: 50,  reward: 500  },

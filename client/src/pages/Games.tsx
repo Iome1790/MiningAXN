@@ -1,16 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 import MenuPopup from "@/components/MenuPopup";
 import Header from "@/components/Header";
 import { useLocation } from "wouter";
+import { showRewardedInterstitial } from "@/lib/showAd";
 
 const TON_PER_AXN = 0.00001;
 
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
 }
+
+type MysteryPhase = 'idle' | 'opening' | 'revealed' | 'claiming' | 'done';
 
 export default function Games() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -20,8 +23,13 @@ export default function Games() {
   const [showReceivePopup, setShowReceivePopup] = useState(false);
   const [showSwapPopup, setShowSwapPopup] = useState(false);
   const [dailyChecked, setDailyChecked] = useState(() => localStorage.getItem('daily_check_date') === getTodayKey());
+  const [dailyAdLoading, setDailyAdLoading] = useState(false);
   const [mysteryOpened, setMysteryOpened] = useState(() => localStorage.getItem('mystery_box_date') === getTodayKey());
+  const [mysteryPhase, setMysteryPhase] = useState<MysteryPhase>('idle');
+  const [mysteryReward, setMysteryReward] = useState(0);
+  const [mysteryAdLoading, setMysteryAdLoading] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const mysteryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -68,25 +76,39 @@ export default function Games() {
     },
   });
 
-  const mysteryBoxMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/mystery-box', {});
-      return res.json();
-    },
-    onSuccess: (data) => {
-      setMysteryOpened(true);
-      localStorage.setItem('mystery_box_date', getTodayKey());
-      const reward = data.reward ?? Math.floor(Math.random() * 100) + 1;
-      showNotification(`Mystery Box! You won ${reward} AXN!`, 'success');
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-    },
-    onError: () => {
-      setMysteryOpened(true);
-      localStorage.setItem('mystery_box_date', getTodayKey());
-      const reward = Math.floor(Math.random() * 100) + 1;
-      showNotification(`Mystery Box! You won ${reward} AXN!`, 'success');
-    },
-  });
+  const handleDailyCheck = async () => {
+    if (dailyChecked || dailyAdLoading || dailyCheckMutation.isPending) return;
+    setDailyAdLoading(true);
+    try { await showRewardedInterstitial(); } catch {}
+    setDailyAdLoading(false);
+    dailyCheckMutation.mutate();
+  };
+
+  const handleMysteryOpen = () => {
+    if (mysteryOpened || mysteryPhase !== 'idle') return;
+    const reward = Math.floor(Math.random() * 50) + 1;
+    setMysteryReward(reward);
+    setMysteryPhase('opening');
+    if (mysteryTimerRef.current) clearTimeout(mysteryTimerRef.current);
+    mysteryTimerRef.current = setTimeout(() => setMysteryPhase('revealed'), 2200);
+  };
+
+  const handleMysteryClaim = async () => {
+    if (mysteryPhase !== 'revealed') return;
+    setMysteryAdLoading(true);
+    setMysteryPhase('claiming');
+    try { await showRewardedInterstitial(); } catch {}
+    setMysteryAdLoading(false);
+    try {
+      await apiRequest('POST', '/api/mystery-box', {});
+    } catch {}
+    setMysteryOpened(true);
+    localStorage.setItem('mystery_box_date', getTodayKey());
+    showNotification(`Mystery Box! You won ${mysteryReward} AXN!`, 'success');
+    queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+    setMysteryPhase('done');
+    mysteryTimerRef.current = setTimeout(() => setMysteryPhase('idle'), 1800);
+  };
 
   const copyLink = () => {
     if (!referralLink) return;
@@ -114,92 +136,110 @@ export default function Games() {
 
       {/* ── Balance Section ── */}
       <div style={{
-        padding: 'calc(var(--header-height, 62px) + 20px) 20px 28px',
+        padding: 'calc(var(--header-height, 62px) + 32px) 20px 16px',
         textAlign: 'center',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 6 }}>
-          <span style={{ fontSize: 44, fontWeight: 900, color: '#fff', letterSpacing: '-1.5px', fontVariantNumeric: 'tabular-nums' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
+          <span style={{ fontSize: 32, fontWeight: 900, color: '#fff', letterSpacing: '-1px', fontVariantNumeric: 'tabular-nums' }}>
             {balanceHidden ? '••••' : `$${axnUsdValue.toFixed(2)}`}
           </span>
           <button onClick={() => setBalanceHidden(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
             {balanceHidden ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
             ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             )}
           </button>
         </div>
-        <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 15, fontWeight: 600 }}>
+        <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: 600 }}>
           {balanceHidden ? '••••' : `${axnBalance.toLocaleString()} AXN`}
         </div>
 
         {/* ── Action Buttons ── */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 30 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 28 }}>
 
           {/* Send */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
             <button onClick={() => setShowSendPopup(true)} style={{
-              width: 56, height: 56, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 54, height: 54, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
+              border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
             }} className="active:scale-90 transition-transform">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2" strokeLinecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2" fill="white" stroke="none" opacity="0.85"/>
+              </svg>
             </button>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>Send</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.55)' }}>Send</span>
           </div>
 
-          {/* Receive — blue */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          {/* Receive */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
             <button onClick={() => setShowReceivePopup(true)} style={{
-              width: 56, height: 56, borderRadius: '50%',
+              width: 54, height: 54, borderRadius: '50%',
               background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
               border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 20px rgba(37,99,235,0.5)',
+              boxShadow: '0 4px 20px rgba(37,99,235,0.55)',
             }} className="active:scale-90 transition-transform">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="8 17 12 21 16 17"/>
+                <line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
+              </svg>
             </button>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>Receive</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.55)' }}>Receive</span>
           </div>
 
           {/* Swap */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
             <button onClick={() => setShowSwapPopup(true)} style={{
-              width: 56, height: 56, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 54, height: 54, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
+              border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
             }} className="active:scale-90 transition-transform">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2" strokeLinecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M7 16V4m0 0L3 8m4-4l4 4"/>
+                <path d="M17 8v12m0 0l4-4m-4 4l-4-4"/>
+              </svg>
             </button>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>Swap</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.55)' }}>Swap</span>
           </div>
 
           {/* Earn */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
             <div style={{ position: 'relative' }}>
               <button onClick={() => setLocation('/earn')} style={{
-                width: 56, height: 56, borderRadius: '50%',
-                background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 54, height: 54, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
               }} className="active:scale-90 transition-transform">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="white" opacity="0.9" stroke="none"/>
+                </svg>
               </button>
               <div style={{
                 position: 'absolute', top: -4, right: -4,
-                background: '#ef4444', borderRadius: 10, minWidth: 18, height: 18,
+                background: '#ef4444', borderRadius: 10, minWidth: 17, height: 17,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: '2px solid #0a0a0a',
-                fontSize: 9, fontWeight: 900, color: '#fff', padding: '0 4px',
+                fontSize: 8, fontWeight: 900, color: '#fff', padding: '0 3px',
               }}>9+</div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>Earn</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.55)' }}>Earn</span>
           </div>
 
         </div>
       </div>
 
       {/* ── Scrollable Content ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px', paddingBottom: 90 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px', paddingBottom: 90 }}>
 
         {/* DAILY REWARDS */}
         <div style={{ marginBottom: 10 }}>
@@ -231,26 +271,29 @@ export default function Games() {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>Daily Checking</div>
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Earn 5 AXN</div>
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Earn 5 AXN · Watch ad to claim</div>
             </div>
             <button
-              onClick={() => !dailyChecked && dailyCheckMutation.mutate()}
-              disabled={dailyChecked || dailyCheckMutation.isPending}
+              onClick={handleDailyCheck}
+              disabled={dailyChecked || dailyAdLoading || dailyCheckMutation.isPending}
               style={{
                 background: dailyChecked
                   ? 'rgba(255,255,255,0.06)'
                   : 'linear-gradient(135deg, #2563eb, #3b82f6)',
                 color: dailyChecked ? 'rgba(255,255,255,0.3)' : '#fff',
                 border: dailyChecked ? '1px solid rgba(255,255,255,0.08)' : 'none',
-                borderRadius: 10, padding: '9px 18px',
+                borderRadius: 10, padding: '9px 16px',
                 fontSize: 12, fontWeight: 800,
-                cursor: dailyChecked ? 'not-allowed' : 'pointer',
+                cursor: (dailyChecked || dailyAdLoading) ? 'not-allowed' : 'pointer',
                 flexShrink: 0, letterSpacing: '0.03em',
                 boxShadow: dailyChecked ? 'none' : '0 2px 12px rgba(37,99,235,0.4)',
+                display: 'flex', alignItems: 'center', gap: 5,
               }}
               className="active:scale-95 transition-transform"
             >
-              {dailyChecked ? 'DONE' : 'CHECK'}
+              {(dailyAdLoading || dailyCheckMutation.isPending) ? (
+                <><span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} /></>
+              ) : dailyChecked ? 'DONE' : 'CHECK'}
             </button>
           </div>
 
@@ -274,22 +317,22 @@ export default function Games() {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>Mystery Box</div>
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Win up to 100 AXN</div>
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Win 1–50 AXN · Watch ad to claim</div>
             </div>
             <button
-              onClick={() => !mysteryOpened && mysteryBoxMutation.mutate()}
-              disabled={mysteryOpened || mysteryBoxMutation.isPending}
+              onClick={handleMysteryOpen}
+              disabled={mysteryOpened || mysteryPhase !== 'idle'}
               style={{
                 background: mysteryOpened
                   ? 'rgba(255,255,255,0.06)'
-                  : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                  : 'linear-gradient(135deg, #d97706, #f59e0b)',
                 color: mysteryOpened ? 'rgba(255,255,255,0.3)' : '#fff',
                 border: mysteryOpened ? '1px solid rgba(255,255,255,0.08)' : 'none',
-                borderRadius: 10, padding: '9px 18px',
+                borderRadius: 10, padding: '9px 16px',
                 fontSize: 12, fontWeight: 800,
                 cursor: mysteryOpened ? 'not-allowed' : 'pointer',
                 flexShrink: 0, letterSpacing: '0.03em',
-                boxShadow: mysteryOpened ? 'none' : '0 2px 12px rgba(37,99,235,0.4)',
+                boxShadow: mysteryOpened ? 'none' : '0 2px 12px rgba(217,119,6,0.5)',
               }}
               className="active:scale-95 transition-transform"
             >
@@ -393,6 +436,145 @@ export default function Games() {
           onClose={() => setShowReceivePopup(false)}
           onSuccess={() => setShowReceivePopup(false)}
         />
+      )}
+
+      {/* ── Mystery Box Popup ── */}
+      {mysteryPhase !== 'idle' && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 950, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <style>{`
+            @keyframes spin { to { transform: rotate(360deg); } }
+            @keyframes boxShake {
+              0%,100% { transform: rotate(0deg) scale(1); }
+              15% { transform: rotate(-8deg) scale(1.05); }
+              30% { transform: rotate(8deg) scale(1.08); }
+              45% { transform: rotate(-6deg) scale(1.06); }
+              60% { transform: rotate(6deg) scale(1.09); }
+              75% { transform: rotate(-4deg) scale(1.07); }
+              90% { transform: rotate(3deg) scale(1.05); }
+            }
+            @keyframes lidPop {
+              0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+              60% { transform: translateY(-40px) rotate(-25deg); opacity: 0.8; }
+              100% { transform: translateY(-80px) rotate(-40deg); opacity: 0; }
+            }
+            @keyframes rewardPop {
+              0% { transform: scale(0.3) translateY(20px); opacity: 0; }
+              60% { transform: scale(1.15) translateY(-5px); opacity: 1; }
+              80% { transform: scale(0.95) translateY(0); }
+              100% { transform: scale(1) translateY(0); opacity: 1; }
+            }
+            @keyframes sparkle {
+              0%,100% { opacity: 0; transform: scale(0); }
+              50% { opacity: 1; transform: scale(1); }
+            }
+            @keyframes donePulse {
+              0% { transform: scale(0.5); opacity: 0; }
+              70% { transform: scale(1.2); opacity: 1; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+          `}</style>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.88)' }} />
+          <div style={{
+            position: 'relative', width: '88%', maxWidth: 340,
+            background: 'linear-gradient(160deg, #111 0%, #1a1008 100%)',
+            border: '1px solid rgba(245,158,11,0.25)',
+            borderRadius: 28, padding: '38px 28px 32px',
+            textAlign: 'center', zIndex: 951,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(245,158,11,0.1)',
+          }}>
+            {/* Title */}
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', marginBottom: 28, letterSpacing: '-0.02em' }}>
+              🎁 Mystery Box
+            </div>
+
+            {/* Box animation area */}
+            <div style={{ position: 'relative', height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28 }}>
+              {mysteryPhase === 'opening' && (
+                <>
+                  {/* Lid flying off */}
+                  <div style={{
+                    position: 'absolute', top: 10, width: 90, height: 22,
+                    background: 'linear-gradient(135deg, #d97706, #f59e0b)',
+                    borderRadius: 6,
+                    animation: 'lidPop 0.8s ease-out 0.6s forwards',
+                    boxShadow: '0 4px 16px rgba(217,119,6,0.6)',
+                    zIndex: 2,
+                  }} />
+                  {/* Box shaking */}
+                  <div style={{
+                    width: 90, height: 80, marginTop: 30,
+                    background: 'linear-gradient(160deg, #b45309, #d97706)',
+                    borderRadius: 10,
+                    animation: 'boxShake 0.4s ease-in-out 0.1s 3',
+                    boxShadow: '0 8px 24px rgba(217,119,6,0.5)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <div style={{ fontSize: 28 }}>📦</div>
+                  </div>
+                  {/* Sparkles */}
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} style={{
+                      position: 'absolute',
+                      top: `${20 + Math.sin(i * 60 * Math.PI / 180) * 50}%`,
+                      left: `${50 + Math.cos(i * 60 * Math.PI / 180) * 40}%`,
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: i % 2 === 0 ? '#fbbf24' : '#f59e0b',
+                      animation: `sparkle 0.5s ease-in-out ${0.6 + i * 0.1}s both`,
+                    }} />
+                  ))}
+                </>
+              )}
+
+              {(mysteryPhase === 'revealed' || mysteryPhase === 'claiming') && (
+                <div style={{ animation: 'rewardPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+                  <div style={{ fontSize: 52, lineHeight: 1, marginBottom: 12 }}>🌟</div>
+                  <div style={{ fontSize: 42, fontWeight: 900, color: '#fbbf24', lineHeight: 1, letterSpacing: '-0.03em' }}>
+                    {mysteryReward}
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'rgba(251,191,36,0.75)', marginTop: 4 }}>AXN</div>
+                </div>
+              )}
+
+              {mysteryPhase === 'done' && (
+                <div style={{ animation: 'donePulse 0.5s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+                  <div style={{ fontSize: 60 }}>✅</div>
+                </div>
+              )}
+            </div>
+
+            {/* Sub-text */}
+            <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginBottom: 22, minHeight: 18 }}>
+              {mysteryPhase === 'opening' && 'Opening your mystery box...'}
+              {mysteryPhase === 'revealed' && `You won ${mysteryReward} AXN! Watch an ad to claim.`}
+              {mysteryPhase === 'claiming' && 'Watching ad...'}
+              {mysteryPhase === 'done' && `${mysteryReward} AXN credited to your balance!`}
+            </div>
+
+            {/* Claim button — shown only when revealed */}
+            {mysteryPhase === 'revealed' && (
+              <button
+                onClick={handleMysteryClaim}
+                style={{
+                  width: '100%', padding: '15px',
+                  background: 'linear-gradient(135deg, #d97706, #f59e0b)',
+                  border: 'none', borderRadius: 16, color: '#fff',
+                  fontSize: 15, fontWeight: 900, cursor: 'pointer',
+                  boxShadow: '0 6px 24px rgba(217,119,6,0.5)',
+                  letterSpacing: '0.04em',
+                }}
+                className="active:scale-95 transition-transform"
+              >
+                🎬 Watch Ad & Claim {mysteryReward} AXN
+              </button>
+            )}
+            {(mysteryPhase === 'opening' || mysteryPhase === 'claiming') && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+                <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#fbbf24', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                Please wait...
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ── Swap Popup ── */}
