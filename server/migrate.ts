@@ -681,6 +681,26 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_btc_user ON bounty_task_completions(user_id)`);
     console.log('✅ [MIGRATION] bounty_task_completions table ensured');
 
+    // Season 2 Migration columns
+    try {
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mining_balance DECIMAL(20, 0) DEFAULT '0'`);
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_balance DECIMAL(20, 0) DEFAULT '0'`);
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS migration_completed BOOLEAN DEFAULT FALSE`);
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS migration_intro_seen BOOLEAN DEFAULT FALSE`);
+      // Backfill: copy existing balance into mining_balance for users who haven't migrated yet
+      await db.execute(sql`
+        UPDATE users
+        SET mining_balance = balance
+        WHERE (mining_balance IS NULL OR mining_balance = 0)
+          AND balance IS NOT NULL
+          AND balance > 0
+          AND (migration_completed IS NULL OR migration_completed = FALSE)
+      `);
+      console.log('✅ [MIGRATION] Season 2 migration columns ensured');
+    } catch (e) {
+      console.log('ℹ️ [MIGRATION] Season 2 migration columns already exist');
+    }
+
     // User Ad Watches table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS user_ad_watches (
