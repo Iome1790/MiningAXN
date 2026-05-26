@@ -1,6 +1,6 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppNotification from "@/components/AppNotification";
 import { useEffect, lazy, Suspense, useState, memo, useCallback, useRef, createContext } from "react";
@@ -13,6 +13,7 @@ import SeasonEndOverlay from "@/components/SeasonEndOverlay";
 import { SeasonEndContext } from "@/lib/SeasonEndContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import ChannelJoinPopup from "@/components/ChannelJoinPopup";
+import Season2MigrationFlow from "@/components/Season2MigrationFlow";
 
 export const AppReadyContext = createContext<() => void>(() => {});
 
@@ -391,6 +392,45 @@ import { LanguageProvider } from "@/hooks/useLanguage";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { showNotification } from "@/components/AppNotification";
 
+function MigrationGate({ children }: { children: React.ReactNode }) {
+  const { data: migrationStatus, isLoading } = useQuery<{
+    migrationCompleted: boolean;
+    migrationIntroSeen: boolean;
+    miningBalance: number;
+    walletBalance: number;
+  }>({
+    queryKey: ["/api/migration/status"],
+    staleTime: 60000,
+    retry: 1,
+  });
+
+  const [migrationDone, setMigrationDone] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9998 }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#3b82f6", animation: "pulse 1.2s ease-in-out infinite", animationDelay: `${i * 0.2}s` }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const needsMigration = !migrationDone && migrationStatus && !migrationStatus.migrationCompleted;
+
+  if (needsMigration) {
+    return (
+      <Season2MigrationFlow
+        onComplete={() => setMigrationDone(true)}
+      />
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function App() {
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState<string>();
@@ -695,7 +735,7 @@ function App() {
                     />
                   </Suspense>
                 )}
-                <AppContent />
+                {isChannelVerified && <MigrationGate><AppContent /></MigrationGate>}
               </>
             )}
           </AppReadyContext.Provider>
