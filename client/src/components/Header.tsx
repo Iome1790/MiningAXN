@@ -102,7 +102,7 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
           background: "rgba(10,10,10,0.97)",
           borderBottom: "1px solid rgba(255,255,255,0.08)",
           backdropFilter: "blur(20px)",
-          paddingTop: `${overlayTop + 16}px`,
+          paddingTop: `${overlayTop + 28}px`,
         }}
       >
         <div style={{
