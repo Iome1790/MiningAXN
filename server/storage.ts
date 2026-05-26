@@ -1070,21 +1070,16 @@ export class DatabaseStorage implements IStorage {
     return referral;
   }
 
-  // Check and activate referral bonus when friend watches required number of ads (AXN +  rewards)
-  // Uses admin-configured 'referral_ads_required' setting instead of hardcoded value
+  // Check and activate referral bonus when friend watches 10 ads — gives 150 AXN one-time to referrer
   async checkAndActivateReferralBonus(userId: string): Promise<void> {
     try {
-      // Check if this user has already received their referral bonus
+      // Check if this user has already triggered the referral bonus (firstAdWatched flag)
       const [user] = await db.select().from(users).where(eq(users.id, userId));
       if (!user || user.firstAdWatched) {
-        // Referral bonus already processed for this user
         return;
       }
 
-      // Get admin-configured referral ads requirement (no hardcoded values)
-      const referralAdsRequired = parseInt(await this.getAppSetting('referral_ads_required', '10'));
-      
-      // Count ads watched by this user
+      // Count ad_watch earnings for this user
       const [adCount] = await db
         .select({ count: sql<number>`count(*)` })
         .from(earnings)
@@ -1094,106 +1089,101 @@ export class DatabaseStorage implements IStorage {
         ));
 
       const adsWatched = adCount?.count || 0;
-      
-      // If user has watched the admin-configured required number of ads, activate referral bonuses
-      if (adsWatched >= referralAdsRequired) {
-        // Mark this user as having completed the referral ad requirement
-        await db
-          .update(users)
-          .set({ firstAdWatched: true })
-          .where(eq(users.id, userId));
 
-        // Get referral reward settings from admin (no hardcoded values)
-        const referralRewardEnabled = await this.getAppSetting('referral_reward_enabled', 'false');
-        const referralRewardAXN = parseInt(await this.getAppSetting('referral_reward_axn', '50'));
-        const referralReward = parseFloat(await this.getAppSetting('referral_reward_usd', '0.0005'));
+      // Require exactly 10 ads before activating
+      if (adsWatched < 10) return;
 
-        // Find pending referrals where this user is the referee
-        const pendingReferrals = await db
-          .select()
-          .from(referrals)
-          .where(and(
-            eq(referrals.refereeId, userId),
-            eq(referrals.status, 'pending')
-          ));
+      // Mark this user as having triggered the referral bonus (prevents re-triggering)
+      await db
+        .update(users)
+        .set({ firstAdWatched: true })
+        .where(eq(users.id, userId));
 
-        // Activate each pending referral
-        for (const referral of pendingReferrals) {
-          // Update referral status to completed AND STORE the reward amounts at time of earning
-          await db
-            .update(referrals)
-            .set({ 
-              status: 'completed',
-              usd_reward_amount: String(referralReward),
-              bugRewardAmount: String(Number(referralReward) === 0 ? '0' : (parseFloat(String(referralReward)) * 50).toFixed(10))
-            })
-            .where(eq(referrals.id, referral.id));
+      // Find pending referrals where this user is the referee
+      const pendingReferrals = await db
+        .select()
+        .from(referrals)
+        .where(and(
+          eq(referrals.refereeId, userId),
+          eq(referrals.status, 'pending')
+        ));
 
-    // Award AXN referral bonus to referrer (uses admin-configured amount)
-    await this.addEarning({
-      userId: referral.referrerId,
-      amount: String(referralRewardAXN),
-      source: 'referral',
-      description: `Referral bonus - friend watched ${referralAdsRequired} ads (+${referralRewardAXN} AXN)`,
-    });
+      for (const referral of pendingReferrals) {
+        // Mark referral completed and record completion timestamp
+        await db.execute(sql`
+          UPDATE referrals
+          SET status = 'completed', completed_at = NOW()
+          WHERE id = ${referral.id}
+        `);
 
-    // Award bonus if enabled (uses admin-configured amount)
-    if (referralRewardEnabled === 'true' && referralReward > 0) {
-      await this.addTONBalance(
-        referral.referrerId,
-        String(referralReward),
-        'referral',
-        `Referral bonus - friend watched ${referralAdsRequired} ads (+TON${referralReward})`
-      );
+        // Award 150 AXN one-time to referrer (fixed, no percentage)
+        await this.addEarning({
+          userId: referral.referrerId,
+          amount: '150',
+          source: 'referral',
+          description: 'Referral bonus — friend completed 10 ad tasks (+150 AXN)',
+        });
 
-      // CRITICAL FIX: Also credit BUG balance for referral bonus
-      const bugRewardAmount = parseFloat(String(referralReward)) * 50; // Calculate BUG from TON
-      await this.addBUGBalance(
-        referral.referrerId,
-        String(bugRewardAmount),
-        'referral',
-        `Referral bonus - BUG earned (+${bugRewardAmount} BUG)`
-      );
-    }
+        // Sync friendsInvited count
+        await db.update(users)
+          .set({
+            friendsInvited: sql`COALESCE(${users.friendsInvited}, 0) + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, referral.referrerId));
 
-    // Sync friendsInvited count
-    await db.update(users)
-      .set({ 
-        friendsInvited: sql`COALESCE(${users.friendsInvited}, 0) + 1`,
-        updatedAt: new Date() 
-      })
-      .where(eq(users.id, referral.referrerId));
+        console.log(`✅ Referral bonus: 150 AXN awarded to ${referral.referrerId} (friend ${userId} completed 10 ads)`);
 
-    console.log(`✅ Referral bonus: ${referralRewardAXN} AXN awarded and friendsInvited incremented for ${referral.referrerId}`);
-
-    /* 
-    // CRITICAL: Send ONLY ONE notification to referrer when their friend watches their first ad
-    // Uses  reward amount from Admin Settings (no AXN/commission messages)
-    try {
-      const { sendReferralRewardNotification } = await import('./telegram');
-      const referrer = await this.getUser(referral.referrerId);
-      const referredUser = await this.getUser(userId);
-      
-      if (referrer && referrer.telegram_id && referredUser) {
-        const referredName = referredUser.username || referredUser.firstName || 'your friend';
-        // Send notification with  amount from Admin Settings (not AXN)
-        await sendReferralRewardNotification(
-          referrer.telegram_id,
-          referredName,
-          String(referralReward) //  amount from admin settings
-        );
-        console.log(`📩 Referral reward notification sent to ${referrer.telegram_id} with TON${referralReward} TON`);
-      }
-    } catch (notifyError) {
-      console.error('❌ Error sending referral reward notification:', notifyError);
-      // Don't throw - notification failure shouldn't block the referral process
-    }
-    */
+        // Check daily 3-friend milestone for referrer (50 AXN bonus)
+        try {
+          await this.checkAndAwardDailyMilestoneBonus(referral.referrerId);
+        } catch (milestoneError) {
+          console.error('⚠️ Daily milestone check failed (non-critical):', milestoneError);
         }
       }
     } catch (error) {
       console.error('Error checking referral bonus activation:', error);
     }
+  }
+
+  // Award 50 AXN daily milestone bonus when referrer gets 3 completed friends in one day
+  async checkAndAwardDailyMilestoneBonus(referrerId: string): Promise<void> {
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setUTCHours(23, 59, 59, 999);
+
+    // Count referrals completed today
+    const result = await db.execute(sql`
+      SELECT COUNT(*) as count FROM referrals
+      WHERE referrer_id = ${referrerId}
+        AND status = 'completed'
+        AND completed_at >= ${todayStart.toISOString()}::timestamptz
+        AND completed_at <= ${todayEnd.toISOString()}::timestamptz
+    `);
+    const completedToday = parseInt((result.rows?.[0] as any)?.count || '0');
+
+    if (completedToday < 3) return;
+
+    // Check if daily milestone bonus already awarded today
+    const alreadyAwarded = await db.execute(sql`
+      SELECT id FROM earnings
+      WHERE user_id = ${referrerId}
+        AND source = 'daily_milestone'
+        AND created_at >= ${todayStart.toISOString()}::timestamptz
+      LIMIT 1
+    `);
+    if (alreadyAwarded.rows && alreadyAwarded.rows.length > 0) return;
+
+    // Award 50 AXN daily milestone bonus
+    await this.addEarning({
+      userId: referrerId,
+      amount: '50',
+      source: 'daily_milestone',
+      description: 'Daily milestone bonus — 3 friends completed 10 ads today (+50 AXN)',
+    });
+
+    console.log(`✅ Daily milestone bonus: 50 AXN awarded to ${referrerId} (3 friends completed today)`);
   }
 
   async checkAndActivateReferralOnChannelJoin(userId: string): Promise<void> {
