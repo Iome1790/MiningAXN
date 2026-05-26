@@ -80,8 +80,9 @@ export default function AppNotification() {
 
   const notificationElement = (
     <div
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] px-3.5 py-2.5 rounded-2xl flex items-center gap-2.5 max-w-[88vw]"
+      className="fixed left-1/2 -translate-x-1/2 z-[99999] px-3.5 py-2.5 rounded-2xl flex items-center gap-2.5 max-w-[88vw]"
       style={{
+        top: 'calc(var(--header-height, 62px) + 10px)',
         background: "rgba(8,8,12,0.96)",
         border: `1px solid ${accent.border}`,
         boxShadow: `0 0 18px rgba(59,130,246,0.12), 0 8px 32px rgba(0,0,0,0.85)`,
