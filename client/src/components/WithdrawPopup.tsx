@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Clock } from "lucide-react";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -25,6 +25,15 @@ export default function WithdrawPopup({ onClose, userBalance, connectedAddress }
   const [amount, setAmount] = useState('');
   const queryClient = useQueryClient();
 
+  const { data: withdrawalsData } = useQuery({
+    queryKey: ['/api/withdrawals'],
+    staleTime: 30000,
+  });
+
+  const hasPendingWithdrawal = (withdrawalsData as any)?.withdrawals?.some(
+    (w: any) => w.status === 'pending'
+  ) ?? false;
+
   const withdrawMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest('POST', '/api/withdrawals', {
@@ -37,6 +46,7 @@ export default function WithdrawPopup({ onClose, userBalance, connectedAddress }
     onSuccess: () => {
       showNotification('Withdrawal submitted for review!', 'success');
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/withdrawals'] });
       onClose();
     },
     onError: (e: any) => {
@@ -47,6 +57,7 @@ export default function WithdrawPopup({ onClose, userBalance, connectedAddress }
   });
 
   const handleWithdraw = () => {
+    if (hasPendingWithdrawal) return;
     if (!address.trim()) { showNotification('Enter wallet address', 'error'); return; }
     const amt = parseFloat(amount);
     if (!amt || amt < MIN_AXN) { showNotification(`Minimum ${MIN_AXN} AXN required`, 'error'); return; }
@@ -62,6 +73,12 @@ export default function WithdrawPopup({ onClose, userBalance, connectedAddress }
     fontSize: 15, color: '#fff',
     background: 'rgba(255,255,255,0.04)', outline: 'none',
     boxSizing: 'border-box',
+  };
+
+  const disabledInputStyle: React.CSSProperties = {
+    ...inputStyle,
+    opacity: 0.4,
+    cursor: 'not-allowed',
   };
 
   return (
@@ -97,15 +114,34 @@ export default function WithdrawPopup({ onClose, userBalance, connectedAddress }
           </button>
         </div>
 
+        {/* Pending withdrawal banner */}
+        {hasPendingWithdrawal && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+            borderRadius: 14, padding: '12px 16px', marginBottom: 20,
+          }}>
+            <Clock size={18} style={{ color: '#f59e0b', flexShrink: 0 }} />
+            <div>
+              <div style={{ color: '#fbbf24', fontSize: 13, fontWeight: 800, marginBottom: 2 }}>Pending Request</div>
+              <div style={{ color: 'rgba(251,191,36,0.65)', fontSize: 11, lineHeight: 1.4 }}>
+                You have a withdrawal pending approval. You can submit a new request once it is processed.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Wallet address */}
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.32)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             TON Wallet Address
           </div>
           <input
-            type="text" value={address} onChange={e => setAddress(e.target.value)}
+            type="text" value={address}
+            onChange={e => !hasPendingWithdrawal && setAddress(e.target.value)}
             placeholder="EQ... or UQ... TON address"
-            style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 13 }}
+            readOnly={hasPendingWithdrawal}
+            style={{ ...(hasPendingWithdrawal ? disabledInputStyle : inputStyle), fontFamily: 'monospace', fontSize: 13 }}
           />
         </div>
 
@@ -116,11 +152,13 @@ export default function WithdrawPopup({ onClose, userBalance, connectedAddress }
             <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11 }}>Balance: {userBalance.toLocaleString()}</span>
           </div>
           <input
-            type="number" value={amount} onChange={e => setAmount(e.target.value)}
+            type="number" value={amount}
+            onChange={e => !hasPendingWithdrawal && setAmount(e.target.value)}
             placeholder={`Min ${MIN_AXN.toLocaleString()} AXN`}
-            style={inputStyle}
+            readOnly={hasPendingWithdrawal}
+            style={hasPendingWithdrawal ? disabledInputStyle : inputStyle}
           />
-          {parseFloat(amount) > 0 && (
+          {!hasPendingWithdrawal && parseFloat(amount) > 0 && (
             <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 6 }}>
               You receive: <span style={{ color: '#4ade80', fontWeight: 700 }}>{net.toFixed(0)} AXN</span> (after {FEE_AXN} AXN fee)
             </div>
@@ -130,19 +168,24 @@ export default function WithdrawPopup({ onClose, userBalance, connectedAddress }
         {/* Submit */}
         <button
           onClick={handleWithdraw}
-          disabled={withdrawMutation.isPending}
+          disabled={withdrawMutation.isPending || hasPendingWithdrawal}
           className="active:scale-95 transition-transform"
           style={{
-            width: '100%', padding: '14px 0', border: 'none', borderRadius: 50, cursor: 'pointer',
-            background: 'linear-gradient(135deg, #1d4ed8, #2563eb, #3b82f6)',
-            color: '#fff', fontSize: 15, fontWeight: 900,
+            width: '100%', padding: '14px 0', border: 'none', borderRadius: 50,
+            cursor: hasPendingWithdrawal ? 'not-allowed' : 'pointer',
+            background: hasPendingWithdrawal
+              ? 'rgba(255,255,255,0.06)'
+              : 'linear-gradient(135deg, #1d4ed8, #2563eb, #3b82f6)',
+            color: hasPendingWithdrawal ? 'rgba(255,255,255,0.3)' : '#fff',
+            fontSize: 15, fontWeight: 900,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            boxShadow: '0 4px 24px rgba(37,99,235,0.5)',
+            boxShadow: hasPendingWithdrawal ? 'none' : '0 4px 24px rgba(37,99,235,0.5)',
             opacity: withdrawMutation.isPending ? 0.7 : 1,
-          }}
+            border: hasPendingWithdrawal ? '1px solid rgba(255,255,255,0.08)' : 'none',
+          } as React.CSSProperties}
         >
           {withdrawMutation.isPending && <Loader2 size={16} className="animate-spin" />}
-          Confirm Withdrawal
+          {hasPendingWithdrawal ? 'Awaiting Approval' : 'Confirm Withdrawal'}
         </button>
       </div>
     </div>
