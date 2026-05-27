@@ -8676,7 +8676,7 @@ ${walletAddress}
     }
   });
 
-  // Swap mining balance to wallet balance (fee: 500 AXN, min: 2000 AXN)
+  // Swap mining balance to wallet balance (dynamic fee: 50% of swap amount, min: 2000 AXN)
   app.post('/api/migration/swap', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
@@ -8691,14 +8691,21 @@ ${walletAddress}
       if (user.migration_completed) return res.status(400).json({ error: 'Migration already completed' });
 
       const miningBal = Math.floor(parseFloat(String(user.mining_balance || user.balance || '0')));
-      const MIGRATION_FEE = 500;
       const MIN_SWAP = 2000;
 
-      if (miningBal < MIN_SWAP) {
-        return res.status(400).json({ error: `Minimum swap amount is ${MIN_SWAP} AXN` });
+      // Amount to swap — defaults to full mining balance if not provided
+      const requestedAmount = req.body?.amount ? Math.floor(Number(req.body.amount)) : miningBal;
+
+      if (requestedAmount < MIN_SWAP) {
+        return res.status(400).json({ error: `Minimum swap amount is ${MIN_SWAP.toLocaleString()} AXN` });
+      }
+      if (requestedAmount > miningBal) {
+        return res.status(400).json({ error: `Amount exceeds your mining balance of ${miningBal.toLocaleString()} AXN` });
       }
 
-      const walletReceives = miningBal - MIGRATION_FEE;
+      // Dynamic fee: 500 AXN per 1000 AXN swapped (50%)
+      const fee = Math.floor(requestedAmount / 2);
+      const walletReceives = requestedAmount - fee;
 
       await db.execute(sql`
         UPDATE users
@@ -8714,8 +8721,8 @@ ${walletAddress}
 
       res.json({
         success: true,
-        miningBalance: miningBal,
-        fee: MIGRATION_FEE,
+        swapAmount: requestedAmount,
+        fee,
         walletBalance: walletReceives,
       });
     } catch (err) {
