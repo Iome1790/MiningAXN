@@ -132,7 +132,7 @@ export default function Season2MigrationFlow({ onComplete }: Props) {
     else                     setInputError("");
   };
 
-  const safeTop = "var(--tg-content-safe-area-inset-top, var(--tg-safe-area-inset-top, 0px))";
+  const safeTop = "var(--tg-overlay-top, var(--tg-content-safe-area-inset-top, 0px))";
 
   if (isLoading) {
     return (
@@ -179,11 +179,14 @@ export default function Season2MigrationFlow({ onComplete }: Props) {
           style={{
             position: "absolute", inset: 0,
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            paddingTop: safeTop, paddingLeft: 24, paddingRight: 24, paddingBottom: 32,
+            paddingTop: safeTop, paddingBottom: safeTop, paddingLeft: 24, paddingRight: 24,
             animation: animKey === 0 ? "migFadeIn 0.4s ease" : slideAnim,
           }}
         >
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 35%, rgba(37,99,235,0.16) 0%, transparent 68%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 100%, rgba(37,99,235,0.13) 0%, transparent 60%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,#3b82f6,#60a5fa,#3b82f6,transparent)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,#3b82f6,#60a5fa,#3b82f6,transparent)", pointerEvents: "none" }} />
 
           <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 340 }}>
 
@@ -234,12 +237,14 @@ export default function Season2MigrationFlow({ onComplete }: Props) {
           style={{
             position: "absolute", inset: 0,
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            paddingTop: safeTop, paddingLeft: 22, paddingRight: 22, paddingBottom: 28,
+            paddingTop: safeTop, paddingBottom: safeTop, paddingLeft: 22, paddingRight: 22,
             animation: slideAnim,
           }}
         >
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 20%, rgba(59,130,246,0.1) 0%, transparent 65%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 100%, rgba(37,99,235,0.12) 0%, transparent 58%)", pointerEvents: "none" }} />
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,#3b82f6,#60a5fa,#3b82f6,transparent)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,#3b82f6,#60a5fa,#3b82f6,transparent)", pointerEvents: "none" }} />
 
           <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 350 }}>
 
@@ -306,9 +311,11 @@ export default function Season2MigrationFlow({ onComplete }: Props) {
           }}
         >
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.12) 0%, transparent 60%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 100%, rgba(37,99,235,0.12) 0%, transparent 58%)", pointerEvents: "none" }} />
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,#3b82f6,#60a5fa,#3b82f6,transparent)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,#3b82f6,#60a5fa,#3b82f6,transparent)", pointerEvents: "none" }} />
 
-          <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: `calc(${safeTop} + 28px) 20px 48px` }}>
+          <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: `calc(${safeTop} + 32px) 20px 52px` }}>
 
             {/* Header */}
             <div style={{ textAlign: "center", marginBottom: 18 }}>
