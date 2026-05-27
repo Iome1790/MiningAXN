@@ -178,9 +178,8 @@ export default function Season2MigrationFlow({ onComplete }: Props) {
           key={`s1-${animKey}`}
           style={{
             position: "absolute", inset: 0,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
-            paddingTop: `calc(${safeTop} + var(--header-height, 62px) + 32px)`,
-            paddingBottom: "20px", paddingLeft: 24, paddingRight: 24,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            paddingTop: safeTop, paddingBottom: safeTop, paddingLeft: 24, paddingRight: 24,
             animation: animKey === 0 ? "migFadeIn 0.4s ease" : slideAnim,
           }}
         >
@@ -237,9 +236,8 @@ export default function Season2MigrationFlow({ onComplete }: Props) {
           key={`s2-${animKey}`}
           style={{
             position: "absolute", inset: 0,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
-            paddingTop: `calc(${safeTop} + var(--header-height, 62px) + 32px)`,
-            paddingBottom: "20px", paddingLeft: 22, paddingRight: 22,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            paddingTop: safeTop, paddingBottom: safeTop, paddingLeft: 22, paddingRight: 22,
             animation: slideAnim,
           }}
         >
