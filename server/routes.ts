@@ -1007,7 +1007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const channelMember = await verifyChannelMembership(userId, channelConfig.channelId, botToken);
       const groupMember = await verifyChannelMembership(userId, channelConfig.groupId, botToken);
       
-      const isVerified = channel2Member && channelMember && groupMember;
+      const isVerified = channel2Member && groupMember;
       
       console.log(`🔍 check-membership for ${telegramId}: channel2=${channel2Member}, channel=${channelMember}, group=${groupMember}, verified=${isVerified}`);
       
