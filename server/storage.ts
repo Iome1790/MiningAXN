@@ -474,8 +474,7 @@ export class DatabaseStorage implements IStorage {
       await db.transaction(async (tx) => {
         const now = new Date();
         const updateData: any = {
-          balance: sql`COALESCE(${users.balance}, 0) + ${amount}`,
-          withdraw_balance: sql`COALESCE(${users.withdraw_balance}, 0) + ${amount}`,
+          walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${amount}`,
           total_earnings: sql`COALESCE(${users.total_earnings}, 0) + ${amount}`,
           lastMiningClaim: now,
           updatedAt: now
@@ -600,7 +599,7 @@ export class DatabaseStorage implements IStorage {
     }
     await db.transaction(async (tx) => {
       await tx.update(users).set({
-        balance: sql`COALESCE(${users.balance}, 0) + ${amount.toString()}`,
+        walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${amount.toString()}`,
         updatedAt: now,
       }).where(eq(users.id, userId));
       await tx.update(userFarming).set({ startedAt: null, updatedAt: now }).where(eq(userFarming.userId, userId));
@@ -685,12 +684,11 @@ export class DatabaseStorage implements IStorage {
       }
       
       try {
-        // Keep users table in sync for compatibility
+        // Season 2: all earnings go to walletBalance (primary active balance)
         await db
           .update(users)
           .set({
-            balance: sql`COALESCE(${users.balance}, 0) + ${earning.amount}`,
-            withdraw_balance: sql`COALESCE(${users.withdraw_balance}, 0) + ${earning.amount}`,
+            walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${earning.amount}`,
             total_earned: sql`COALESCE(${users.total_earned}, 0) + ${earning.amount}`,
             total_earnings: sql`COALESCE(${users.total_earnings}, 0) + ${earning.amount}`,
             updatedAt: new Date(),
@@ -802,7 +800,7 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUser(userId);
     if (!user) return { success: false, message: "User not found" };
 
-    const currentBalance = parseFloat(user.balance || "0");
+    const currentBalance = parseFloat(user.walletBalance?.toString() || user.balance || "0");
     if (currentBalance < axnAmount) {
       return { success: false, message: "Insufficient AXN balance" };
     }
@@ -811,10 +809,10 @@ export class DatabaseStorage implements IStorage {
     const tonAmount = axnAmount / 10000;
 
     await db.transaction(async (tx) => {
-      // Deduct AXN
+      // Deduct from walletBalance (Season 2 primary balance)
       await tx.update(users)
         .set({
-          balance: sql`${users.balance} - ${axnAmount.toString()}`,
+          walletBalance: sql`COALESCE(${users.walletBalance}, 0) - ${axnAmount.toString()}`,
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId));
@@ -1238,7 +1236,7 @@ export class DatabaseStorage implements IStorage {
 
       await db.transaction(async (tx) => {
         await tx.update(users).set({
-          balance: sql`COALESCE(${users.balance}, 0) + ${commission.toString()}`,
+          walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${commission.toString()}`,
           updatedAt: new Date(),
         }).where(eq(users.id, referralInfo.referrerId));
 
@@ -1515,10 +1513,10 @@ export class DatabaseStorage implements IStorage {
         return { success: false, message: `Withdrawal amount must be greater than the fee of ${fee} AXN` };
       }
 
-      // Check AXN balance (use main balance field)
+      // Check AXN balance (Season 2: use walletBalance as primary)
       const isAdmin = user.telegram_id === process.env.TELEGRAM_ADMIN_ID;
       
-      const userBalance = parseFloat(user.balance || '0');
+      const userBalance = parseFloat(user.walletBalance?.toString() || user.balance || '0');
       
       console.log('Balance check details:', { isAdmin, userBalance, requestedAmount, paymentSystemId: effectivePaymentSystemId });
 
@@ -1853,26 +1851,26 @@ export class DatabaseStorage implements IStorage {
         ? parseFloat(withdrawalDetails.totalDeducted) 
         : withdrawalAmount;
       
-      // ALL withdrawals use AXN balance
+      // ALL withdrawals use AXN walletBalance (Season 2 primary balance)
       const currency = 'AXN';
-      const userBalance = parseFloat(user.balance || '0');
+      const userBalance = parseFloat(user.walletBalance?.toString() || user.balance || '0');
       
       if (userBalance >= totalToDeduct) {
-        // Deduct AXN balance on approval
-        console.log(`💰 Deducting AXN balance now for approved withdrawal`);
+        // Deduct walletBalance on approval
+        console.log(`💰 Deducting AXN walletBalance now for approved withdrawal`);
         console.log(`💰 Net amount: ${withdrawalAmount} AXN, Total to deduct (with fee): ${totalToDeduct} AXN`);
-        console.log(`💰 Previous AXN balance: ${userBalance}, New balance: ${(userBalance - totalToDeduct).toFixed(2)}`);
+        console.log(`💰 Previous walletBalance: ${userBalance}, New balance: ${(userBalance - totalToDeduct).toFixed(2)}`);
 
         const newBalance = (userBalance - totalToDeduct).toFixed(2);
         
         await db
           .update(users)
           .set({
-            balance: newBalance,
+            walletBalance: newBalance,
             updatedAt: new Date()
           })
           .where(eq(users.id, withdrawal.userId));
-        console.log(`✅ AXN balance deducted: ${userBalance} → ${newBalance}`);
+        console.log(`✅ walletBalance deducted: ${userBalance} → ${newBalance}`);
       } else {
         // Legacy withdrawal — balance already deducted at request time, just approve
         console.log(`⚠️ Legacy withdrawal detected - balance was already deducted at request time`);
@@ -1960,21 +1958,21 @@ export class DatabaseStorage implements IStorage {
         ? parseFloat(withdrawalDetails.totalDeducted) 
         : withdrawalAmount;
       const bugToRefund = withdrawalDetails?.bugDeducted ? parseFloat(withdrawalDetails.bugDeducted) : 0;
-      const currentSatBalance = parseFloat(user.balance || '0');
+      const currentSatBalance = parseFloat(user.walletBalance?.toString() || user.balance || '0');
       
-      // For legacy withdrawals, refund the AXN balance
+      // For legacy withdrawals, refund the walletBalance
       if (currentSatBalance < totalToRefund) {
-        console.log(`⚠️ Legacy withdrawal detected - refunding AXN balance that was deducted at request time`);
+        console.log(`⚠️ Legacy withdrawal detected - refunding walletBalance that was deducted at request time`);
         const newSatBalance = (currentSatBalance + totalToRefund).toFixed(2);
         
         await db
           .update(users)
           .set({
-            balance: newSatBalance,
+            walletBalance: newSatBalance,
             updatedAt: new Date()
           })
           .where(eq(users.id, withdrawal.userId));
-        console.log(`💰 AXN balance refunded: ${currentSatBalance} → ${newSatBalance}`);
+        console.log(`💰 walletBalance refunded: ${currentSatBalance} → ${newSatBalance}`);
       } else {
         // NEW withdrawal - balance was never deducted, nothing to refund
         console.log(`❌ Withdrawal #${withdrawalId} rejected - no refund needed (balance was never deducted)`);
@@ -3094,9 +3092,9 @@ export class DatabaseStorage implements IStorage {
         return false;
       }
 
-      // All withdrawals (TON, Stars, etc.) use tonBalance column
+      // All withdrawals (TON, Stars, etc.) use tonBalance column; AXN uses walletBalance
       const [user] = await db
-        .select({ tonBalance: users.tonBalance, balance: users.balance })
+        .select({ tonBalance: users.tonBalance, walletBalance: users.walletBalance })
         .from(users)
         .where(eq(users.id, userId));
 
@@ -3106,13 +3104,13 @@ export class DatabaseStorage implements IStorage {
       }
 
       if (currency === 'AXN') {
-        const currentBalance = parseFloat(user.balance || '0');
+        const currentBalance = parseFloat(user.walletBalance?.toString() || '0');
         if (currentBalance < amountNum) {
-          console.error(`Insufficient AXN balance: ${currentBalance} < ${amountNum}`);
+          console.error(`Insufficient AXN walletBalance: ${currentBalance} < ${amountNum}`);
           return false;
         }
         const newBalance = Math.round(currentBalance - amountNum).toString();
-        await db.update(users).set({ balance: newBalance, updatedAt: new Date() }).where(eq(users.id, userId));
+        await db.update(users).set({ walletBalance: newBalance, updatedAt: new Date() }).where(eq(users.id, userId));
         return true;
       }
 

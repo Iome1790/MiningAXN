@@ -393,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedUser = await storage.getUser(user.id);
       res.json({
         success: true,
-        newBalance: updatedUser?.balance,
+        newBalance: updatedUser?.walletBalance,
         extraAdsWatchedToday: updatedUser?.extraAdsWatchedToday,
         rewardAXN: rewardAmount,
       });
@@ -443,7 +443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "Not authenticated" });
       const { amount, address } = req.body;
       
-      const satBalance = parseFloat(user.balance || "0");
+      const satBalance = parseFloat(user.walletBalance?.toString() || user.balance || "0");
       const withdrawAmount = parseFloat(String(amount));
       
       if (withdrawAmount > satBalance) {
@@ -562,7 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cooldownMs = Math.max(0, tomorrowMidnightMs - Date.now());
       res.json({
         success: true,
-        newBalance: updatedUser?.balance,
+        newBalance: updatedUser?.walletBalance,
         rewardAXN: rewardAmount,
         slot,
         cooldownMs,
@@ -639,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.execute(sql`
         INSERT INTO referral_milestone_claims (user_id, milestone_count, reward) VALUES (${user.id}, ${count}, ${reward})
       `);
-      await db.execute(sql`UPDATE users SET balance = balance + ${reward} WHERE id = ${user.id}`);
+      await db.execute(sql`UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${user.id}`);
       res.json({ success: true, claimed: reward });
     } catch (error: any) {
       if (error?.code === '23505') return res.status(400).json({ message: "Already claimed", alreadyClaimed: true });
@@ -756,12 +756,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reward = 5;
       if (lastDate !== todayKey) {
         await dbPool.query(
-          `UPDATE users SET daily_tasks_date = NOW(), daily_checkin_claimed = TRUE, balance = balance + $1 WHERE id = $2`,
+          `UPDATE users SET daily_tasks_date = NOW(), daily_checkin_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1 WHERE id = $2`,
           [reward, user.id]
         );
       } else {
         await dbPool.query(
-          `UPDATE users SET daily_checkin_claimed = TRUE, balance = balance + $1 WHERE id = $2`,
+          `UPDATE users SET daily_checkin_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1 WHERE id = $2`,
           [reward, user.id]
         );
       }
@@ -794,7 +794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reward = Math.floor(Math.random() * 100) + 1;
 
       await dbPool.query(
-        `UPDATE users SET mystery_box_date = NOW(), balance = balance + $1 WHERE id = $2`,
+        `UPDATE users SET mystery_box_date = NOW(), wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1 WHERE id = $2`,
         [reward, user.id]
       );
 
@@ -1210,7 +1210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       // Give 1 AXN for watching an ad slot
       await pool.query(
-        `UPDATE users SET balance = COALESCE(balance::numeric, 0) + 1 WHERE id = $1`,
+        `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + 1 WHERE id = $1`,
         [user.id]
       );
       const newCount = currentCount + 1;
@@ -1282,7 +1282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const axnEarned = axnMap[taskType];
       await pool.query(
-        `UPDATE users SET ${fieldName} = TRUE, balance = COALESCE(balance::numeric, 0) + $1, daily_tasks_date = NOW() WHERE id = $2`,
+        `UPDATE users SET ${fieldName} = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1, daily_tasks_date = NOW() WHERE id = $2`,
         [axnEarned, user.id]
       );
 
@@ -1340,7 +1340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Add AXN reward and increment tasks_completed (no key cost)
       await pool.query(
-        `UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $2`,
+        `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $2`,
         [task.reward_axn, user.id]
       );
       await pool.query(`INSERT INTO bounty_task_completions (user_id, task_id) VALUES ($1, $2)`, [user.id, taskId]);
@@ -1697,13 +1697,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      console.log(`🔄 Balance refresh for user ${userId}: AXN=${user.balance}, TON=${user.tonBalance}`);
+      const walletBal = user.walletBalance?.toString() || '0';
+      console.log(`🔄 Balance refresh for user ${userId}: walletBalance=${walletBal}, TON=${user.tonBalance}`);
       
       res.json({
         success: true,
-        balance: user.balance,
+        balance: walletBal,
         tonBalance: user.tonBalance,
-        axnBalance: user.balance
+        axnBalance: walletBal
       });
     } catch (error) {
       console.error("Error refreshing balance:", error);
@@ -2007,7 +2008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true, 
         rewardAXN: adRewardAXN,
         rewardBUG: bugRewardPerAd,
-        newBalance: updatedUser?.balance || user.balance || "0",
+        newBalance: updatedUser?.walletBalance?.toString() || updatedUser?.balance || user.balance || "0",
         newBugBalance: updatedUser?.bugBalance || "0",
         adsWatchedToday: newAdsWatched
       });
@@ -2762,10 +2763,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bugReward = parseInt(bugRewardSetting);
       
       await db.transaction(async (tx) => {
-        // Update balance, BUG balance, and mark task complete
+        // Season 2: Update walletBalance, BUG balance, and mark task complete
         await tx.update(users)
           .set({ 
-            balance: sql`${users.balance} + ${rewardAmount}`,
+            walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${rewardAmount}`,
             bugBalance: sql`COALESCE(${users.bugBalance}, '0')::numeric + ${bugReward}`,
             taskShareCompletedToday: true,
             updatedAt: new Date()
@@ -2931,7 +2932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.transaction(async (tx) => {
         await tx.update(users)
           .set({ 
-            balance: sql`${users.balance} + ${rewardAmount}`,
+            walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${rewardAmount}`,
             taskChannelCompletedToday: true,
             updatedAt: new Date()
           })
@@ -3007,7 +3008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.transaction(async (tx) => {
         await tx.update(users)
           .set({ 
-            balance: sql`${users.balance} + ${rewardAmount}`,
+            walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${rewardAmount}`,
             taskCommunityCompletedToday: true,
             updatedAt: new Date()
           })
@@ -4743,7 +4744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const [user] = await tx
           .select({
             id: users.id,
-            balance: users.balance,
+            walletBalance: users.walletBalance,
             cwalletId: users.cwalletId,
             telegramId: users.telegram_id
           })
@@ -4778,22 +4779,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error('This  wallet address is already linked to another account');
         }
         
-        const currentBalance = parseFloat(user.balance || '0');
+        const currentBalance = parseFloat(user.walletBalance?.toString() || '0');
         const currentBalancePad = Math.floor(currentBalance * 10000000);
         
         if (currentBalancePad < feeInPad) {
           throw new Error(`Insufficient balance. You need ${feeInPad} AXN to change wallet. Current balance: ${currentBalancePad} AXN`);
         }
         
-        // Deduct fee from balance
+        // Deduct fee from walletBalance (Season 2 primary balance)
         const newBalance = currentBalance - feeInTon;
         
-        // Update wallet and balance atomically
+        // Update wallet and walletBalance atomically
         await tx
           .update(users)
           .set({
             cwalletId: newWalletId.trim(),
-            balance: newBalance.toFixed(8),
+            walletBalance: newBalance.toFixed(8),
             walletUpdatedAt: new Date(),
             updatedAt: new Date()
           })
@@ -4885,7 +4886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Lock user row and get current balances
         const [user] = await tx
           .select({ 
-            balance: users.balance,
+            walletBalance: users.walletBalance,
             tonBalance: users.tonBalance,
             bugBalance: users.bugBalance
           })
@@ -4897,7 +4898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error('User not found');
         }
         
-        const currentPadBalance = parseFloat(user.balance || '0');
+        const currentPadBalance = parseFloat(user.walletBalance?.toString() || '0');
         
         if (currentPadBalance < convertAmount) {
           throw new Error('Insufficient AXN balance');
@@ -4905,7 +4906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const newPadBalance = currentPadBalance - convertAmount;
         let updateData: any = {
-          balance: String(Math.round(newPadBalance)),
+          walletBalance: String(Math.round(newPadBalance)),
           updatedAt: new Date()
         };
         
@@ -5007,7 +5008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await db.transaction(async (tx) => {
         const [user] = await tx
           .select({ 
-            balance: users.balance,
+            walletBalance: users.walletBalance,
             tonBalance: users.tonBalance
           })
           .from(users)
@@ -5018,7 +5019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error('User not found');
         }
         
-        const currentPadBalance = parseFloat(user.balance || '0');
+        const currentPadBalance = parseFloat(user.walletBalance?.toString() || '0');
         const currentTonBalance = parseFloat(user.tonBalance || '0');
         
         if (currentPadBalance < convertAmount) {
@@ -5031,7 +5032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await tx
           .update(users)
           .set({
-            balance: String(Math.round(newPadBalance)),
+            walletBalance: String(Math.round(newPadBalance)),
             tonBalance: newTonBalance.toFixed(10),
             updatedAt: new Date()
           })
@@ -5114,7 +5115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await db.transaction(async (tx) => {
         const [user] = await tx
           .select({ 
-            balance: users.balance,
+            walletBalance: users.walletBalance,
             bugBalance: users.bugBalance
           })
           .from(users)
@@ -5125,7 +5126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error('User not found');
         }
         
-        const currentPadBalance = parseFloat(user.balance || '0');
+        const currentPadBalance = parseFloat(user.walletBalance?.toString() || '0');
         const currentBugBalance = parseFloat(user.bugBalance || '0');
         
         if (currentPadBalance < convertAmount) {
@@ -5138,7 +5139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await tx
           .update(users)
           .set({
-            balance: String(Math.round(newPadBalance)),
+            walletBalance: String(Math.round(newPadBalance)),
             bugBalance: newBugBalance.toFixed(10),
             updatedAt: new Date()
           })
@@ -5227,7 +5228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [currentUser] = await db
         .select({ 
           usdtWalletAddress: users.usdtWalletAddress,
-          balance: users.balance
+          walletBalance: users.walletBalance
         })
         .from(users)
         .where(eq(users.id, userId));
@@ -5239,7 +5240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const walletChangeFee = await storage.getAppSetting('walletChangeFee', 5000);
         const feeInPad = parseInt(walletChangeFee);
         
-        const currentBalance = parseFloat(currentUser.balance || '0');
+        const currentBalance = parseFloat(currentUser.walletBalance?.toString() || '0');
         const currentBalancePad = currentBalance < 1 ? Math.floor(currentBalance * 10000000) : Math.floor(currentBalance);
         
         if (currentBalancePad < feeInPad) {
@@ -5249,7 +5250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Deduct fee from balance (stored as AXN integer)
+        // Deduct fee from walletBalance (Season 2 primary balance)
         const newBalancePad = currentBalancePad - feeInPad;
         
         // Update wallet and deduct fee
@@ -5257,7 +5258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .update(users)
           .set({
             usdtWalletAddress: usdtAddress.trim(),
-            balance: newBalancePad.toString(),
+            walletBalance: newBalancePad.toString(),
             walletUpdatedAt: new Date(),
             updatedAt: new Date()
           })
@@ -5345,7 +5346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [currentUser] = await db
         .select({ 
           telegramStarsUsername: users.telegramStarsUsername,
-          balance: users.balance
+          walletBalance: users.walletBalance
         })
         .from(users)
         .where(eq(users.id, userId));
@@ -5357,7 +5358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const walletChangeFee = await storage.getAppSetting('walletChangeFee', 5000);
         const feeInPad = parseInt(walletChangeFee);
         
-        const currentBalance = parseFloat(currentUser.balance || '0');
+        const currentBalance = parseFloat(currentUser.walletBalance?.toString() || '0');
         const currentBalancePad = currentBalance < 1 ? Math.floor(currentBalance * 10000000) : Math.floor(currentBalance);
         
         if (currentBalancePad < feeInPad) {
@@ -5367,7 +5368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Deduct fee from balance (stored as AXN integer)
+        // Deduct fee from walletBalance (Season 2 primary balance)
         const newBalancePad = currentBalancePad - feeInPad;
         
         // Update username and deduct fee
@@ -5375,7 +5376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .update(users)
           .set({
             telegramStarsUsername: telegramUsername,
-            balance: newBalancePad.toString(),
+            walletBalance: newBalancePad.toString(),
             walletUpdatedAt: new Date(),
             updatedAt: new Date()
           })
@@ -7432,10 +7433,10 @@ ${walletAddress}
       }
 
       if (reward.type === 'AXN') {
-        const currentBalance = parseFloat(user.balance?.toString() || '0');
+        const currentBalance = parseFloat(user.walletBalance?.toString() || '0');
         const newBalance = currentBalance + reward.amount;
         await db.update(users).set({
-          balance: newBalance.toString(),
+          walletBalance: newBalance.toString(),
           updatedAt: new Date(),
         }).where(eq(users.id, userId));
       } else if (reward.type === '') {
@@ -8217,7 +8218,7 @@ ${walletAddress}
       const currentDay = Math.min(row.daily_activity_day ?? 1, 30);
       const reward = DAILY_REWARDS[currentDay - 1] || 5;
       const nextDay = currentDay >= 30 ? 1 : currentDay + 1;
-      await db.execute(sql`UPDATE users SET balance = COALESCE(balance,0) + ${reward}, daily_activity_claimed_at = NOW(), daily_activity_day = ${nextDay} WHERE id = ${userId}`);
+      await db.execute(sql`UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric,0) + ${reward}, daily_activity_claimed_at = NOW(), daily_activity_day = ${nextDay} WHERE id = ${userId}`);
       return res.json({ success: true, day: currentDay, reward, nextDay });
     } catch (e) {
       return res.status(500).json({ message: "Failed to claim" });
@@ -8259,7 +8260,7 @@ ${walletAddress}
       await db.execute(sql`
         UPDATE users
         SET
-          balance = COALESCE(balance::numeric, 0) + ${pending},
+          wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${pending},
           pending_referral_bonus = 0,
           total_claimed_referral_bonus = COALESCE(total_claimed_referral_bonus::numeric, 0) + ${pending}
         WHERE id = ${userId}
@@ -8407,7 +8408,7 @@ ${walletAddress}
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.missionLoginClaimed) return res.status(400).json({ error: 'Already claimed today' });
       const reward = 2;
-      await db.execute(sql`UPDATE users SET mission_login_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      await db.execute(sql`UPDATE users SET mission_login_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
       res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
@@ -8424,7 +8425,7 @@ ${walletAddress}
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.missionAnnouncementClaimed) return res.status(400).json({ error: 'Already claimed today' });
       const reward = 1;
-      await db.execute(sql`UPDATE users SET mission_announcement_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      await db.execute(sql`UPDATE users SET mission_announcement_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
       res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
@@ -8441,7 +8442,7 @@ ${walletAddress}
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.missionWatchAdClaimed) return res.status(400).json({ error: 'Already claimed today' });
       const reward = 3;
-      await db.execute(sql`UPDATE users SET mission_watch_ad_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      await db.execute(sql`UPDATE users SET mission_watch_ad_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
       res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
@@ -8458,7 +8459,7 @@ ${walletAddress}
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.missionShareAppClaimed) return res.status(400).json({ error: 'Already claimed today' });
       const reward = 5;
-      await db.execute(sql`UPDATE users SET mission_share_app_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      await db.execute(sql`UPDATE users SET mission_share_app_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
       res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
@@ -8497,7 +8498,7 @@ ${walletAddress}
       if (user.missionAppTimeClaimed) return res.status(400).json({ error: 'Already claimed today' });
       if ((user.missionAppTimeSeconds ?? 0) < 600) return res.status(400).json({ error: 'Not enough app time yet' });
       const reward = 6;
-      await db.execute(sql`UPDATE users SET mission_app_time_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      await db.execute(sql`UPDATE users SET mission_app_time_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
       res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
@@ -8514,7 +8515,7 @@ ${walletAddress}
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.missionCommunityClaimed) return res.status(400).json({ error: 'Already claimed today' });
       const reward = 2;
-      await db.execute(sql`UPDATE users SET mission_community_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      await db.execute(sql`UPDATE users SET mission_community_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
       res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
@@ -8536,7 +8537,7 @@ ${walletAddress}
       const hasNew = parseInt((referrals.rows[0] as any)?.cnt || '0') > 0;
       if (!hasNew) return res.status(400).json({ error: 'No new referral today' });
       const reward = 50;
-      await db.execute(sql`UPDATE users SET mission_invite_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      await db.execute(sql`UPDATE users SET mission_invite_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
       res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
@@ -8566,7 +8567,7 @@ ${walletAddress}
         (hasNewReferral ? user.missionInviteClaimed : true);
       if (!allCoreDone) return res.status(400).json({ error: 'Complete all daily missions first' });
       const reward = 10;
-      await db.execute(sql`UPDATE users SET mission_bonus_claimed = TRUE, balance = balance + ${reward} WHERE id = ${userId}`);
+      await db.execute(sql`UPDATE users SET mission_bonus_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
       res.json({ success: true, reward, message: `+${reward} AXN bonus claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim bonus' });
@@ -8607,12 +8608,12 @@ ${walletAddress}
       }
       await db.execute(sql`
         UPDATE users
-        SET balance = COALESCE(balance::numeric, 0) + ${parsed}
+        SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
       await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
-      res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
+      res.json({ success: true, earned: parsed, newBalance: updatedUser?.walletBalance });
     } catch (err) {
       res.status(500).json({ error: 'Failed to credit reward' });
     }
@@ -8629,12 +8630,12 @@ ${walletAddress}
       }
       await db.execute(sql`
         UPDATE users
-        SET balance = COALESCE(balance::numeric, 0) + ${parsed}
+        SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
       await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
-      res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
+      res.json({ success: true, earned: parsed, newBalance: updatedUser?.walletBalance });
     } catch (err) {
       res.status(500).json({ error: 'Failed to credit reward' });
     }
@@ -8651,12 +8652,12 @@ ${walletAddress}
       }
       await db.execute(sql`
         UPDATE users
-        SET balance = COALESCE(balance::numeric, 0) + ${parsed}
+        SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
       await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
-      res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
+      res.json({ success: true, earned: parsed, newBalance: updatedUser?.walletBalance });
     } catch (err) {
       res.status(500).json({ error: 'Failed to credit reward' });
     }
