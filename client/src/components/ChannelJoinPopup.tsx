@@ -10,7 +10,6 @@ interface ChannelJoinPopupProps {
 
 const CHANNELS = [
   { url: "https://t.me/LightningSatoshi" },
-  { url: "https://t.me/MoneyAdz" },
   { url: "https://t.me/Axionetchat" },
 ];
 
@@ -19,7 +18,7 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [joined, setJoined] = useState([false, false, false]);
+  const [joined, setJoined] = useState([false, false]);
 
   const checkMembership = async (isInitialCheck = false) => {
     if (isChecking) return;
@@ -41,8 +40,8 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
       }
 
       if (data.success) {
-        setJoined([!!data.channel2Member, !!data.channelMember, !!data.groupMember]);
-        if (!isInitialCheck && (!data.channel2Member || !data.channelMember || !data.groupMember)) {
+        setJoined([!!data.channel2Member, !!data.groupMember]);
+        if (!isInitialCheck && (!data.channel2Member || !data.groupMember)) {
           setError("Please join all channels to continue.");
         }
       } else if (!isInitialCheck) {
