@@ -136,7 +136,7 @@ function AdTaskRow({ task, cooldownMs }: { task: typeof AD_TASKS[0]; cooldownMs:
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 14,
-      background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16,
+      background: CARD, borderRadius: 14,
       marginBottom: 8, padding: '14px 16px',
     }}>
       <div style={{ flexShrink: 0 }}>
@@ -194,14 +194,14 @@ function MissionRow({
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 14,
-      background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16,
+      background: CARD, borderRadius: 14,
       marginBottom: 8, padding: '14px 16px',
     }}>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={claimed ? '#4ade80' : done ? '#60a5fa' : 'rgba(255,255,255,0.25)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
         <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        <line x1="19" y1="8" x2="19" y2="14"/>
+        <line x1="22" y1="11" x2="16" y2="11"/>
       </svg>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 5 }}>
@@ -343,7 +343,7 @@ export default function Earn() {
         {/* Daily Goal */}
         {sectionLabel('Daily Milestone Bonus')}
         <div style={{
-          background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, marginBottom: 14, overflow: 'hidden',
+          background: CARD, borderRadius: 14, marginBottom: 14, overflow: 'hidden',
         }}>
           <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
             <div style={{ flex: 1 }}>
@@ -410,7 +410,7 @@ export default function Earn() {
                 {sectionLabel('Official Task')}
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 14,
-                  background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px 16px',
+                  background: CARD, borderRadius: 14, padding: '14px 16px',
                 }}>
                   {taskDone
                     ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -484,8 +484,8 @@ export default function Earn() {
           {/* PARTNER TAB */}
           {tab === 'partner' && (
             <div style={{
-              background: CARD, border: `1px solid ${BORDER}`,
-              borderRadius: 18, padding: '40px 24px', textAlign: 'center',
+              background: CARD,
+              borderRadius: 14, padding: '40px 24px', textAlign: 'center',
             }}>
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(96,165,250,0.5)" strokeWidth="2" strokeLinecap="round" style={{ marginBottom: 16 }}>
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>

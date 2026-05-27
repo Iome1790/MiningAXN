@@ -75,13 +75,13 @@ export default function Friend() {
 
         {/* Stats row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px 16px' }}>
+          <div style={{ background: CARD, borderRadius: 14, padding: '14px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                 <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                <line x1="19" y1="8" x2="19" y2="14"/>
+                <line x1="22" y1="11" x2="16" y2="11"/>
               </svg>
               <div>
                 <div style={{ color: TEXT, fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{totalFriends}</div>
@@ -89,7 +89,7 @@ export default function Friend() {
               </div>
             </div>
           </div>
-          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px 16px' }}>
+          <div style={{ background: CARD, borderRadius: 14, padding: '14px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
@@ -105,7 +105,7 @@ export default function Friend() {
 
         {/* Invite link */}
         {sectionLabel('Your Invite Link')}
-        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px 16px', marginBottom: 14 }}>
+        <div style={{ background: CARD, borderRadius: 14, padding: '14px 16px', marginBottom: 14 }}>
           <div style={{
             background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
             borderRadius: 10, padding: '10px 12px', marginBottom: 10,
@@ -140,24 +140,6 @@ export default function Friend() {
           </button>
         </div>
 
-        {/* Reward info */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 14,
-          background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px 16px', marginBottom: 20,
-        }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-          </svg>
-          <div style={{ flex: 1 }}>
-            <div style={{ color: TEXT, fontSize: 14, fontWeight: 700 }}>One-Time Invite Reward</div>
-            <div style={{ color: TEXT_DIM, fontSize: 12 }}>150 AXN when your friend completes 10 ad tasks</div>
-          </div>
-          <span style={{
-            background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)',
-            borderRadius: 8, padding: '5px 12px', color: '#4ade80', fontSize: 13, fontWeight: 900, flexShrink: 0,
-          }}>150 AXN</span>
-        </div>
-
         {/* Friends list */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           {sectionLabel('Your Network')}
@@ -170,14 +152,14 @@ export default function Friend() {
           </div>
         ) : referrals.length === 0 ? (
           <div style={{
-            background: CARD, border: `1px solid ${BORDER}`, borderRadius: 18,
+            background: CARD, borderRadius: 14,
             padding: '40px 24px', textAlign: 'center',
           }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(96,165,250,0.4)" strokeWidth="2" strokeLinecap="round" style={{ marginBottom: 14 }}>
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              <line x1="19" y1="8" x2="19" y2="14"/>
+              <line x1="22" y1="11" x2="16" y2="11"/>
             </svg>
             <p style={{ color: TEXT, fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>No friends yet</p>
             <p style={{ color: TEXT_DIM, fontSize: 12, margin: 0 }}>Share your link. Earn 150 AXN when each friend completes 10 ad tasks.</p>
@@ -186,12 +168,14 @@ export default function Friend() {
           referrals.map((r, i) => (
             <div key={i} style={{
               display: 'flex', alignItems: 'center', gap: 14,
-              background: CARD, border: `1px solid ${BORDER}`,
-              borderRadius: 16, marginBottom: 8, padding: '12px 16px',
+              background: CARD,
+              borderRadius: 14, marginBottom: 8, padding: '12px 16px',
             }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={r.isActive ? '#4ade80' : 'rgba(255,255,255,0.2)'} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <line x1="19" y1="8" x2="19" y2="14"/>
+                <line x1="22" y1="11" x2="16" y2="11"/>
               </svg>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ color: TEXT, fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>

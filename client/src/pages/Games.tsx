@@ -259,8 +259,7 @@ export default function Games() {
         </div>
 
         <div style={{
-          background: 'rgba(255,255,255,0.05)', borderRadius: 20,
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(255,255,255,0.07)', borderRadius: 14,
           marginBottom: 20, overflow: 'hidden',
         }}>
           {/* Daily Check-In — calendar icon */}
@@ -336,16 +335,16 @@ export default function Games() {
         </div>
 
         <div style={{
-          background: 'rgba(255,255,255,0.05)', borderRadius: 20,
-          border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden',
+          background: 'rgba(255,255,255,0.07)', borderRadius: 14,
+          overflow: 'hidden',
         }}>
           <div style={{ padding: '16px 16px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                 <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                <line x1="19" y1="8" x2="19" y2="14"/>
+                <line x1="22" y1="11" x2="16" y2="11"/>
               </svg>
               <div>
                 <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>Invite Friends</div>
@@ -367,8 +366,7 @@ export default function Games() {
                 Invite Friend
               </button>
               <button onClick={copyLink} disabled={!referralLink} style={{
-                padding: '13px 20px', background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '13px 20px', background: 'rgba(255,255,255,0.08)',
                 borderRadius: 14, color: 'rgba(255,255,255,0.7)',
                 fontSize: 14, fontWeight: 700, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
