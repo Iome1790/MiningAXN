@@ -705,15 +705,16 @@ export async function sendSharePhotoToChat(
 export async function formatWelcomeMessage(): Promise<{ message: string; inlineKeyboard: any }> {
   const botUsername = await getBotUsername();
 
-  const message = `Welcome to Axionet Miner 👋\n\n` +
-                 `Upgrade your Machine and earn $AXN, swap $AXN to $TON and have FUUUUUUN! 🚀\n\n` +
-                 `<a href="https://t.me/LightningSatoshi">📢 Announcement</a> | <a href="https://t.me/Axionetchat">💬 Chat</a> | <a href="https://t.me/szxzyz">📞 Support</a>`;
+  const message = `🚀 <b>Welcome To Axionet Airdrop!</b>\n\n` +
+                 `Start your journey with Axionet and earn <b>$AXN</b> rewards on the <b>$TON</b> Blockchain!\n\n` +
+                 `We are allocating <b>50%</b> of the total <b>500M supply</b> directly to the community! 🎁\n\n` +
+                 `<i>TIP: Invite your friends to get more rewards.</i>`;
 
   const inlineKeyboard = {
     inline_keyboard: [
       [
         {
-          text: "📟 Start Mining",
+          text: "💎 EARN AXN 💎",
           url: `https://t.me/${botUsername}/MyWAdz`
         }
       ]
@@ -739,7 +740,7 @@ export async function sendWelcomeMessage(userId: string): Promise<boolean> {
   const { message, inlineKeyboard } = await formatWelcomeMessage();
   const domain = process.env.REPLIT_DOMAIN || process.env.RENDER_EXTERNAL_URL?.replace(/^https?:\/\//, '') ||
     (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.replit.app` : null);
-  const imageUrl = domain ? `https://${domain}/welcome-image.png` : null;
+  const imageUrl = domain ? `https://${domain}/axionet-welcome.png` : null;
 
   try {
     if (imageUrl) {
