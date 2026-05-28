@@ -506,14 +506,12 @@ export async function sendWithdrawalRequestNotification(withdrawal: any, user: a
     const currentDate = new Date().toUTCString();
 
     const _botName = await getBotUsername();
-    const usdAmount = (withdrawal.details as any)?.usdAmount ? `$${parseFloat((withdrawal.details as any).usdAmount).toFixed(2)}` : '—';
     const message = `💰 <b>Withdrawal Request</b>\n\n` +
                  `🗣 User: ${escapeHtml(userName)}\n` +
                  `🆔 User ID: <code>${userTelegramId}</code>\n` +
-                 `💳 Username: ${userTelegramUsername}\n` +
                  `🌐 Address: <code>${walletAddress}</code>\n` +
                  `💸 Amount: ${format$(netAmount)} AXN\n` +
-                 `🛂 USD: ${usdAmount}\n` +
+                 `🛂 Fee: ${format$(feeAmount)} AXN\n` +
                  `📅 Date: ${currentDate}\n` +
                  `🤖 Bot: @${_botName}`;
 
@@ -536,61 +534,57 @@ export async function sendWithdrawalRequestNotification(withdrawal: any, user: a
   }
 }
 
-export async function sendWithdrawalApprovedNotification(withdrawal: any): Promise<boolean> {
+export async function sendWithdrawalApprovedNotification(withdrawal: any, txHash: string = 'N/A'): Promise<boolean> {
   if (!TELEGRAM_BOT_TOKEN) {
     console.error('❌ Telegram bot token not configured for withdrawal approval notification');
     return false;
   }
 
   try {
-    const LIGHTNING_GROUP_CHAT_ID = '-1002769424144';
+    const WITHDRAWAL_GROUP_ID = process.env.WITHDRAWAL_GROUP_ID || '-1002769424144';
     const user = await storage.getUser(withdrawal.userId);
-    
+
     const withdrawalDetails = withdrawal.details as any;
     const netAmount = parseFloat(withdrawalDetails?.netAmount || withdrawal.amount);
     const feeAmount = parseFloat(withdrawalDetails?.fee || '0');
-    const feePercent = withdrawalDetails?.feePercent || '0';
     const walletAddress = withdrawalDetails?.paymentDetails || withdrawalDetails?.walletAddress || 'N/A';
-    
+
+    const shortAddress = walletAddress.length > 10
+      ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`
+      : walletAddress;
+
     const userName = user?.firstName || user?.username || 'Unknown';
     const userTelegramId = user?.telegram_id || '';
-    const userTelegramUsername = user?.username ? `@${user.username}` : 'N/A';
     const currentDate = new Date().toUTCString();
+    const _botName = await getBotUsername();
 
-    const _approvalBotName = await getBotUsername();
-    const groupMessage = `✅ Withdrawal Approved
-    
-🗣 User: <a href="tg://user?id=${userTelegramId}">${escapeHtml(userName)}</a>
-🆔 User ID: ${userTelegramId}
-💳 Username: ${userTelegramUsername}
-🌐 Address:
-<code>${walletAddress}</code>
-💸 Amount: ${format$(netAmount)} AXN
-🛂 Fee: ${format$(feeAmount)} AXN (${feePercent}%)
-📅 Date: ${currentDate}
-🤖 Bot: @${_approvalBotName}`;
+    const groupMessage =
+      `✅ <b>Withdrawal Successful</b>\n\n` +
+      `🗣 User: <a href="tg://user?id=${userTelegramId}">${escapeHtml(userName)}</a>\n` +
+      `🆔 User ID: ${userTelegramId}\n` +
+      `🌐 Address: <code>${shortAddress}</code>\n` +
+      `💸 Amount: ${Math.floor(netAmount)} AXN\n` +
+      `🛂 Fee: ${Math.floor(feeAmount)} AXN\n` +
+      `🔗 Hash: <code>${txHash}</code>\n` +
+      `📅 Date: ${currentDate}\n` +
+      `🤖 Bot: @${_botName}`;
 
-    // Group notification
     const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: LIGHTNING_GROUP_CHAT_ID,
-        text: groupMessage,
-        parse_mode: 'HTML'
-      })
+      body: JSON.stringify({ chat_id: WITHDRAWAL_GROUP_ID, text: groupMessage, parse_mode: 'HTML' })
     });
 
     if (response.ok) {
-      console.log('✅ Group notification for withdrawal approval sent successfully');
+      console.log('✅ Withdrawal success notification sent to group');
       return true;
     } else {
       const errorData = await response.text();
-      console.error('❌ Failed to send group notification for withdrawal approval:', errorData);
+      console.error('❌ Failed to send withdrawal success notification:', errorData);
       return false;
     }
   } catch (error) {
-    console.error('❌ Error sending withdrawal approval group notification:', error);
+    console.error('❌ Error sending withdrawal success notification:', error);
     return false;
   }
 }
@@ -1658,38 +1652,14 @@ ${walletAddress}
         const result = await storage.approveWithdrawal(hashState.withdrawalId, `Approved by admin ${chatId}`);
 
         if (result.success && result.withdrawal) {
-          const approvedUser = await storage.getUser(result.withdrawal.userId);
           const withdrawalDetails = result.withdrawal.details as any;
           const netAmount = parseFloat(withdrawalDetails?.netAmount || result.withdrawal.amount);
-          const walletAddress = withdrawalDetails?.paymentDetails || withdrawalDetails?.walletAddress || 'N/A';
-          const approvedUserName = approvedUser?.firstName || approvedUser?.username || 'Unknown';
+          const approvedUser = await storage.getUser(result.withdrawal.userId);
           const approvedUserTelegramId = approvedUser?.telegram_id || '';
           const currentDate = new Date().toUTCString();
-          const usdAmount = withdrawalDetails?.usdAmount ? `$${parseFloat(withdrawalDetails.usdAmount).toFixed(2)}` : '—';
-          const _hashBotName = await getBotUsername();
 
-          // Short address: first 4 + ... + last 4
-          const shortAddress = walletAddress.length > 10
-            ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`
-            : walletAddress;
-
-          // Post group success message
-          const WITHDRAWAL_GROUP_ID = process.env.WITHDRAWAL_GROUP_ID || '-1002769424144';
-          const groupMessage = `✅ <b>Withdrawal Successful</b>\n\n` +
-            `🗣 User: ${escapeHtml(approvedUserName)}\n` +
-            `🆔 User ID: ${approvedUserTelegramId}\n` +
-            `🌐 Address: <code>${shortAddress}</code>\n` +
-            `💸 Amount: ${Math.floor(netAmount)} AXN\n` +
-            `🛂 USD: ${usdAmount}\n` +
-            `🔗 Hash: <code>${txHash}</code>\n` +
-            `📅 Date: ${currentDate}\n` +
-            `🤖 Bot: @${_hashBotName}`;
-
-          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: WITHDRAWAL_GROUP_ID, text: groupMessage, parse_mode: 'HTML' })
-          });
+          // Send single success notification to group (with real tx hash)
+          await sendWithdrawalApprovedNotification(result.withdrawal, txHash);
 
           // Notify user
           if (approvedUserTelegramId) {

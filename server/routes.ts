@@ -6351,13 +6351,13 @@ ${walletAddress}
       if (result.success) {
         console.log(`✅ Withdrawal ${withdrawalId} approved by admin ${req.user.telegramUser.id}`);
         
-        // Send real-time update to user (no Telegram notification)
+        // Send real-time update to user + Telegram notification
         if (result.withdrawal) {
           sendRealtimeUpdate(result.withdrawal.userId, {
             type: 'withdrawal_approved',
             amount: result.withdrawal.amount,
             method: result.withdrawal.method,
-            message: `Your withdrawal of ${result.withdrawal.amount}  has been approved and processed`
+            message: `Your withdrawal of ${result.withdrawal.amount} AXN has been approved and processed`
           });
           
           // Broadcast to all admins for instant UI update
@@ -6367,6 +6367,14 @@ ${walletAddress}
             amount: result.withdrawal.amount,
             userId: result.withdrawal.userId
           });
+
+          // Send Telegram notification to group (admin panel approval, no tx hash)
+          try {
+            const { sendWithdrawalApprovedNotification } = await import('./telegram');
+            await sendWithdrawalApprovedNotification(result.withdrawal, 'N/A');
+          } catch (notifyErr) {
+            console.error('⚠️ Failed to send withdrawal approval notification:', notifyErr);
+          }
         }
         
         res.json({

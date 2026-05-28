@@ -1917,15 +1917,7 @@ export class DatabaseStorage implements IStorage {
         console.error('⚠️ Withdrawal commission processing failed (non-critical):', e)
       );
 
-      // Send group notification for approval
-      try {
-        // sendWithdrawalApprovedNotification now handles both user notification (Type 1) 
-        // and group notification. Admin notification is disabled.
-        const { sendWithdrawalApprovedNotification } = require('./telegram');
-        await sendWithdrawalApprovedNotification(updatedWithdrawal);
-      } catch (notifyError) {
-        console.error('⚠️ Failed to send withdrawal approval notification:', notifyError);
-      }
+      // Notification is sent by the caller (hash handler or admin panel route)
       
       return { success: true, message: 'Withdrawal approved and processed', withdrawal: updatedWithdrawal };
     } catch (error) {
