@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
@@ -7,8 +7,10 @@ import Header from "@/components/Header";
 import { useLocation } from "wouter";
 import { showRewardedInterstitial } from "@/lib/showAd";
 import WithdrawPopup from "@/components/WithdrawPopup";
+import { getTONPrice } from "@/lib/tonPriceService";
 
-const USD_PER_AXN = 0.0001; // 1000 AXN = $0.10
+// 1000 AXN = 0.01 TON (fixed), USD calculated via live TON price
+const AXN_PER_TON = 100000; // 1 TON = 100,000 AXN
 
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -33,12 +35,18 @@ export default function Games() {
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const [tonPrice, setTonPrice] = useState<number>(5.5);
+
+  useEffect(() => {
+    getTONPrice().then(p => setTonPrice(p)).catch(() => {});
+  }, []);
 
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
   const { data: botInfo } = useQuery<{ username: string }>({ queryKey: ['/api/bot-info'], staleTime: 3600000 });
 
   const axnBalance = Math.floor(parseFloat(user?.walletBalance || '0'));
-  const axnUsdValue = axnBalance * USD_PER_AXN;
+  // 1000 AXN = 0.01 TON → 1 AXN = 1/AXN_PER_TON TON → USD = AXN / AXN_PER_TON * tonPrice
+  const axnUsdValue = (axnBalance / AXN_PER_TON) * tonPrice;
 
   const firstName: string = user?.firstName || user?.username || "User";
   const profileImageUrl: string | null =
@@ -221,28 +229,20 @@ export default function Games() {
               <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.48)' }}>Staking</span>
             </div>
 
-            {/* Earn */}
+            {/* Promo */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
-              <div style={{ position: 'relative' }}>
-                <button onClick={() => setLocation('/earn')} style={{
-                  width: 52, height: 52, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
-                  border: '1px solid rgba(59,130,246,0.3)',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
-                }} className="active:scale-90 transition-transform">
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
-                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="white" opacity="0.9"/>
-                  </svg>
-                </button>
-                <div style={{
-                  position: 'absolute', top: -4, right: -4,
-                  background: '#ef4444', borderRadius: 10, minWidth: 17, height: 17,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '2px solid #0a0a0a', fontSize: 8, fontWeight: 900, color: '#fff', padding: '0 3px',
-                }}>9+</div>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.48)' }}>Earn</span>
+              <button onClick={() => setLocation('/earn')} style={{
+                width: 52, height: 52, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
+                border: '1px solid rgba(59,130,246,0.3)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
+              }} className="active:scale-90 transition-transform">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+                </svg>
+              </button>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.48)' }}>Promo</span>
             </div>
 
           </div>
@@ -548,8 +548,10 @@ function SendChoicePopup({ user, onClose, onWithdraw, onSuccess }: {
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [sendTonPrice, setSendTonPrice] = useState<number>(5.5);
+  useEffect(() => { getTONPrice().then(p => setSendTonPrice(p)).catch(() => {}); }, []);
   const usdPreview = amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0
-    ? `≈ $${(parseFloat(amount) * USD_PER_AXN).toFixed(4)} USD`
+    ? `≈ $${((parseFloat(amount) / AXN_PER_TON) * sendTonPrice).toFixed(4)} USD`
     : '';
 
   const handleSend = async () => {
