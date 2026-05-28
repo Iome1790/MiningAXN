@@ -25,6 +25,7 @@ export default function Games() {
   const [showReceivePopup, setShowReceivePopup] = useState(false);
   const [showStakingPopup, setShowStakingPopup] = useState(false);
   const [showWithdrawPopup, setShowWithdrawPopup] = useState(false);
+  const [showPromoPopup, setShowPromoPopup] = useState(false);
   const [dailyChecked, setDailyChecked] = useState(() => localStorage.getItem('daily_check_date') === getTodayKey());
   const [dailyAdLoading, setDailyAdLoading] = useState(false);
   const [mysteryOpened, setMysteryOpened] = useState(() => localStorage.getItem('mystery_box_date') === getTodayKey());
@@ -231,7 +232,7 @@ export default function Games() {
 
             {/* Promo */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
-              <button onClick={() => setLocation('/earn')} style={{
+              <button onClick={() => setShowPromoPopup(true)} style={{
                 width: 52, height: 52, borderRadius: '50%',
                 background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
                 border: '1px solid rgba(59,130,246,0.3)',
@@ -239,7 +240,7 @@ export default function Games() {
                 boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
               }} className="active:scale-90 transition-transform">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                 </svg>
               </button>
               <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.48)' }}>Promo</span>
@@ -394,6 +395,14 @@ export default function Games() {
       {/* ── Receive Popup ── */}
       {showReceivePopup && (
         <ReceivePopup user={user} onClose={() => setShowReceivePopup(false)} />
+      )}
+
+      {/* ── Promo Popup ── */}
+      {showPromoPopup && (
+        <PromoPopup
+          onClose={() => setShowPromoPopup(false)}
+          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }); setShowPromoPopup(false); }}
+        />
       )}
 
       {/* ── Withdraw Popup ── */}
@@ -690,6 +699,126 @@ function SendChoicePopup({ user, onClose, onWithdraw, onSuccess }: {
               {loading ? 'Sending...' : 'Send AXN'}
             </button>
           </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PromoPopup({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [claimed, setClaimed] = useState<{ reward: string } | null>(null);
+
+  const handleClaim = async () => {
+    if (!code.trim()) { showNotification('Enter a promo code', 'error'); return; }
+    setLoading(true);
+    try {
+      const res = await apiRequest('POST', '/api/promo-codes/redeem', { code: code.trim().toUpperCase() });
+      const data = await res.json();
+      if (data.success) {
+        setClaimed({ reward: data.reward });
+        showNotification(data.message || 'Promo code claimed!', 'success');
+      } else {
+        showNotification(data.message || 'Invalid promo code', 'error');
+      }
+    } catch {
+      showNotification('Failed to redeem code. Try again.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 900, display: 'flex', alignItems: 'flex-end' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={claimed ? onSuccess : onClose} />
+      <div style={{
+        position: 'relative', width: '100%',
+        background: 'linear-gradient(160deg, #0d0d0f 0%, #111118 100%)',
+        border: '1px solid rgba(37,99,235,0.25)',
+        borderRadius: '28px 28px 0 0', padding: '24px 20px 52px', zIndex: 901,
+        boxShadow: '0 -8px 60px rgba(37,99,235,0.2), 0 0 0 1px rgba(255,255,255,0.03)',
+        overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)', animation: 'popup-glow 2s ease-in-out infinite' }} />
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 22px' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <span style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>Promo Code</span>
+          <button onClick={claimed ? onSuccess : onClose} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        {!claimed ? (
+          <>
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%', margin: '0 auto 14px',
+                background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(59,130,246,0.1))',
+                border: '1px solid rgba(37,99,235,0.22)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 0 24px rgba(37,99,235,0.18)',
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: 13, margin: 0 }}>
+                Enter your promo code to claim AXN rewards
+              </p>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.32)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Promo Code</div>
+              <input
+                value={code}
+                onChange={e => setCode(e.target.value.toUpperCase())}
+                onKeyDown={e => e.key === 'Enter' && handleClaim()}
+                placeholder="Enter code here..."
+                style={{
+                  width: '100%', padding: '14px 16px', borderRadius: 14,
+                  border: '1.5px solid rgba(37,99,235,0.22)',
+                  background: 'rgba(37,99,235,0.06)', color: '#fff',
+                  fontSize: 16, fontWeight: 700, letterSpacing: '0.08em',
+                  outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace',
+                }}
+              />
+            </div>
+
+            <button onClick={handleClaim} disabled={loading} style={{
+              width: '100%', padding: '14px',
+              background: loading ? 'rgba(37,99,235,0.4)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+              border: 'none', borderRadius: 50, color: '#fff',
+              fontSize: 15, fontWeight: 800, cursor: loading ? 'not-allowed' : 'pointer',
+              boxShadow: loading ? 'none' : '0 4px 20px rgba(37,99,235,0.4)',
+            }} className="active:scale-95 transition-transform">
+              {loading ? 'Checking...' : 'Claim Reward'}
+            </button>
+          </>
+        ) : (
+          <div style={{ textAlign: 'center', paddingBottom: 8 }}>
+            <div style={{ animation: 'rewardIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: '50%', margin: '0 auto 20px',
+                background: 'linear-gradient(135deg, rgba(74,222,128,0.18), rgba(34,197,94,0.08))',
+                border: '1px solid rgba(74,222,128,0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+              <div style={{ fontSize: 38, fontWeight: 900, color: '#fff', letterSpacing: '-2px', lineHeight: 1 }}>+{Math.floor(parseFloat(claimed.reward))}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#3b82f6', marginTop: 4, marginBottom: 16 }}>AXN</div>
+              <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: 14, marginBottom: 28 }}>Added to your wallet balance!</p>
+            </div>
+            <button onClick={onSuccess} style={{
+              width: '100%', padding: '14px',
+              background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+              border: 'none', borderRadius: 50, color: '#fff',
+              fontSize: 15, fontWeight: 800, cursor: 'pointer',
+              boxShadow: '0 4px 20px rgba(37,99,235,0.4)',
+            }} className="active:scale-95 transition-transform">Done</button>
+          </div>
         )}
       </div>
     </div>

@@ -49,7 +49,7 @@ interface AdminStats {
   totalWithdrawals: string;
 }
 
-type AdminTab = "summary" | "users" | "withdrawals" | "bans" | "countries" | "settings";
+type AdminTab = "summary" | "users" | "withdrawals" | "bans" | "countries" | "settings" | "promo";
 
 function MiniToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -143,6 +143,7 @@ export default function AdminPage() {
     { id: "bans", label: "Bans", icon: Shield },
     { id: "countries", label: "Countries", icon: Globe },
     { id: "settings", label: "Settings", icon: Settings },
+    { id: "promo", label: "Promo", icon: CheckCircle },
   ];
 
   return (
@@ -206,6 +207,7 @@ export default function AdminPage() {
           {activeTab === "bans" && <BanSection />}
           {activeTab === "countries" && <CountrySection />}
           {activeTab === "settings" && <SettingsSection />}
+          {activeTab === "promo" && <PromoSection />}
         </div>
       </main>
     </Layout>
@@ -1243,6 +1245,136 @@ function CountrySection() {
       >
         Open Country Controls
       </Button>
+    </div>
+  );
+}
+
+/* ─── PROMO CODES ──────────────────────────────────────────────────────────── */
+function PromoSection() {
+  const { toast } = useToast();
+  const [code, setCode] = useState('');
+  const [amount, setAmount] = useState('');
+  const [maxUses, setMaxUses] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['/api/admin/promo-codes'],
+    queryFn: () => apiRequest('GET', '/api/admin/promo-codes').then(r => r.json()),
+  });
+
+  const promoCodes: any[] = data?.promoCodes || [];
+
+  const handleCreate = async () => {
+    if (!amount || parseFloat(amount) <= 0) { toast({ title: 'Enter a valid AXN amount', variant: 'destructive' }); return; }
+    setCreating(true);
+    const finalCode = code.trim().toUpperCase() || ('AXNPROMO' + Math.random().toString(36).slice(2, 7).toUpperCase());
+    try {
+      const res = await apiRequest('POST', '/api/admin/promo-codes', {
+        code: finalCode,
+        rewardAmount: amount,
+        rewardType: 'AXN',
+        usageLimit: maxUses ? parseInt(maxUses) : null,
+        perUserLimit: 1,
+      });
+      const d = await res.json();
+      if (d.success) {
+        toast({ title: `✅ Promo code "${finalCode}" created!` });
+        setCode(''); setAmount(''); setMaxUses('');
+        refetch();
+      } else {
+        toast({ title: d.message || 'Failed to create', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error creating promo code', variant: 'destructive' });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleToggle = async (id: string, isActive: boolean) => {
+    try {
+      const res = await apiRequest('PATCH', `/api/admin/promo-codes/${id}`, { isActive: !isActive });
+      const d = await res.json();
+      if (d.success) { refetch(); toast({ title: `Code ${!isActive ? 'activated' : 'deactivated'}` }); }
+    } catch { toast({ title: 'Error updating code', variant: 'destructive' }); }
+  };
+
+  return (
+    <div className="space-y-5 pb-10">
+      <div className="bg-[#0f0f0f] border border-white/8 rounded-xl p-4 space-y-4">
+        <p className="text-xs font-semibold text-blue-400 flex items-center gap-1.5">
+          <CheckCircle className="w-3.5 h-3.5" /> Create Promo Code
+        </p>
+
+        <div className="space-y-1">
+          <Label className="text-xs text-white font-medium">Code (leave blank to auto-generate)</Label>
+          <Input
+            placeholder="e.g. AXNLAUNCH2026"
+            value={code}
+            onChange={e => setCode(e.target.value.toUpperCase())}
+            className="h-8 text-xs bg-[#0a0a0a] border-white/10 font-mono tracking-widest"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs text-white font-medium">AXN Reward Amount</Label>
+          <Input
+            type="number"
+            placeholder="e.g. 100"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            className="h-8 text-xs bg-[#0a0a0a] border-white/10"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs text-white font-medium">Max Total Uses (blank = unlimited)</Label>
+          <Input
+            type="number"
+            placeholder="e.g. 500"
+            value={maxUses}
+            onChange={e => setMaxUses(e.target.value)}
+            className="h-8 text-xs bg-[#0a0a0a] border-white/10"
+          />
+        </div>
+
+        <Button size="sm" onClick={handleCreate} disabled={creating} className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700">
+          {creating ? 'Creating...' : '✅ Create Promo Code'}
+        </Button>
+      </div>
+
+      <div className="bg-[#0f0f0f] border border-white/8 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-white">All Promo Codes</p>
+          <button onClick={() => refetch()} className="text-[10px] text-blue-400 hover:text-blue-300">Refresh</button>
+        </div>
+
+        {isLoading && <p className="text-xs text-gray-500">Loading...</p>}
+        {!isLoading && promoCodes.length === 0 && (
+          <p className="text-xs text-gray-500 text-center py-4">No promo codes yet</p>
+        )}
+
+        <div className="space-y-2">
+          {promoCodes.map((p: any) => (
+            <div key={p.id} className="bg-[#151515] border border-white/5 rounded-lg p-3 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-sm font-bold text-white tracking-widest">{p.code}</span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${p.is_active ? 'bg-green-900/40 text-green-400' : 'bg-red-900/40 text-red-400'}`}>
+                    {p.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                  <MiniToggle value={!!p.is_active} onChange={() => handleToggle(p.id, !!p.is_active)} />
+                </div>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] text-gray-400">
+                <span className="text-blue-400 font-bold">{fmt(p.reward_amount)} AXN</span>
+                <span>Uses: {p.use_count || 0}{p.usage_limit ? ` / ${p.usage_limit}` : ' / ∞'}</span>
+                {p.expires_at && <span>Exp: {new Date(p.expires_at).toLocaleDateString()}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
