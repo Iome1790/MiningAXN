@@ -6990,6 +6990,23 @@ ${walletAddress}
     }
   });
 
+  // Toggle promo code active status (admin only)
+  app.patch('/api/admin/promo-codes/:id', authenticateAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { isActive } = req.body;
+      const result = await storage.updatePromoCodeStatus(id, !!isActive);
+      if (result?.success) {
+        res.json({ success: true, message: `Promo code ${isActive ? 'activated' : 'deactivated'}` });
+      } else {
+        res.status(400).json({ success: false, message: 'Failed to update promo code' });
+      }
+    } catch (error) {
+      console.error('Error toggling promo code:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  });
+
   // ArcPay Integration Routes
   const { createArcPayCheckout, verifyArcPayWebhookSignature, parseArcPayWebhook } = await import('./arcpay');
 

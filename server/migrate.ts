@@ -29,8 +29,6 @@ export async function ensureDatabaseSchema(): Promise<void> {
       await db.execute(sql`DROP TABLE IF EXISTS task_clicks CASCADE`);
       await db.execute(sql`DROP TABLE IF EXISTS task_completions CASCADE`);
       await db.execute(sql`DROP TABLE IF EXISTS promotion_claims CASCADE`);
-      await db.execute(sql`DROP TABLE IF EXISTS promo_code_usage CASCADE`);
-      await db.execute(sql`DROP TABLE IF EXISTS promo_codes CASCADE`);
       await db.execute(sql`DROP TABLE IF EXISTS referral_commissions CASCADE`);
       await db.execute(sql`DROP TABLE IF EXISTS user_referral_tasks CASCADE`);
       await db.execute(sql`DROP TABLE IF EXISTS mining_boosts CASCADE`);
@@ -716,6 +714,34 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_user_ad_watches_user ON user_ad_watches(user_id)`);
     await db.execute(sql`ALTER TABLE user_ad_watches ADD COLUMN IF NOT EXISTS last_watched_at TIMESTAMP`);
     console.log('✅ [MIGRATION] user_ad_watches table ensured');
+
+    // Promo Codes tables
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS promo_codes (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        code VARCHAR(60) UNIQUE NOT NULL,
+        reward_amount NUMERIC(20,2) NOT NULL DEFAULT 0,
+        reward_type VARCHAR(10) DEFAULT 'AXN',
+        usage_limit INTEGER,
+        per_user_limit INTEGER DEFAULT 1,
+        use_count INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT TRUE,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_promo_codes_code ON promo_codes(code)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS promo_code_usage (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        code VARCHAR(60) NOT NULL,
+        user_id VARCHAR NOT NULL REFERENCES users(id),
+        used_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_promo_usage_code_user ON promo_code_usage(code, user_id)`);
+    console.log('✅ [MIGRATION] promo_codes and promo_code_usage tables ensured');
 
     console.log('✅ [MIGRATION] All tables and indexes created successfully');
     

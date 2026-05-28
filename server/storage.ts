@@ -1454,14 +1454,68 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async usePromoCode(_code: string, _userId: string): Promise<{ success: boolean; message: string; reward?: string; errorType?: string }> {
-    return { success: false, message: "Promo code system removed.", errorType: "not_active" };
+  async usePromoCode(code: string, userId: string): Promise<{ success: boolean; message: string; reward?: string; errorType?: string }> {
+    try {
+      const [promo] = await db.execute(sql`SELECT * FROM promo_codes WHERE code = ${code} LIMIT 1`) as any;
+      const row = (promo as any)?.rows?.[0];
+      if (!row) return { success: false, message: 'Invalid promo code', errorType: 'not_found' };
+      if (!row.is_active) return { success: false, message: 'This promo code is inactive', errorType: 'not_active' };
+      if (row.expires_at && new Date(row.expires_at) < new Date()) return { success: false, message: 'This promo code has expired', errorType: 'expired' };
+      if (row.usage_limit && row.use_count >= row.usage_limit) return { success: false, message: 'This promo code has reached its usage limit', errorType: 'limit_reached' };
+
+      // Check per-user usage
+      const [usageRes] = await db.execute(sql`SELECT COUNT(*) as cnt FROM promo_code_usage WHERE code = ${code} AND user_id = ${userId}`) as any;
+      const usageCount = parseInt((usageRes as any)?.rows?.[0]?.cnt || '0');
+      const perUserLimit = row.per_user_limit || 1;
+      if (usageCount >= perUserLimit) return { success: false, message: 'You have already claimed this promo code', errorType: 'already_used' };
+
+      // Record usage and increment count atomically
+      await db.execute(sql`INSERT INTO promo_code_usage (id, code, user_id) VALUES (gen_random_uuid(), ${code}, ${userId})`);
+      await db.execute(sql`UPDATE promo_codes SET use_count = use_count + 1 WHERE code = ${code}`);
+
+      return { success: true, message: 'Promo code redeemed!', reward: row.reward_amount?.toString() };
+    } catch (e) {
+      console.error('usePromoCode error:', e);
+      return { success: false, message: 'Failed to redeem promo code', errorType: 'error' };
+    }
   }
 
-  async createPromoCode(_data: any): Promise<any> { return null; }
-  async getAllPromoCodes(): Promise<any[]> { return []; }
-  async getPromoCode(_code: string): Promise<any> { return undefined; }
-  async updatePromoCodeStatus(_id: string, _isActive: boolean): Promise<any> { return null; }
+  async createPromoCode(data: any): Promise<any> {
+    try {
+      const id = `pc_${Math.random().toString(36).slice(2, 12)}`;
+      await db.execute(sql`
+        INSERT INTO promo_codes (id, code, reward_amount, reward_type, usage_limit, per_user_limit, is_active, expires_at)
+        VALUES (${id}, ${data.code}, ${data.rewardAmount}, ${data.rewardType || 'AXN'}, ${data.usageLimit || null}, ${data.perUserLimit || 1}, TRUE, ${data.expiresAt || null})
+      `);
+      return { id, code: data.code, rewardAmount: data.rewardAmount, rewardType: data.rewardType || 'AXN' };
+    } catch (e: any) {
+      if (e?.message?.includes('unique') || e?.message?.includes('duplicate')) throw new Error('Promo code already exists');
+      throw e;
+    }
+  }
+
+  async getAllPromoCodes(): Promise<any[]> {
+    try {
+      const [res] = await db.execute(sql`SELECT * FROM promo_codes ORDER BY created_at DESC`) as any;
+      return (res as any)?.rows || [];
+    } catch { return []; }
+  }
+
+  async getPromoCode(code: string): Promise<any> {
+    try {
+      const [res] = await db.execute(sql`SELECT * FROM promo_codes WHERE code = ${code} LIMIT 1`) as any;
+      const row = (res as any)?.rows?.[0];
+      if (!row) return undefined;
+      return { ...row, rewardAmount: row.reward_amount, rewardType: row.reward_type, usageLimit: row.usage_limit, usageCount: row.use_count, perUserLimit: row.per_user_limit, isActive: row.is_active, expiresAt: row.expires_at };
+    } catch { return undefined; }
+  }
+
+  async updatePromoCodeStatus(id: string, isActive: boolean): Promise<any> {
+    try {
+      await db.execute(sql`UPDATE promo_codes SET is_active = ${isActive} WHERE id = ${id}`);
+      return { success: true };
+    } catch { return { success: false }; }
+  }
 
   async getUserReferralEarnings(userId: string): Promise<string> {
     const [result] = await db
