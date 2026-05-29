@@ -23,6 +23,15 @@ try {
   // Continue server startup even if setup fails
 }
 
+// Reset legacy mining_balance to 0 — app now runs as wallet-only ecosystem
+try {
+  const { pool } = await import('./db');
+  await pool.query(`UPDATE users SET mining_balance = 0, balance = 0 WHERE COALESCE(mining_balance::numeric, 0) > 0 OR COALESCE(balance::numeric, 0) > 0`);
+  console.log('✅ Legacy mining_balance and balance fields reset to 0 for all users');
+} catch (error) {
+  console.log('⚠️ Could not reset legacy balances (non-critical):', error);
+}
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

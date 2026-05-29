@@ -217,6 +217,23 @@ export const authenticateTelegram: RequestHandler = async (req: any, res, next) 
     
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken) {
+      // No bot token — fall back to existing session if available
+      if (req.session?.user?.user?.id) {
+        console.log('🔄 No bot token, using existing session for user:', req.session.user.user.id);
+        req.user = req.session.user;
+        return next();
+      }
+      // In dev/Replit environment, use test user fallback
+      if (process.env.NODE_ENV === 'development' || process.env.REPL_ID) {
+        console.log('🔧 No bot token + dev mode: falling back to test user');
+        const testUserId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+        const existingUser = await storage.getUser(testUserId);
+        if (existingUser) {
+          req.user = { telegramUser: { id: testUserId, username: 'testuser', first_name: 'Test', last_name: 'User' }, user: existingUser };
+          req.session.user = req.user;
+          return next();
+        }
+      }
       console.error('❌ TELEGRAM_BOT_TOKEN not configured');
       return res.status(500).json({ 
         message: "Service temporarily unavailable. Please try again later.",

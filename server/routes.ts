@@ -737,9 +737,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/daily-checkin — claim 5 AXN daily bonus
-  app.post('/api/daily-checkin', requireAuth, async (req: any, res) => {
+  app.post('/api/daily-checkin', authenticateTelegram, async (req: any, res) => {
     try {
-      const user = req.user;
+      const user = req.user.user;
       const { pool: dbPool } = await import('./db');
       const todayKey = new Date().toISOString().slice(0, 10);
       const userRow = await dbPool.query(
@@ -774,9 +774,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/mystery-box — claim random AXN (1–100) once per day
-  app.post('/api/mystery-box', requireAuth, async (req: any, res) => {
+  app.post('/api/mystery-box', authenticateTelegram, async (req: any, res) => {
     try {
-      const user = req.user;
+      const user = req.user.user;
       const { pool: dbPool } = await import('./db');
       const todayKey = new Date().toISOString().slice(0, 10);
 
@@ -5950,11 +5950,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const _admBotName = await getBotUsername();
       const adminMessage = `💰 Withdrawal Request
 
-🗣 User: <a href="tg://user?id=${userTelegramId}">${userName}</a>
+🗣 User: ${userName}
 🆔 User ID: ${userTelegramId}
-💳 Username: ${userTelegramUsername}
-🌐 Address:
-${walletAddress}
+🌐 Address: <code>${walletAddress}</code>
 💸 Amount: ${newWithdrawal.withdrawnAmount.toFixed(5)} TON
 🛂 Fee: ${feeAmount.toFixed(5)} (${feePercent}%)
 📅 Date: ${currentDate}
@@ -7316,7 +7314,7 @@ ${walletAddress}
   };
 
   // GET /api/spin/status - Returns spin availability and counters
-  app.get('/api/spin/status', requireAuth, async (req: any, res) => {
+  app.get('/api/spin/status', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) {
@@ -7389,7 +7387,7 @@ ${walletAddress}
   });
 
   // POST /api/spin/use - Spin the wheel
-  app.post('/api/spin/use', requireAuth, async (req: any, res) => {
+  app.post('/api/spin/use', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) {
@@ -7506,7 +7504,7 @@ ${walletAddress}
   });
 
   // POST /api/spin/adwatch - Watch ad to earn spins
-  app.post('/api/spin/adwatch', requireAuth, async (req: any, res) => {
+  app.post('/api/spin/adwatch', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) {
@@ -7599,7 +7597,7 @@ ${walletAddress}
   });
 
   // POST /api/spin/invite - Grant spin for verified invite (called when referral is verified)
-  app.post('/api/spin/invite', requireAuth, async (req: any, res) => {
+  app.post('/api/spin/invite', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) {
@@ -7643,7 +7641,7 @@ ${walletAddress}
   // ==================== DAILY MISSIONS ====================
 
   // GET /api/missions/status - Get daily mission completion status
-  app.get('/api/missions/status', requireAuth, async (req: any, res) => {
+  app.get('/api/missions/status', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) {
@@ -7666,17 +7664,17 @@ ${walletAddress}
   });
 
   // POST /api/missions/share-story/claim - dailyMissions table dropped
-  app.post('/api/missions/share-story/claim', requireAuth, async (_req: any, res) => {
+  app.post('/api/missions/share-story/claim', authenticateTelegram, async (_req: any, res) => {
     res.status(410).json({ error: 'Mission system removed' });
   });
 
   // POST /api/missions/daily-checkin/claim - dailyMissions table dropped
-  app.post('/api/missions/daily-checkin/claim', requireAuth, async (_req: any, res) => {
+  app.post('/api/missions/daily-checkin/claim', authenticateTelegram, async (_req: any, res) => {
     res.status(410).json({ error: 'Mission system removed' });
   });
 
   // POST /api/missions/check-for-updates/claim - dailyMissions table dropped
-  app.post('/api/missions/check-for-updates/claim', requireAuth, async (_req: any, res) => {
+  app.post('/api/missions/check-for-updates/claim', authenticateTelegram, async (_req: any, res) => {
     res.status(410).json({ error: 'Mission system removed' });
   });
 
@@ -7702,7 +7700,7 @@ ${walletAddress}
 
   // POST /api/share/prepare-message - Prepare a share message for Telegram WebApp shareMessage()
   // Uses Bot API 8.0 savePreparedInlineMessage for native Telegram share dialog
-  app.post('/api/share/prepare-message', requireAuth, async (req: any, res) => {
+  app.post('/api/share/prepare-message', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) {
@@ -7822,7 +7820,7 @@ ${walletAddress}
   });
 
   // POST /api/share/invite - Legacy endpoint (kept for backward compatibility)
-  app.post('/api/share/invite', requireAuth, async (req: any, res) => {
+  app.post('/api/share/invite', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) {
@@ -8372,7 +8370,7 @@ ${walletAddress}
   }
 
   // GET /api/daily-missions/status
-  app.get('/api/daily-missions/status', requireAuth, async (req: any, res) => {
+  app.get('/api/daily-missions/status', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -8424,7 +8422,7 @@ ${walletAddress}
   });
 
   // POST /api/daily-missions/claim/login
-  app.post('/api/daily-missions/claim/login', requireAuth, async (req: any, res) => {
+  app.post('/api/daily-missions/claim/login', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -8441,7 +8439,7 @@ ${walletAddress}
   });
 
   // POST /api/daily-missions/claim/announcement
-  app.post('/api/daily-missions/claim/announcement', requireAuth, async (req: any, res) => {
+  app.post('/api/daily-missions/claim/announcement', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -8458,7 +8456,7 @@ ${walletAddress}
   });
 
   // POST /api/daily-missions/claim/watch-ad
-  app.post('/api/daily-missions/claim/watch-ad', requireAuth, async (req: any, res) => {
+  app.post('/api/daily-missions/claim/watch-ad', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -8475,7 +8473,7 @@ ${walletAddress}
   });
 
   // POST /api/daily-missions/claim/share-app
-  app.post('/api/daily-missions/claim/share-app', requireAuth, async (req: any, res) => {
+  app.post('/api/daily-missions/claim/share-app', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -8492,7 +8490,7 @@ ${walletAddress}
   });
 
   // POST /api/daily-missions/track-app-time  { seconds: number }
-  app.post('/api/daily-missions/track-app-time', requireAuth, async (req: any, res) => {
+  app.post('/api/daily-missions/track-app-time', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -8513,7 +8511,7 @@ ${walletAddress}
   });
 
   // POST /api/daily-missions/claim/app-time
-  app.post('/api/daily-missions/claim/app-time', requireAuth, async (req: any, res) => {
+  app.post('/api/daily-missions/claim/app-time', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -8531,7 +8529,7 @@ ${walletAddress}
   });
 
   // POST /api/daily-missions/claim/community
-  app.post('/api/daily-missions/claim/community', requireAuth, async (req: any, res) => {
+  app.post('/api/daily-missions/claim/community', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -8548,7 +8546,7 @@ ${walletAddress}
   });
 
   // POST /api/daily-missions/claim/invite
-  app.post('/api/daily-missions/claim/invite', requireAuth, async (req: any, res) => {
+  app.post('/api/daily-missions/claim/invite', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -8570,7 +8568,7 @@ ${walletAddress}
   });
 
   // POST /api/daily-missions/claim/bonus
-  app.post('/api/daily-missions/claim/bonus', requireAuth, async (req: any, res) => {
+  app.post('/api/daily-missions/claim/bonus', authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });

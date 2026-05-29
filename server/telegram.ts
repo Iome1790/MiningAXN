@@ -560,7 +560,7 @@ export async function sendWithdrawalApprovedNotification(withdrawal: any, txHash
 
     const groupMessage =
       `✅ <b>Withdrawal Successful</b>\n\n` +
-      `🗣 User: <a href="tg://user?id=${userTelegramId}">${escapeHtml(userName)}</a>\n` +
+      `🗣 User: ${escapeHtml(userName)}\n` +
       `🆔 User ID: ${userTelegramId}\n` +
       `🌐 Address: <code>${shortAddress}</code>\n` +
       `💸 Amount: ${Math.floor(netAmount)} AXN\n` +
