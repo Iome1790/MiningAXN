@@ -529,26 +529,20 @@ function App() {
     const tg = window.Telegram?.WebApp;
     if (tg) {
       tg.ready();
-      tg.expand();
 
       const setTgCssVars = () => {
-        const contentTop = (tg as any).contentSafeAreaInset?.top ?? 0;
         const safeTop = (tg as any).safeAreaInset?.top ?? 0;
-        const overlayTop = Math.max(contentTop, safeTop);
         const r = document.documentElement;
-        r.style.setProperty('--tg-overlay-top', `${overlayTop}px`);
-        r.style.setProperty('--tg-content-safe-area-inset-top', `${contentTop}px`);
+        r.style.setProperty('--tg-overlay-top', `${safeTop}px`);
+        r.style.setProperty('--tg-content-safe-area-inset-top', `${safeTop}px`);
         r.style.setProperty('--tg-safe-area-inset-top', `${safeTop}px`);
-        const contentBottom = (tg as any).contentSafeAreaInset?.bottom ?? 0;
         const safeBottom = (tg as any).safeAreaInset?.bottom ?? 0;
-        r.style.setProperty('--tg-content-safe-area-inset-bottom', `${Math.max(contentBottom, safeBottom)}px`);
+        r.style.setProperty('--tg-content-safe-area-inset-bottom', `${safeBottom}px`);
         r.style.setProperty('--tg-safe-area-inset-bottom', `${safeBottom}px`);
       };
       setTgCssVars();
       (tg as any).onEvent?.('safeAreaChanged', setTgCssVars);
-      (tg as any).onEvent?.('contentSafeAreaChanged', setTgCssVars);
       (tg as any).onEvent?.('viewportChanged', setTgCssVars);
-      (tg as any).onEvent?.('fullscreenChanged', setTgCssVars);
       
       if (tg.initDataUnsafe?.user) {
         localStorage.setItem("tg_user", JSON.stringify(tg.initDataUnsafe.user));
