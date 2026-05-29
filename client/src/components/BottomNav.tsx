@@ -1,4 +1,6 @@
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 const ACTIVE = "#ffffff";
 const DIM = "rgba(255,255,255,0.38)";
@@ -7,18 +9,14 @@ const HomeIcon = ({ active, c }: { active: boolean; c: string }) => (
   <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
     {active ? (
       <>
-        {/* Hexagon filled */}
         <path d="M12 2L21.5 7.5V16.5L12 22L2.5 16.5V7.5Z" fill={c} opacity="0.15"/>
         <path d="M12 2L21.5 7.5V16.5L12 22L2.5 16.5V7.5Z" stroke={c} strokeWidth="1.8" strokeLinejoin="round"/>
-        {/* Inner dot + ring */}
         <circle cx="12" cy="12" r="2.5" fill={c}/>
         <circle cx="12" cy="12" r="4.5" stroke={c} strokeWidth="1.2" opacity="0.4"/>
       </>
     ) : (
       <>
-        {/* Hexagon outline */}
         <path d="M12 2L21.5 7.5V16.5L12 22L2.5 16.5V7.5Z" stroke={c} strokeWidth="1.8" strokeLinejoin="round"/>
-        {/* Center dot */}
         <circle cx="12" cy="12" r="2" fill={c} opacity="0.6"/>
       </>
     )}
@@ -63,13 +61,40 @@ const FriendsIcon = ({ active, c }: { active: boolean; c: string }) => (
 );
 
 const TABS = [
-  { id: "game",   label: "Home",    path: "/game",   },
   { id: "earn",   label: "Tasks",   path: "/earn",   },
+  { id: "game",   label: "Home",    path: "/game",   },
   { id: "friend", label: "Friends", path: "/friend", },
 ] as const;
 
 export default function BottomNav() {
   const [location, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const [badgeCount, setBadgeCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchBadge() {
+      try {
+        // First check cached user data for instant render
+        const cachedUser = queryClient.getQueryData<any>(['/api/auth/user']);
+        const axnClaimed = cachedUser?.axnNameRewardClaimed ?? true;
+        const quickCount = axnClaimed ? 0 : 1;
+        if (quickCount > 0) setBadgeCount(quickCount);
+
+        // Then fetch the full count from server
+        const res = await fetch('/api/tasks/badge-count', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.count === 'number') setBadgeCount(data.count);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    fetchBadge();
+    const interval = setInterval(fetchBadge, 60000);
+    return () => clearInterval(interval);
+  }, [queryClient]);
 
   const isOn = (tab: typeof TABS[number]) =>
     location === tab.path || (tab.id === "game" && (location === "/" || location.startsWith("/game")));
@@ -85,6 +110,7 @@ export default function BottomNav() {
       {TABS.map((tab) => {
         const on = isOn(tab);
         const c = on ? ACTIVE : DIM;
+        const showBadge = tab.id === "earn" && badgeCount > 0 && !on;
 
         return (
           <button
@@ -108,11 +134,30 @@ export default function BottomNav() {
 
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "center",
-              width: 40, height: 30,
+              width: 40, height: 30, position: "relative",
             }}>
               {tab.id === "game"   && <HomeIcon    active={on} c={c} />}
               {tab.id === "earn"   && <TasksIcon   active={on} c={c} />}
               {tab.id === "friend" && <FriendsIcon active={on} c={c} />}
+
+              {showBadge && (
+                <div style={{
+                  position: "absolute", top: -2, right: 2,
+                  minWidth: 16, height: 16,
+                  background: "#ef4444",
+                  borderRadius: 8,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  padding: "0 4px",
+                  border: "1.5px solid #0a0a0a",
+                }}>
+                  <span style={{
+                    fontSize: 9, fontWeight: 800, color: "#fff",
+                    lineHeight: 1, letterSpacing: "-0.3px",
+                  }}>
+                    {badgeCount > 99 ? "99+" : badgeCount}
+                  </span>
+                </div>
+              )}
             </div>
 
             <span style={{

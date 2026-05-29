@@ -41,6 +41,14 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
       null;
     const initials = firstName.slice(0, 2).toUpperCase();
 
+    // Real Telegram UID — prefer from Telegram WebApp directly, fallback to DB field
+    const tgUid: string | null =
+      (typeof window !== "undefined" &&
+        (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id?.toString()) ||
+      user?.telegramId ||
+      user?.telegram_id ||
+      null;
+
     const withdrawals: any[] = withdrawalsData?.withdrawals ?? [];
     const pendingCount = withdrawals.filter(w => w.status === 'pending').length;
 
@@ -61,27 +69,13 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
       if (!tg) return;
 
       const measure = () => {
-        const ct: number = tg.contentSafeAreaInset?.top ?? 0;
         const st: number = tg.safeAreaInset?.top ?? 0;
-        const isFs: boolean = tg.isFullscreen ?? false;
-
-        let top: number;
-        if (ct > st + 10) {
-          top = ct;
-        } else if (isFs) {
-          top = st + 52;
-        } else {
-          top = Math.max(ct, st);
-        }
-
-        setOverlayTop(top);
-        document.documentElement.style.setProperty('--tg-overlay-top', `${top}px`);
+        setOverlayTop(st);
+        document.documentElement.style.setProperty('--tg-overlay-top', `${st}px`);
       };
 
       measure();
       tg.onEvent?.('safeAreaChanged', measure);
-      tg.onEvent?.('contentSafeAreaChanged', measure);
-      tg.onEvent?.('fullscreenChanged', measure);
       tg.onEvent?.('viewportChanged', measure);
 
       const interval = setInterval(measure, 150);
@@ -119,43 +113,59 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
           gap: 10,
         }}>
 
-          {/* Left — Profile photo */}
-          <button
-            onClick={onMenuOpen}
-            style={{
-              width: 36, height: 36, borderRadius: "50%",
-              overflow: "hidden", display: "flex",
-              alignItems: "center", justifyContent: "center",
-              flexShrink: 0,
-              background: "rgba(255,255,255,0.08)",
-              border: "1.5px solid rgba(255,255,255,0.12)",
-            }}
-            className="active:scale-90 transition-transform"
-          >
-            {profileImageUrl ? (
-              <img
-                src={profileImageUrl}
-                alt={firstName}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = "none";
-                  const parent = target.parentElement;
-                  if (parent) {
-                    const span = document.createElement("span");
-                    span.style.cssText = "color:#fff;font-size:13px;font-weight:900;";
-                    span.textContent = initials;
-                    parent.appendChild(span);
-                  }
-                }}
-              />
-            ) : (
-              <span style={{ color: "#fff", fontSize: 13, fontWeight: 900 }}>{initials}</span>
-            )}
-          </button>
+          {/* Left — Profile photo + name + UID */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+            <button
+              onClick={onMenuOpen}
+              style={{
+                width: 36, height: 36, borderRadius: "50%",
+                overflow: "hidden", display: "flex",
+                alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+                background: "rgba(255,255,255,0.08)",
+                border: "1.5px solid rgba(255,255,255,0.12)",
+              }}
+              className="active:scale-90 transition-transform"
+            >
+              {profileImageUrl ? (
+                <img
+                  src={profileImageUrl}
+                  alt={firstName}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    const parent = target.parentElement;
+                    if (parent) {
+                      const span = document.createElement("span");
+                      span.style.cssText = "color:#fff;font-size:13px;font-weight:900;";
+                      span.textContent = initials;
+                      parent.appendChild(span);
+                    }
+                  }}
+                />
+              ) : (
+                <span style={{ color: "#fff", fontSize: 13, fontWeight: 900 }}>{initials}</span>
+              )}
+            </button>
 
-          {/* Center — spacer */}
-          <div style={{ flex: 1 }} />
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+              <span style={{
+                color: '#ffffff', fontSize: 14, fontWeight: 700, lineHeight: 1.2,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {firstName}
+              </span>
+              {tgUid && (
+                <span style={{
+                  color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: 500,
+                  marginTop: 1, fontFamily: 'monospace', letterSpacing: '0.02em',
+                }}>
+                  ID: {tgUid}
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Right — Notification bell (clean, no box) */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
