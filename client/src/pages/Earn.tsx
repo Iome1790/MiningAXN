@@ -6,6 +6,89 @@ import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 import { showRewardedInterstitial } from "@/lib/showAd";
 
+type AxnNameState = 'idle' | 'checking' | 'done' | 'failed';
+
+function AxnNameTask({ claimed }: { claimed: boolean }) {
+  const [state, setState] = useState<AxnNameState>(claimed ? 'done' : 'idle');
+  const queryClient = useQueryClient();
+
+  const verify = async () => {
+    if (state !== 'idle') return;
+    setState('checking');
+    try {
+      const res = await apiRequest('POST', '/api/tasks/axn-name/verify', {});
+      const data = await res.json();
+      if (data.success) {
+        setState('done');
+        showNotification(data.message || '+30 AXN earned!', 'success');
+        queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      } else if (data.hasAxn === false) {
+        setState('idle');
+        showNotification(data.message || '$AXN not found in your name', 'error');
+      } else {
+        setState('failed');
+        showNotification(data.message || 'Verification failed', 'error');
+      }
+    } catch (e: any) {
+      setState('idle');
+      let msg = 'Verification failed';
+      try { const p = JSON.parse(e.message); if (p.message) msg = p.message; } catch {}
+      showNotification(msg, 'error');
+    }
+  };
+
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.05)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: 14, padding: '14px 16px',
+      display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8,
+    }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+        background: 'rgba(37,99,235,0.15)', border: '1px solid rgba(37,99,235,0.25)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{ fontSize: 18 }}>✏️</span>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginBottom: 3 }}>
+          <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>Add $AXN to your name</span>
+          <span style={{
+            background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)',
+            borderRadius: 6, color: BLUE, fontSize: 10, fontWeight: 800, padding: '2px 8px',
+          }}>30 AXN</span>
+        </div>
+        <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: 11, margin: 0 }}>
+          Add <span style={{ color: BLUE, fontWeight: 700 }}>$AXN</span> anywhere in your Telegram first or last name
+        </p>
+      </div>
+      <div style={{ flexShrink: 0 }}>
+        {state === 'done' ? (
+          <span style={{ color: '#4ade80', fontSize: 12, fontWeight: 700 }}>✓ Done</span>
+        ) : (
+          <button
+            onClick={verify}
+            disabled={state === 'checking'}
+            style={{
+              background: state === 'checking'
+                ? 'rgba(255,255,255,0.04)'
+                : 'linear-gradient(135deg, #1d4ed8, #3b82f6)',
+              color: state === 'checking' ? 'rgba(255,255,255,0.38)' : '#fff',
+              border: 'none', fontSize: 12, fontWeight: 800,
+              padding: '9px 16px', borderRadius: 10, cursor: state === 'checking' ? 'default' : 'pointer',
+              boxShadow: state === 'checking' ? 'none' : '0 2px 12px rgba(37,99,235,0.4)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {state === 'checking' ? 'Checking…' : 'Verify'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const BLUE = '#3b82f6';
 const BLUE_D = '#2563eb';
 const CARD = 'rgba(255,255,255,0.07)';
@@ -396,6 +479,9 @@ export default function Earn() {
           {/* ACTIVE TAB */}
           {tab === 'tasks' && (
             <>
+              {sectionLabel('Special Tasks')}
+              <AxnNameTask claimed={!!user?.axnNameRewardClaimed} />
+
               {sectionLabel('Ad Rewards')}
               {AD_TASKS.map(task => (
                 <AdTaskRow key={task.id} task={task} cooldownMs={getCooldownMs(task.id)} />

@@ -197,9 +197,20 @@ export default function Games() {
 
           {/* USD Value — primary big text */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 44, fontWeight: 900, color: '#fff', letterSpacing: '-2px', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-              {balanceHidden ? '$••••' : `$${axnUsdValue.toFixed(3)}`}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1 }}>
+              <span style={{
+                fontSize: 26, fontWeight: 600, color: 'rgba(255,255,255,0.45)',
+                fontFamily: "'Space Grotesk', 'Outfit', sans-serif",
+                letterSpacing: '0px', userSelect: 'none',
+              }}>$</span>
+              <span style={{
+                fontSize: 48, fontWeight: 700, color: '#fff',
+                fontFamily: "'Oxanium', 'Space Grotesk', sans-serif",
+                letterSpacing: '-1px', fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+              }}>
+                {balanceHidden ? '••••' : axnUsdValue.toFixed(3)}
+              </span>
+            </div>
             <button onClick={() => setBalanceHidden(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, marginTop: 4 }}>
               {balanceHidden ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
