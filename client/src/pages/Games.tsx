@@ -29,6 +29,7 @@ export default function Games() {
   const [dailyChecked, setDailyChecked] = useState(() => localStorage.getItem('daily_check_date') === getTodayKey());
   const [dailyAdLoading, setDailyAdLoading] = useState(false);
   const [mysteryOpened, setMysteryOpened] = useState(() => localStorage.getItem('mystery_box_date') === getTodayKey());
+
   const [mysteryPhase, setMysteryPhase] = useState<MysteryPhase>('idle');
   const [mysteryReward, setMysteryReward] = useState(0);
   const [isSharing, setIsSharing] = useState(false);
@@ -59,21 +60,53 @@ export default function Games() {
   const botUsername = botInfo?.username || 'bot';
   const referralLink = user?.referralCode ? `https://t.me/${botUsername}?start=${user.referralCode}` : '';
 
+  // Sync claim states from server data (overrides stale localStorage)
+  useEffect(() => {
+    if (!user) return;
+    const todayKey = getTodayKey();
+    if (user.dailyCheckinClaimed && user.dailyTasksDate) {
+      const serverDate = new Date(user.dailyTasksDate).toISOString().slice(0, 10);
+      if (serverDate === todayKey) {
+        setDailyChecked(true);
+        localStorage.setItem('daily_check_date', todayKey);
+      } else {
+        setDailyChecked(false);
+        localStorage.removeItem('daily_check_date');
+      }
+    } else if (!user.dailyCheckinClaimed) {
+      setDailyChecked(false);
+      localStorage.removeItem('daily_check_date');
+    }
+    if (user.mysteryBoxDate) {
+      const serverDate = new Date(user.mysteryBoxDate).toISOString().slice(0, 10);
+      if (serverDate === todayKey) {
+        setMysteryOpened(true);
+        localStorage.setItem('mystery_box_date', todayKey);
+      } else {
+        setMysteryOpened(false);
+        localStorage.removeItem('mystery_box_date');
+      }
+    } else {
+      setMysteryOpened(false);
+      localStorage.removeItem('mystery_box_date');
+    }
+  }, [user]);
+
   const dailyCheckMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest('POST', '/api/daily-checkin', {});
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      return data;
     },
     onSuccess: (data) => {
       setDailyChecked(true);
       localStorage.setItem('daily_check_date', getTodayKey());
-      showNotification(`Daily check-in done! +${data.reward ?? 5} AXN`, 'success');
+      showNotification(`Daily check-in done! +${data.reward ?? 5} AXN added to your wallet`, 'success');
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
     },
-    onError: () => {
-      setDailyChecked(true);
-      localStorage.setItem('daily_check_date', getTodayKey());
-      showNotification('Daily check-in done! Come back tomorrow.', 'success');
+    onError: (err: any) => {
+      showNotification(err?.message || 'Daily check-in failed. Try again.', 'error');
     },
   });
 
@@ -87,8 +120,7 @@ export default function Games() {
 
   const handleMysteryOpen = () => {
     if (mysteryOpened || mysteryPhase !== 'idle') return;
-    const reward = Math.floor(Math.random() * 100) + 1;
-    setMysteryReward(reward);
+    setMysteryReward(Math.floor(Math.random() * 100) + 1);
     setMysteryPhase('opening');
     if (mysteryTimerRef.current) clearTimeout(mysteryTimerRef.current);
     mysteryTimerRef.current = setTimeout(() => setMysteryPhase('revealed'), 2200);
@@ -98,13 +130,21 @@ export default function Games() {
     if (mysteryPhase !== 'revealed') return;
     setMysteryPhase('claiming');
     try { await showRewardedInterstitial(); } catch {}
-    try { await apiRequest('POST', '/api/mystery-box', {}); } catch {}
-    setMysteryOpened(true);
-    localStorage.setItem('mystery_box_date', getTodayKey());
-    showNotification(`Mystery Box! You won ${mysteryReward} AXN!`, 'success');
-    queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-    setMysteryPhase('done');
-    mysteryTimerRef.current = setTimeout(() => setMysteryPhase('idle'), 1800);
+    try {
+      const res = await apiRequest('POST', '/api/mystery-box', {});
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      setMysteryOpened(true);
+      setMysteryReward(data.reward ?? 0);
+      localStorage.setItem('mystery_box_date', getTodayKey());
+      showNotification(`Mystery Box! You won ${data.reward} AXN added to your wallet!`, 'success');
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      setMysteryPhase('done');
+      mysteryTimerRef.current = setTimeout(() => setMysteryPhase('idle'), 1800);
+    } catch (err: any) {
+      setMysteryPhase('idle');
+      showNotification(err?.message || 'Failed to open mystery box. Try again.', 'error');
+    }
   };
 
   const copyLink = () => {
@@ -158,7 +198,7 @@ export default function Games() {
           {/* USD Value — primary big text */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 44, fontWeight: 900, color: '#fff', letterSpacing: '-2px', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-              {balanceHidden ? '$••••' : `$${axnUsdValue.toFixed(2)}`}
+              {balanceHidden ? '$••••' : `$${axnUsdValue.toFixed(3)}`}
             </span>
             <button onClick={() => setBalanceHidden(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, marginTop: 4 }}>
               {balanceHidden ? (

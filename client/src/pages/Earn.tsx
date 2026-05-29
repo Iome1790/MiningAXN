@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import Header from "@/components/Header";
 import MenuPopup from "@/components/MenuPopup";
 import { showNotification } from "@/components/AppNotification";
@@ -237,7 +236,6 @@ type Tab = 'tasks' | 'mission' | 'partner';
 
 export default function Earn() {
   const [tab, setTab] = useState<Tab>('tasks');
-  const [taskDone, setTaskDone] = useState(false);
   const [dailyClaimed, setDailyClaimed] = useState(false);
   const [claimingMilestone, setClaimingMilestone] = useState<number | null>(null);
 
@@ -312,8 +310,6 @@ export default function Earn() {
     },
   });
 
-  const [, setLocation] = useLocation();
-  const [inviteOpen, setInviteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const TABS: { id: Tab; label: string }[] = [
@@ -327,7 +323,6 @@ export default function Earn() {
 
       <Header
         onMenuOpen={() => setMenuOpen(true)}
-        onInviteOpen={() => setInviteOpen(true)}
       />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingBottom: 86, paddingTop: 'calc(var(--header-height, 62px) + 12px)' }}>
@@ -406,51 +401,6 @@ export default function Earn() {
                 <AdTaskRow key={task.id} task={task} cooldownMs={getCooldownMs(task.id)} />
               ))}
 
-              <div style={{ marginTop: 14 }}>
-                {sectionLabel('Official Task')}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  background: CARD, borderRadius: 14, padding: '14px 16px',
-                }}>
-                  {taskDone
-                    ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round">
-                        <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                      </svg>
-                  }
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <span style={{ color: taskDone ? TEXT_DIM : TEXT, fontSize: 14, fontWeight: 700 }}>Visit Website</span>
-                      {badge('10 AXN')}
-                    </div>
-                    <span style={{ color: TEXT_DIM, fontSize: 12 }}>Visit official Axionet website</span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      window.open('https://axionet.io', '_blank');
-                      setTimeout(async () => {
-                        try {
-                          const res = await apiRequest('POST', '/api/ads/extra-watch', {});
-                          const data = await res.json();
-                          showNotification(`+${data.rewardAXN ?? 10} AXN earned!`, 'success');
-                          queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-                        } catch {}
-                        setTaskDone(true);
-                      }, 2000);
-                    }}
-                    disabled={taskDone}
-                    style={{
-                      background: taskDone ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-                      color: taskDone ? '#4ade80' : '#fff',
-                      border: taskDone ? '1px solid rgba(255,255,255,0.08)' : 'none',
-                      fontSize: 12, fontWeight: 800, padding: '9px 16px',
-                      cursor: taskDone ? 'default' : 'pointer', borderRadius: 10, flexShrink: 0,
-                      boxShadow: taskDone ? 'none' : '0 2px 12px rgba(37,99,235,0.4)',
-                    }}
-                  >{taskDone ? 'Done' : 'Visit'}</button>
-                </div>
-              </div>
             </>
           )}
 
