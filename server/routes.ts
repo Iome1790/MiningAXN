@@ -2162,6 +2162,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Leaderboard endpoints
+  // Top 10 referral leaderboard — public, no auth required
+  app.get('/api/leaderboard/referrals', async (req: any, res) => {
+    try {
+      const { pool } = await import('./db');
+      const userId = req.session?.user?.user?.id || req.user?.user?.id;
+
+      // Top 10
+      const result = await pool.query(`
+        SELECT
+          username,
+          first_name,
+          friends_invited,
+          COALESCE(friends_invited, 0) * 150 AS axn_earned
+        FROM users
+        WHERE banned = FALSE
+          AND COALESCE(friends_invited, 0) > 0
+        ORDER BY friends_invited DESC
+        LIMIT 10
+      `);
+      const rows = result.rows.map((r: any, i: number) => ({
+        rank: i + 1,
+        username: r.username || null,
+        firstName: r.first_name || 'Anonymous',
+        referrals: Number(r.friends_invited) || 0,
+        axnEarned: Number(r.axn_earned) || 0,
+      }));
+
+      // Current user's rank
+      let myRank = null;
+      if (userId) {
+        const rankResult = await pool.query(`
+          SELECT
+            sub.rank,
+            sub.username,
+            sub.first_name,
+            sub.friends_invited,
+            COALESCE(sub.friends_invited, 0) * 150 AS axn_earned
+          FROM (
+            SELECT
+              id,
+              username,
+              first_name,
+              friends_invited,
+              RANK() OVER (ORDER BY COALESCE(friends_invited, 0) DESC) AS rank
+            FROM users
+            WHERE banned = FALSE
+          ) sub
+          WHERE sub.id = $1
+        `, [userId]);
+        if (rankResult.rows.length > 0) {
+          const r = rankResult.rows[0];
+          myRank = {
+            rank: Number(r.rank),
+            username: r.username || null,
+            firstName: r.first_name || 'Anonymous',
+            referrals: Number(r.friends_invited) || 0,
+            axnEarned: Number(r.axn_earned) || 0,
+          };
+        }
+      }
+
+      return res.json({ leaderboard: rows, myRank });
+    } catch (error) {
+      console.error('Referral leaderboard error:', error);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   app.get('/api/leaderboard/top', async (req: any, res) => {
     try {
       const topUser = await (storage as any).getTopUserByEarnings();
@@ -8810,6 +8878,107 @@ ${walletAddress}
       });
     } catch (err) {
       res.status(500).json({ error: 'Failed to get migration status' });
+    }
+  });
+
+  // AXN Name Task — verify $AXN in Telegram name and award 30 AXN (one-time)
+  // Badge count — how many tasks are available right now for the current user
+  app.get('/api/tasks/badge-count', async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.user?.id || req.user?.user?.id;
+      if (!userId) return res.json({ count: 0 });
+
+      // 1. AXN name task (one-time)
+      const [userData] = await db
+        .select({ axnNameRewardClaimed: users.axnNameRewardClaimed })
+        .from(users)
+        .where(eq(users.id, userId));
+      const axnTask = userData?.axnNameRewardClaimed ? 0 : 1;
+
+      // 2. Ad slot tasks (5 slots, daily cooldown resets at UTC midnight)
+      let adTasks = 5;
+      try {
+        // Ensure table exists first
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS ad_slot_cooldowns (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR NOT NULL,
+            slot INTEGER NOT NULL,
+            last_watched_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            UNIQUE(user_id, slot)
+          )
+        `);
+        const todayUTC = new Date(); todayUTC.setUTCHours(0, 0, 0, 0);
+        const slotRows = await db.execute(sql`
+          SELECT COUNT(*)::int AS watched
+          FROM ad_slot_cooldowns
+          WHERE user_id = ${userId}
+            AND last_watched_at >= ${todayUTC}
+        `);
+        const watchedToday = Number((slotRows.rows[0] as any)?.watched ?? 0);
+        adTasks = Math.max(0, 5 - watchedToday);
+      } catch {
+        adTasks = 5;
+      }
+
+      return res.json({ count: axnTask + adTasks });
+    } catch {
+      return res.json({ count: 0 });
+    }
+  });
+
+  app.post('/api/tasks/axn-name/verify', authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      const telegramUser = req.user?.telegramUser;
+      if (!user || !telegramUser) return res.status(401).json({ success: false, message: 'Not authenticated' });
+
+      const { pool } = await import('./db');
+
+      // Check if already claimed
+      const checkRes = await pool.query(`SELECT axn_name_reward_claimed FROM users WHERE id = $1`, [user.id]);
+      if (checkRes.rows[0]?.axn_name_reward_claimed) {
+        return res.status(400).json({ success: false, message: 'Reward already claimed' });
+      }
+
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      if (!botToken) {
+        return res.status(500).json({ success: false, message: 'Telegram bot not configured' });
+      }
+
+      // Fetch real-time user info from Telegram
+      const tgId = telegramUser.id;
+      const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/getChat?chat_id=${tgId}`);
+      const tgData = await tgRes.json() as any;
+
+      if (!tgData.ok) {
+        return res.status(400).json({ success: false, message: 'Could not fetch your Telegram profile. Please start the bot first.' });
+      }
+
+      const tgFirstName: string = tgData.result?.first_name || '';
+      const tgLastName: string = tgData.result?.last_name || '';
+      const fullName = `${tgFirstName} ${tgLastName}`;
+
+      const hasAxn = fullName.toLowerCase().includes('$axn');
+      if (!hasAxn) {
+        return res.json({
+          success: false,
+          hasAxn: false,
+          message: `$AXN not found in your name. Current name: "${fullName.trim()}". Add $AXN and try again.`,
+        });
+      }
+
+      // Award 30 AXN
+      const reward = 30;
+      await pool.query(
+        `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1, axn_name_reward_claimed = TRUE, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $2`,
+        [reward, user.id]
+      );
+
+      return res.json({ success: true, hasAxn: true, axnEarned: reward, message: `+${reward} AXN earned! $AXN found in your name.` });
+    } catch (error) {
+      console.error('AXN name task error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   });
 

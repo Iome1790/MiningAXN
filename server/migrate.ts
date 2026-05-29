@@ -743,6 +743,14 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_promo_usage_code_user ON promo_code_usage(code, user_id)`);
     console.log('✅ [MIGRATION] promo_codes and promo_code_usage tables ensured');
 
+    // AXN Name Task column
+    try {
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS axn_name_reward_claimed BOOLEAN DEFAULT FALSE`);
+      console.log('✅ [MIGRATION] axn_name_reward_claimed column ensured');
+    } catch (e) {
+      console.log('⚠️ [MIGRATION] axn_name_reward_claimed column note:', e);
+    }
+
     console.log('✅ [MIGRATION] All tables and indexes created successfully');
     
   } catch (error) {
