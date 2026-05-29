@@ -66,37 +66,17 @@
     <!-- Set Telegram safe-area CSS variables immediately before React renders -->
     <script>
       (function() {
-        var _inFullscreen = false;
-
         function applyTgSafeArea() {
           var tg = window.Telegram && window.Telegram.WebApp;
-          if (!tg) return 0;
-          var ct = (tg.contentSafeAreaInset && tg.contentSafeAreaInset.top) || 0;
+          if (!tg) return;
           var st = (tg.safeAreaInset && tg.safeAreaInset.top) || 0;
-          var isFs = tg.isFullscreen || _inFullscreen;
-
-          var top;
-          if (ct > st + 10) {
-            // contentSafeAreaInset properly includes Telegram bar (Bot API 8.0+)
-            top = ct;
-          } else if (isFs) {
-            // Fullscreen but contentSafeAreaInset not available — estimate:
-            // safeAreaInset.top = device status bar, Telegram bar ≈ 52px on top
-            top = st + 52;
-          } else {
-            // Non-fullscreen: viewport already starts below Telegram bar
-            top = Math.max(ct, st);
-          }
-
-          var cb = (tg.contentSafeAreaInset && tg.contentSafeAreaInset.bottom) || 0;
           var sb = (tg.safeAreaInset && tg.safeAreaInset.bottom) || 0;
           var r = document.documentElement;
-          r.style.setProperty('--tg-overlay-top', top + 'px');
-          r.style.setProperty('--tg-content-safe-area-inset-top', ct + 'px');
+          r.style.setProperty('--tg-overlay-top', st + 'px');
+          r.style.setProperty('--tg-content-safe-area-inset-top', st + 'px');
           r.style.setProperty('--tg-safe-area-inset-top', st + 'px');
-          r.style.setProperty('--tg-content-safe-area-inset-bottom', Math.max(cb, sb) + 'px');
+          r.style.setProperty('--tg-content-safe-area-inset-bottom', sb + 'px');
           r.style.setProperty('--tg-safe-area-inset-bottom', sb + 'px');
-          return top;
         }
 
         applyTgSafeArea();
@@ -105,29 +85,14 @@
           try {
             var _tgw = window.Telegram.WebApp;
             _tgw.ready();
-            _tgw.expand();
             try { _tgw.setHeaderColor('#0a0a0a'); } catch(e) {}
             try { _tgw.setBackgroundColor('#000000'); } catch(e) {}
-            if (typeof _tgw.requestFullscreen === 'function') {
-              _inFullscreen = true;
-              _tgw.requestFullscreen();
-            }
           } catch(e) {}
           try { window.Telegram.WebApp.onEvent('safeAreaChanged', applyTgSafeArea); } catch(e) {}
-          try { window.Telegram.WebApp.onEvent('contentSafeAreaChanged', applyTgSafeArea); } catch(e) {}
           try { window.Telegram.WebApp.onEvent('viewportChanged', applyTgSafeArea); } catch(e) {}
-          try {
-            window.Telegram.WebApp.onEvent('fullscreenChanged', function() {
-              _inFullscreen = !!(window.Telegram.WebApp.isFullscreen);
-              setTimeout(applyTgSafeArea, 50);
-              setTimeout(applyTgSafeArea, 200);
-              setTimeout(applyTgSafeArea, 500);
-            });
-          } catch(e) {}
         }
 
         document.addEventListener('DOMContentLoaded', applyTgSafeArea);
-        // Poll until stable non-zero value found
         var _pollCount = 0;
         var _pollTimer = setInterval(function() {
           applyTgSafeArea();
