@@ -108,14 +108,14 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
         className="fixed top-0 left-0 right-0 z-40"
         style={{
           background: "#0a0a0a",
-          paddingTop: `${overlayTop + 28}px`,
+          paddingTop: `${overlayTop + 6}px`,
         }}
       >
         <div style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "10px 16px 12px",
+          padding: "8px 16px 10px",
           gap: 10,
         }}>
 
@@ -154,13 +154,8 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
             )}
           </button>
 
-          {/* Center — AXIONET branding */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 19, fontWeight: 900, letterSpacing: '-0.5px', lineHeight: 1 }}>
-              <span style={{ color: '#3b82f6' }}>A</span>
-              <span style={{ color: '#fff' }}>XIONET</span>
-            </span>
-          </div>
+          {/* Center — spacer */}
+          <div style={{ flex: 1 }} />
 
           {/* Right — Notification bell (clean, no box) */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
