@@ -28,11 +28,13 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
 
     useImperativeHandle(ref, () => innerRef.current!);
 
-    const { data: user } = useQuery<any>({ queryKey: ["/api/auth/user"], retry: false });
+    const { data: user } = useQuery<any>({ queryKey: ["/api/auth/user"], retry: false, staleTime: 0 });
     const { data: withdrawalsData } = useQuery<any>({
       queryKey: ['/api/withdrawals'],
       staleTime: 30000,
     });
+
+    const cipherBalance = Math.floor(parseFloat(user?.balance || '0'));
 
     const firstName: string = user?.firstName || user?.username || "Miner";
     const profileImageUrl: string | null =
@@ -165,6 +167,14 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
                 </span>
               )}
             </div>
+          </div>
+
+          {/* Center — CIPHER balance */}
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}>
+            <span style={{ color: '#fff', fontSize: 15, fontWeight: 900, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+              {cipherBalance.toLocaleString()}
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.38)', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', lineHeight: 1 }}>CIPHER</span>
           </div>
 
           {/* Right — Notification bell (clean, no box) */}
