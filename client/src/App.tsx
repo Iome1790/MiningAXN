@@ -121,52 +121,18 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
         background: 'radial-gradient(circle, rgba(37,99,235,0.22) 0%, rgba(59,130,246,0.08) 50%, transparent 70%)',
         animation: 'axn-glow-pulse 2.4s ease-in-out infinite',
       }} />
-      {/* Outer spinning ring */}
-      <div style={{
-        position: 'absolute',
-        width: 172,
-        height: 172,
-        borderRadius: '50%',
-        border: '1.5px solid transparent',
-        borderTopColor: 'rgba(59,130,246,0.9)',
-        borderRightColor: 'rgba(37,99,235,0.3)',
-        animation: 'axn-ring-spin 1.5s linear infinite',
-      }} />
-      {/* Inner counter-spinning ring */}
-      <div style={{
-        position: 'absolute',
-        width: 152,
-        height: 152,
-        borderRadius: '50%',
-        border: '1px solid transparent',
-        borderBottomColor: 'rgba(96,165,250,0.7)',
-        borderLeftColor: 'rgba(59,130,246,0.25)',
-        animation: 'axn-ring-spin-rev 2.2s linear infinite',
-      }} />
-      {/* Static glowing ring */}
-      <div style={{
-        position: 'absolute',
-        width: 140,
-        height: 140,
-        borderRadius: '50%',
-        border: '1px solid rgba(37,99,235,0.2)',
-        boxShadow: '0 0 32px rgba(37,99,235,0.35), inset 0 0 20px rgba(37,99,235,0.08)',
-        animation: 'axn-ring-pulse 2.2s ease-in-out infinite',
-      }} />
-      {/* AXN Image */}
+      {/* AXN Image — full width, no clip, pure white */}
       <div style={{ animation: 'axn-coin-float 2.8s ease-in-out infinite', position: 'relative', zIndex: 2 }}>
-        <div style={{
-          width: 108, height: 108, borderRadius: '50%',
-          overflow: 'hidden', position: 'relative',
-          border: '2px solid rgba(37,99,235,0.45)',
-          boxShadow: '0 0 32px rgba(37,99,235,0.45), 0 0 60px rgba(59,130,246,0.15)',
-        }}>
-          <img
-            src="/axn-coin.jpg"
-            alt="AXN"
-            style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.18)', width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-        </div>
+        <img
+          src="/axionet-logo.png"
+          alt="Axionet"
+          style={{
+            width: 220,
+            height: 'auto',
+            display: 'block',
+            filter: 'brightness(0) invert(1) drop-shadow(0 0 18px rgba(59,130,246,0.7))',
+          }}
+        />
       </div>
       {/* Bouncing dots */}
       <div style={{ display: 'flex', gap: 8, marginTop: 36, position: 'relative', zIndex: 2 }}>
