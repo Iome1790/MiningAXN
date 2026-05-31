@@ -9,8 +9,7 @@ import { showRewardedInterstitial } from "@/lib/showAd";
 import WithdrawPopup from "@/components/WithdrawPopup";
 import { getTONPrice } from "@/lib/tonPriceService";
 
-// 1000 AXN = 0.01 TON (fixed), USD calculated via live TON price
-const AXN_PER_TON = 100000; // 1 TON = 100,000 AXN
+const AXN_PER_TON = 100000;
 
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -18,9 +17,9 @@ function getTodayKey() {
 
 type MysteryPhase = 'idle' | 'opening' | 'revealed' | 'claiming' | 'done';
 
-const FARM_RATE = 0.001; // AXN/s
-const FARM_DURATION = 4 * 3600; // 4h in seconds
-const FARM_MAX = parseFloat((FARM_DURATION * FARM_RATE).toFixed(4)); // 14.4 AXN
+const FARM_RATE = 0.001;
+const FARM_DURATION = 4 * 3600;
+const FARM_MAX = parseFloat((FARM_DURATION * FARM_RATE).toFixed(4));
 
 function fmtCountdown(secs: number): string {
   const h = Math.floor(secs / 3600);
@@ -46,10 +45,11 @@ export default function Games() {
   const [isSharing, setIsSharing] = useState(false);
   const mysteryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Farming state ──
+  // Farming state
   const [farmCountdown, setFarmCountdown] = useState(FARM_DURATION);
   const [farmAccum, setFarmAccum] = useState(0);
   const [showFarmInfo, setShowFarmInfo] = useState(false);
+  const [showAlertPopup, setShowAlertPopup] = useState(false);
   const farmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const queryClient = useQueryClient();
@@ -64,7 +64,6 @@ export default function Games() {
   const { data: botInfo } = useQuery<{ username: string }>({ queryKey: ['/api/bot-info'], staleTime: 3600000 });
 
   const axnBalance = Math.floor(parseFloat(user?.walletBalance || '0'));
-  // 1000 AXN = 0.01 TON → 1 AXN = 1/AXN_PER_TON TON → USD = AXN / AXN_PER_TON * tonPrice
   const axnUsdValue = (axnBalance / AXN_PER_TON) * tonPrice;
 
   const firstName: string = user?.firstName || user?.username || "User";
@@ -77,7 +76,6 @@ export default function Games() {
   const botUsername = botInfo?.username || 'bot';
   const referralLink = user?.referralCode ? `https://t.me/${botUsername}?start=${user.referralCode}` : '';
 
-  // Sync claim states from server data (overrides stale localStorage)
   useEffect(() => {
     if (!user) return;
     const todayKey = getTodayKey();
@@ -119,7 +117,7 @@ export default function Games() {
     onSuccess: (data) => {
       setDailyChecked(true);
       localStorage.setItem('daily_check_date', getTodayKey());
-      showNotification(`Daily check-in done! +${data.reward ?? 5} AXN added to your wallet`, 'success');
+      showNotification(`Daily check-in done! +${data.reward ?? 5} CIPHER added`, 'success');
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
     },
     onError: (err: any) => {
@@ -140,7 +138,6 @@ export default function Games() {
     setMysteryPhase('opening');
     if (mysteryTimerRef.current) clearTimeout(mysteryTimerRef.current);
 
-    // Claim from server during the opening animation — real reward, no mismatch
     let serverReward = 0;
     try { await showRewardedInterstitial(); } catch {}
     try {
@@ -157,7 +154,6 @@ export default function Games() {
       return;
     }
 
-    // Show reveal after animation delay, using the actual server reward
     mysteryTimerRef.current = setTimeout(() => {
       setMysteryPhase('revealed');
     }, 2200);
@@ -166,7 +162,7 @@ export default function Games() {
   const handleMysteryClaim = () => {
     if (mysteryPhase !== 'revealed') return;
     setMysteryOpened(true);
-    showNotification(`Mystery Box! You won ${mysteryReward} AXN!`, 'success');
+    showNotification(`Mystery Box! You won ${mysteryReward} CIPHER!`, 'success');
     setMysteryPhase('done');
     mysteryTimerRef.current = setTimeout(() => setMysteryPhase('idle'), 1800);
   };
@@ -190,21 +186,19 @@ export default function Games() {
     setIsSharing(false);
   };
 
-  // ── Farming query & mutations ──
+  // Farming query & mutations
   const { data: farmData, refetch: refetchFarm } = useQuery<any>({
     queryKey: ['/api/farming/state'],
     staleTime: 30000,
     refetchOnWindowFocus: false,
   });
 
-  // Sync server farming state to local countdown/accum
   useEffect(() => {
     if (!farmData) return;
     setFarmCountdown(farmData.remainingSeconds ?? FARM_DURATION);
     setFarmAccum(farmData.minedAxn ?? 0);
   }, [farmData]);
 
-  // Live countdown tick when farming is active
   useEffect(() => {
     if (farmIntervalRef.current) clearInterval(farmIntervalRef.current);
     const isActive = farmData?.isActive && (farmData?.remainingSeconds ?? 0) > 0;
@@ -269,7 +263,7 @@ export default function Games() {
 
       <Header onMenuOpen={() => setMenuOpen(true)} />
 
-      {/* ── Balance Section ── */}
+      {/* Balance Section */}
       <div style={{
         padding: 'calc(var(--header-height, 62px) + 32px) 16px 20px',
         textAlign: 'center',
@@ -278,7 +272,6 @@ export default function Games() {
             Wallet Balance
           </div>
 
-          {/* USD Value — primary big text */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1 }}>
               <span style={{
@@ -303,12 +296,11 @@ export default function Games() {
             </button>
           </div>
 
-          {/* AXN amount — subtitle text */}
           <div style={{ color: 'rgba(255,255,255,0.38)', fontSize: 15, fontWeight: 600, marginBottom: 28 }}>
             {balanceHidden ? '•••• AXN' : `${axnBalance.toLocaleString()} AXN`}
           </div>
 
-          {/* ── Action Buttons ── */}
+          {/* Action Buttons */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 18 }}>
 
             {/* Send */}
@@ -316,7 +308,7 @@ export default function Games() {
               <button onClick={() => setShowSendPopup(true)} style={{
                 width: 52, height: 52, borderRadius: '50%',
                 background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
-                border: '1px solid rgba(59,130,246,0.3)',
+                border: 'none',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
               }} className="active:scale-90 transition-transform">
@@ -328,22 +320,23 @@ export default function Games() {
               <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.48)' }}>Send</span>
             </div>
 
-            {/* Receive */}
+            {/* Swap */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
-              <button onClick={() => setShowReceivePopup(true)} style={{
+              <button onClick={() => showNotification('Swap feature coming soon.', 'info')} style={{
                 width: 52, height: 52, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                border: '1px solid rgba(59,130,246,0.35)',
+                background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
+                border: 'none',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 20px rgba(37,99,235,0.5)',
+                boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
               }} className="active:scale-90 transition-transform">
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="8 17 12 21 16 17"/>
-                  <line x1="12" y1="12" x2="12" y2="21"/>
-                  <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="17 1 21 5 17 9"/>
+                  <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                  <polyline points="7 23 3 19 7 15"/>
+                  <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
                 </svg>
               </button>
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.48)' }}>Receive</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.48)' }}>Swap</span>
             </div>
 
             {/* Staking */}
@@ -351,7 +344,7 @@ export default function Games() {
               <button onClick={() => setShowStakingPopup(true)} style={{
                 width: 52, height: 52, borderRadius: '50%',
                 background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
-                border: '1px solid rgba(59,130,246,0.3)',
+                border: 'none',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
               }} className="active:scale-90 transition-transform">
@@ -369,7 +362,7 @@ export default function Games() {
               <button onClick={() => setShowPromoPopup(true)} style={{
                 width: 52, height: 52, borderRadius: '50%',
                 background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
-                border: '1px solid rgba(59,130,246,0.3)',
+                border: 'none',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
               }} className="active:scale-90 transition-transform">
@@ -383,7 +376,7 @@ export default function Games() {
           </div>
       </div>
 
-      {/* ── Scrollable Content ── */}
+      {/* Scrollable Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px', paddingBottom: 90 }}>
 
         {/* DAILY REWARDS */}
@@ -397,9 +390,9 @@ export default function Games() {
           background: 'rgba(255,255,255,0.07)', borderRadius: 14,
           marginBottom: 20, overflow: 'hidden',
         }}>
-          {/* Daily Check-In — calendar icon */}
+          {/* Daily Check-In */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
               <line x1="16" y1="2" x2="16" y2="6"/>
               <line x1="8" y1="2" x2="8" y2="6"/>
@@ -408,7 +401,7 @@ export default function Games() {
             </svg>
             <div style={{ flex: 1 }}>
               <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>Daily Check-In</div>
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Earn 5 AXN</div>
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Earn 5 CIPHER</div>
             </div>
             <button
               onClick={handleDailyCheck}
@@ -416,7 +409,7 @@ export default function Games() {
               style={{
                 background: dailyChecked ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
                 color: dailyChecked ? 'rgba(255,255,255,0.3)' : '#fff',
-                border: dailyChecked ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                border: 'none',
                 borderRadius: 10, padding: '9px 16px', fontSize: 12, fontWeight: 800,
                 cursor: (dailyChecked || dailyAdLoading) ? 'not-allowed' : 'pointer',
                 flexShrink: 0, letterSpacing: '0.03em',
@@ -435,14 +428,14 @@ export default function Games() {
 
           {/* Mystery Box */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
               <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
               <line x1="12" y1="22.08" x2="12" y2="12"/>
             </svg>
             <div style={{ flex: 1 }}>
               <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>Mystery Box</div>
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Win upto 1–100 AXN</div>
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>Win 1–100 CIPHER</div>
             </div>
             <button
               onClick={handleMysteryOpen}
@@ -450,7 +443,7 @@ export default function Games() {
               style={{
                 background: mysteryOpened ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
                 color: mysteryOpened ? 'rgba(255,255,255,0.3)' : '#fff',
-                border: mysteryOpened ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                border: 'none',
                 borderRadius: 10, padding: '9px 16px', fontSize: 12, fontWeight: 800,
                 cursor: mysteryOpened ? 'not-allowed' : 'pointer', flexShrink: 0,
                 boxShadow: mysteryOpened ? 'none' : '0 2px 12px rgba(37,99,235,0.4)',
@@ -470,45 +463,77 @@ export default function Games() {
         </div>
 
         <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden', position: 'relative' }}>
-
-          {/* ? button — top-right circular, no border */}
-          <button
-            onClick={() => setShowFarmInfo(true)}
-            style={{
-              position: 'absolute', top: 12, right: 12, zIndex: 2,
-              width: 28, height: 28, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.1)',
-              border: 'none', color: 'rgba(255,255,255,0.65)',
-              fontSize: 13, fontWeight: 800, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              lineHeight: 1,
-            }}
-            className="active:scale-95 transition-transform"
-          >?</button>
-
           <div style={{ padding: '16px 16px 18px' }}>
 
-            {/* Top row: larger image + large reward display */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-              <img
-                src="/axn-coin.jpg"
-                alt="AXN"
-                style={{
-                  width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
-                  objectFit: 'cover', border: '2px solid rgba(255,255,255,0.15)',
-                  boxShadow: '0 0 18px rgba(37,99,235,0.25)',
-                }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: '#60a5fa', fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-                  {farmAccum.toFixed(3)}
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(96,165,250,0.7)', marginLeft: 5 }}>AXN</span>
-                </div>
+            {/* Top row: image + amount + speed up */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+              {/* Farming image */}
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
+                boxShadow: '0 0 18px rgba(37,99,235,0.25)',
+                overflow: 'hidden', background: '#000',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <img
+                  src="/axn-coin.jpg"
+                  alt="AXN"
+                  style={{
+                    width: '110%', height: '110%',
+                    objectFit: 'cover',
+                  }}
+                />
               </div>
+
+              {/* Amount — large and prominent */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {farmData?.isActive ? (
+                  <div style={{ color: '#ffffff', fontSize: 28, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1 }}>
+                    {farmAccum.toFixed(3)}
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginLeft: 6 }}>AXN</span>
+                  </div>
+                ) : (
+                  <div style={{ color: 'rgba(255,255,255,0.28)', fontSize: 13, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                    OFFLINE
+                  </div>
+                )}
+              </div>
+
+              {/* Speed Up button */}
+              <button
+                onClick={() => showNotification('Speed Up feature is coming soon.', 'info')}
+                style={{
+                  flexShrink: 0, padding: '10px 16px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: 'none',
+                  borderRadius: 12, cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 3,
+                  minWidth: 76,
+                }}
+                className="active:scale-95 transition-transform"
+              >
+                <span style={{ color: '#60a5fa', fontSize: 11, fontWeight: 800, lineHeight: 1 }}>0.001/s</span>
+                <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, fontWeight: 700, lineHeight: 1 }}>Speed Up</span>
+              </button>
             </div>
 
-            {/* Buttons row */}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+            {/* Bottom row: ? | Start/Timer/Claim | Alert */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+
+              {/* ? button — circular, no outline */}
+              <button
+                onClick={() => setShowFarmInfo(true)}
+                style={{
+                  flexShrink: 0,
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.08)',
+                  border: 'none', color: 'rgba(255,255,255,0.7)',
+                  fontSize: 16, fontWeight: 900, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  lineHeight: 1,
+                }}
+                className="active:scale-95 transition-transform"
+              >?</button>
 
               {/* Center dynamic button */}
               {(() => {
@@ -554,39 +579,39 @@ export default function Games() {
                 }
                 return (
                   <button
-                    onClick={() => farmStartMutation.mutate()}
-                    disabled={isPending}
+                    onClick={() => showNotification('Farming is temporarily unavailable.', 'info')}
                     style={{
                       flex: 1, padding: '13px 0',
-                      background: isPending ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                      background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
                       border: 'none', borderRadius: 12,
-                      color: isPending ? 'rgba(255,255,255,0.3)' : '#fff',
-                      fontSize: 14, fontWeight: 800, cursor: isPending ? 'default' : 'pointer',
-                      boxShadow: isPending ? 'none' : '0 4px 20px rgba(37,99,235,0.4)',
+                      color: '#fff',
+                      fontSize: 14, fontWeight: 800, cursor: 'pointer',
+                      boxShadow: '0 4px 20px rgba(37,99,235,0.4)',
                     }}
                     className="active:scale-95 transition-transform"
                   >
-                    {isPending ? 'Starting…' : 'START'}
+                    START
                   </button>
                 );
               })()}
 
-              {/* Speed Up button — speed value on top, label below */}
+              {/* Alert button */}
               <button
-                onClick={() => showNotification('Speed Up feature is coming soon.', 'info')}
+                onClick={() => setShowAlertPopup(true)}
                 style={{
-                  flexShrink: 0, padding: '8px 14px',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: 'none',
-                  borderRadius: 12, cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: 2,
-                  minWidth: 64,
+                  flexShrink: 0,
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.08)',
+                  border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
                 className="active:scale-95 transition-transform"
               >
-                <span style={{ color: '#60a5fa', fontSize: 11, fontWeight: 800 }}>0.001/s</span>
-                <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, fontWeight: 600 }}>Speed Up</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
               </button>
 
             </div>
@@ -600,22 +625,28 @@ export default function Games() {
             <div style={{
               position: 'relative', width: '100%', maxWidth: 340,
               background: '#111', borderRadius: 20, padding: '28px 24px',
-              border: '1px solid rgba(255,255,255,0.1)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                <img src="/axn-coin.jpg" alt="AXN" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
-                <span style={{ color: '#fff', fontSize: 17, fontWeight: 800 }}>Farming Info</span>
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%', overflow: 'hidden',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000',
+                }}>
+                  <img src="/axn-coin.jpg" alt="AXN" style={{ width: '110%', height: '110%', objectFit: 'cover' }} />
+                </div>
+                <span style={{ color: '#fff', fontSize: 17, fontWeight: 900 }}>What is Farming?</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+              <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, lineHeight: 1.6, marginBottom: 18 }}>
+                Farming allows users to earn AXN directly into their Wallet Balance.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
                 {[
-                  ['Farming Speed', '0.001 AXN/s'],
-                  ['Farming Duration', '4 Hours'],
-                  ['Max Reward', `${FARM_MAX.toFixed(3)} AXN per session`],
-                  ['How to Claim', 'Wait for countdown to end, then press CLAIM'],
-                ].map(([label, value]) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                    <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>{label}</span>
-                    <span style={{ color: '#60a5fa', fontSize: 13, fontWeight: 700, textAlign: 'right' }}>{value}</span>
+                  'Earn AXN every farming cycle.',
+                  'Complete farming cycles and claim rewards.',
+                  'AXN is the main token of Axionet.',
+                ].map((item) => (
+                  <div key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#3b82f6', marginTop: 6, flexShrink: 0 }} />
+                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 1.5 }}>{item}</span>
                   </div>
                 ))}
               </div>
@@ -626,7 +657,49 @@ export default function Games() {
                   background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
                   border: 'none', borderRadius: 12, color: '#fff',
                   fontSize: 14, fontWeight: 800, cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(37,99,235,0.35)',
                 }}
+                className="active:scale-95 transition-transform"
+              >Got it</button>
+            </div>
+          </div>
+        )}
+
+        {/* Alert "Coming Soon" Popup */}
+        {showAlertPopup && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setShowAlertPopup(false)} />
+            <div style={{
+              position: 'relative', width: '100%', maxWidth: 320,
+              background: '#111', borderRadius: 20, padding: '32px 24px',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%',
+                background: 'rgba(245,158,11,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div style={{ color: '#fff', fontSize: 18, fontWeight: 900, marginBottom: 8 }}>Coming Soon</div>
+              <div style={{ color: 'rgba(255,255,255,0.38)', fontSize: 13, marginBottom: 24 }}>
+                This feature is under development. Stay tuned for updates!
+              </div>
+              <button
+                onClick={() => setShowAlertPopup(false)}
+                style={{
+                  width: '100%', padding: '13px 0',
+                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                  border: 'none', borderRadius: 12, color: '#fff',
+                  fontSize: 14, fontWeight: 800, cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(37,99,235,0.35)',
+                }}
+                className="active:scale-95 transition-transform"
               >Got it</button>
             </div>
           </div>
@@ -634,7 +707,7 @@ export default function Games() {
 
       </div>
 
-      {/* ── Send Popup (2 options) ── */}
+      {/* Send Popup */}
       {showSendPopup && (
         <SendChoicePopup
           user={user}
@@ -644,12 +717,12 @@ export default function Games() {
         />
       )}
 
-      {/* ── Receive Popup ── */}
+      {/* Receive Popup */}
       {showReceivePopup && (
         <ReceivePopup user={user} onClose={() => setShowReceivePopup(false)} />
       )}
 
-      {/* ── Promo Popup ── */}
+      {/* Promo Popup */}
       {showPromoPopup && (
         <PromoPopup
           onClose={() => setShowPromoPopup(false)}
@@ -657,7 +730,7 @@ export default function Games() {
         />
       )}
 
-      {/* ── Withdraw Popup ── */}
+      {/* Withdraw Popup */}
       {showWithdrawPopup && (
         <WithdrawPopup
           onClose={() => setShowWithdrawPopup(false)}
@@ -665,7 +738,7 @@ export default function Games() {
         />
       )}
 
-      {/* ── Staking Popup ── */}
+      {/* Staking Popup */}
       {showStakingPopup && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 900, display: 'flex', alignItems: 'flex-end' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setShowStakingPopup(false)} />
@@ -715,7 +788,7 @@ export default function Games() {
         </div>
       )}
 
-      {/* ── Mystery Box Popup ── */}
+      {/* Mystery Box Popup */}
       {mysteryPhase !== 'idle' && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 950, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(8px)' }} />
@@ -745,7 +818,7 @@ export default function Games() {
               {(mysteryPhase === 'revealed' || mysteryPhase === 'claiming') && (
                 <div style={{ animation: 'rewardIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}>
                   <div style={{ fontSize: 52, fontWeight: 900, color: '#fff', lineHeight: 1, letterSpacing: '-2px' }}>{mysteryReward}</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#3b82f6', marginTop: 6 }}>AXN</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#3b82f6', marginTop: 6 }}>CIPHER</div>
                 </div>
               )}
               {mysteryPhase === 'done' && (
@@ -760,15 +833,15 @@ export default function Games() {
 
             <div style={{ color: '#fff', fontSize: 18, fontWeight: 900, marginBottom: 6 }}>
               {mysteryPhase === 'opening' ? 'Opening box...'
-                : mysteryPhase === 'revealed' ? `You won ${mysteryReward} AXN!`
+                : mysteryPhase === 'revealed' ? `You won ${mysteryReward} CIPHER!`
                 : mysteryPhase === 'claiming' ? 'Claiming...'
                 : 'Reward Claimed!'}
             </div>
             <div style={{ color: 'rgba(255,255,255,0.32)', fontSize: 13, marginBottom: 28 }}>
               {mysteryPhase === 'opening' ? 'Wait for your prize...'
-                : mysteryPhase === 'revealed' ? 'Watch a short ad to claim your reward'
+                : mysteryPhase === 'revealed' ? 'Tap below to claim your CIPHER'
                 : mysteryPhase === 'claiming' ? 'Please wait...'
-                : 'AXN added to your balance'}
+                : 'CIPHER added to your balance'}
             </div>
 
             {mysteryPhase === 'revealed' && (
@@ -779,7 +852,7 @@ export default function Games() {
                 fontSize: 14, fontWeight: 800, cursor: 'pointer',
                 boxShadow: '0 4px 20px rgba(37,99,235,0.4)',
               }} className="active:scale-95 transition-transform">
-                Claim {mysteryReward} AXN
+                Claim {mysteryReward} CIPHER
               </button>
             )}
             {(mysteryPhase === 'opening' || mysteryPhase === 'claiming') && (
@@ -855,7 +928,7 @@ function SendChoicePopup({ user, onClose, onWithdraw, onSuccess }: {
         boxShadow: '0 -8px 60px rgba(37,99,235,0.2), 0 0 0 1px rgba(255,255,255,0.03)',
         overflow: 'hidden',
       }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)', animation: 'popup-glow 2s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)' }} />
         <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 22px' }} />
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: mode ? 22 : 28 }}>
@@ -874,7 +947,6 @@ function SendChoicePopup({ user, onClose, onWithdraw, onSuccess }: {
           </button>
         </div>
 
-        {/* Choice screen */}
         {!mode && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <button onClick={() => setMode('user')} style={{
@@ -924,7 +996,6 @@ function SendChoicePopup({ user, onClose, onWithdraw, onSuccess }: {
           </div>
         )}
 
-        {/* Send to User form */}
         {mode === 'user' && (
           <>
             <div style={{ marginBottom: 14 }}>
@@ -934,20 +1005,24 @@ function SendChoicePopup({ user, onClose, onWithdraw, onSuccess }: {
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.32)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Amount (AXN)</div>
               <input value={amount} onChange={e => setAmount(e.target.value)} type="number" placeholder="0" style={inputStyle} />
-              {usdPreview && <div style={{ color: '#60a5fa', fontSize: 12, marginTop: 6, fontWeight: 600 }}>{usdPreview}</div>}
+              {usdPreview && <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 5 }}>{usdPreview}</div>}
             </div>
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.32)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Note (optional)</div>
               <input value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note..." style={inputStyle} />
             </div>
-            <button onClick={handleSend} disabled={loading} style={{
-              width: '100%', padding: '14px',
-              background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-              border: 'none', borderRadius: 50, color: '#fff',
-              fontSize: 15, fontWeight: 800,
-              cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
-              boxShadow: '0 4px 20px rgba(37,99,235,0.4)',
-            }} className="active:scale-95 transition-transform">
+            <button
+              onClick={handleSend}
+              disabled={loading}
+              style={{
+                width: '100%', padding: '14px',
+                background: loading ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                border: 'none', borderRadius: 14, color: loading ? 'rgba(255,255,255,0.3)' : '#fff',
+                fontSize: 15, fontWeight: 800, cursor: loading ? 'default' : 'pointer',
+                boxShadow: loading ? 'none' : '0 4px 20px rgba(37,99,235,0.4)',
+              }}
+              className="active:scale-95 transition-transform"
+            >
               {loading ? 'Sending...' : 'Send AXN'}
             </button>
           </>
@@ -957,133 +1032,14 @@ function SendChoicePopup({ user, onClose, onWithdraw, onSuccess }: {
   );
 }
 
-function PromoPopup({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [claimed, setClaimed] = useState<{ reward: string } | null>(null);
-
-  const handleClaim = async () => {
-    if (!code.trim()) { showNotification('Enter a promo code', 'error'); return; }
-    setLoading(true);
-    try {
-      const res = await apiRequest('POST', '/api/promo-codes/redeem', { code: code.trim().toUpperCase() });
-      const data = await res.json();
-      if (data.success) {
-        setClaimed({ reward: data.reward });
-        showNotification(data.message || 'Promo code claimed!', 'success');
-      } else {
-        showNotification(data.message || 'Invalid promo code', 'error');
-      }
-    } catch {
-      showNotification('Failed to redeem code. Try again.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 900, display: 'flex', alignItems: 'flex-end' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={claimed ? onSuccess : onClose} />
-      <div style={{
-        position: 'relative', width: '100%',
-        background: 'linear-gradient(160deg, #0d0d0f 0%, #111118 100%)',
-        border: '1px solid rgba(37,99,235,0.25)',
-        borderRadius: '28px 28px 0 0', padding: '24px 20px 52px', zIndex: 901,
-        boxShadow: '0 -8px 60px rgba(37,99,235,0.2), 0 0 0 1px rgba(255,255,255,0.03)',
-        overflow: 'hidden',
-      }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)', animation: 'popup-glow 2s ease-in-out infinite' }} />
-        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 22px' }} />
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <span style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>Promo Code</span>
-          <button onClick={claimed ? onSuccess : onClose} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        {!claimed ? (
-          <>
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <div style={{
-                width: 64, height: 64, borderRadius: '50%', margin: '0 auto 14px',
-                background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(59,130,246,0.1))',
-                border: '1px solid rgba(37,99,235,0.22)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 24px rgba(37,99,235,0.18)',
-              }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                </svg>
-              </div>
-              <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: 13, margin: 0 }}>
-                Enter your promo code to claim AXN rewards
-              </p>
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.32)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Promo Code</div>
-              <input
-                value={code}
-                onChange={e => setCode(e.target.value.toUpperCase())}
-                onKeyDown={e => e.key === 'Enter' && handleClaim()}
-                placeholder="Enter code here..."
-                style={{
-                  width: '100%', padding: '14px 16px', borderRadius: 14,
-                  border: '1.5px solid rgba(37,99,235,0.22)',
-                  background: 'rgba(37,99,235,0.06)', color: '#fff',
-                  fontSize: 16, fontWeight: 700, letterSpacing: '0.08em',
-                  outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace',
-                }}
-              />
-            </div>
-
-            <button onClick={handleClaim} disabled={loading} style={{
-              width: '100%', padding: '14px',
-              background: loading ? 'rgba(37,99,235,0.4)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
-              border: 'none', borderRadius: 50, color: '#fff',
-              fontSize: 15, fontWeight: 800, cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: loading ? 'none' : '0 4px 20px rgba(37,99,235,0.4)',
-            }} className="active:scale-95 transition-transform">
-              {loading ? 'Checking...' : 'Claim Reward'}
-            </button>
-          </>
-        ) : (
-          <div style={{ textAlign: 'center', paddingBottom: 8 }}>
-            <div style={{ animation: 'rewardIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}>
-              <div style={{
-                width: 72, height: 72, borderRadius: '50%', margin: '0 auto 20px',
-                background: 'linear-gradient(135deg, rgba(74,222,128,0.18), rgba(34,197,94,0.08))',
-                border: '1px solid rgba(74,222,128,0.25)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              </div>
-              <div style={{ fontSize: 38, fontWeight: 900, color: '#fff', letterSpacing: '-2px', lineHeight: 1 }}>+{Math.floor(parseFloat(claimed.reward))}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#3b82f6', marginTop: 4, marginBottom: 16 }}>AXN</div>
-              <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: 14, marginBottom: 28 }}>Added to your wallet balance!</p>
-            </div>
-            <button onClick={onSuccess} style={{
-              width: '100%', padding: '14px',
-              background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-              border: 'none', borderRadius: 50, color: '#fff',
-              fontSize: 15, fontWeight: 800, cursor: 'pointer',
-              boxShadow: '0 4px 20px rgba(37,99,235,0.4)',
-            }} className="active:scale-95 transition-transform">Done</button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function ReceivePopup({ user, onClose }: { user: any; onClose: () => void }) {
-  const userId = user?.id?.toString() || '';
-
   const copyId = () => {
-    navigator.clipboard.writeText(userId)
-      .then(() => showNotification('User ID copied!', 'success'))
-      .catch(() => showNotification('User ID copied!', 'success'));
+    const id = user?.id?.toString() || '';
+    navigator.clipboard.writeText(id).then(() => showNotification('User ID copied!', 'success')).catch(() => {});
+  };
+  const copyUsername = () => {
+    const un = user?.username || '';
+    navigator.clipboard.writeText(un).then(() => showNotification('Username copied!', 'success')).catch(() => {});
   };
 
   return (
@@ -1094,61 +1050,118 @@ function ReceivePopup({ user, onClose }: { user: any; onClose: () => void }) {
         background: 'linear-gradient(160deg, #0d0d0f 0%, #111118 100%)',
         border: '1px solid rgba(37,99,235,0.25)',
         borderRadius: '28px 28px 0 0', padding: '24px 20px 52px', zIndex: 901,
-        boxShadow: '0 -8px 60px rgba(37,99,235,0.2), 0 0 0 1px rgba(255,255,255,0.03)',
+        boxShadow: '0 -8px 60px rgba(37,99,235,0.2)',
         overflow: 'hidden',
       }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)', animation: 'popup-glow 2s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)' }} />
         <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 22px' }} />
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <span style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>Receive AXN</span>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
 
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: '50%', margin: '0 auto 14px',
-            background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(59,130,246,0.1))',
-            border: '1px solid rgba(37,99,235,0.22)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 24px rgba(37,99,235,0.18)',
-          }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="8 17 12 21 16 17"/>
-              <line x1="12" y1="12" x2="12" y2="21"/>
-              <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
-            </svg>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 20 }}>
+          Share your User ID or username so others can send you AXN directly.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>User ID</div>
+              <div style={{ color: '#fff', fontSize: 15, fontWeight: 800, fontFamily: 'monospace' }}>{user?.id ?? '—'}</div>
+            </div>
+            <button onClick={copyId} style={{ background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)', border: 'none', borderRadius: 9, padding: '7px 14px', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Copy</button>
           </div>
-          <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: 13, margin: 0 }}>
-            Share your User ID to receive AXN from other users
-          </p>
+          {user?.username && (
+            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Username</div>
+                <div style={{ color: '#fff', fontSize: 15, fontWeight: 800, fontFamily: 'monospace' }}>@{user.username}</div>
+              </div>
+              <button onClick={copyUsername} style={{ background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)', border: 'none', borderRadius: 9, padding: '7px 14px', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Copy</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PromoPopup({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleRedeem = async () => {
+    if (!code.trim()) { showNotification('Enter a promo code', 'error'); return; }
+    setLoading(true);
+    try {
+      const res = await apiRequest('POST', '/api/promo/redeem', { code: code.trim() });
+      const data = await res.json();
+      if (data.success) {
+        showNotification(data.message || 'Promo code redeemed!', 'success');
+        onSuccess();
+      } else {
+        showNotification(data.message || 'Invalid promo code', 'error');
+      }
+    } catch {
+      showNotification('Failed to redeem. Try again.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 900, display: 'flex', alignItems: 'flex-end' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={onClose} />
+      <div style={{
+        position: 'relative', width: '100%',
+        background: 'linear-gradient(160deg, #0d0d0f 0%, #111118 100%)',
+        border: '1px solid rgba(37,99,235,0.25)',
+        borderRadius: '28px 28px 0 0', padding: '24px 20px 52px', zIndex: 901,
+        boxShadow: '0 -8px 60px rgba(37,99,235,0.2)',
+        overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)' }} />
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 22px' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <span style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>Promo Code</span>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
         </div>
 
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.32)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your User ID</div>
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.18)',
-            borderRadius: 14, padding: '14px 16px',
-          }}>
-            <span style={{ color: '#fff', fontSize: 16, fontWeight: 700, fontFamily: 'monospace' }}>{userId}</span>
-            <button onClick={copyId} style={{
-              background: 'linear-gradient(135deg, #2563eb, #3b82f6)', border: 'none',
-              borderRadius: 10, padding: '8px 18px',
-              color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              boxShadow: '0 2px 10px rgba(37,99,235,0.4)',
-            }} className="active:scale-95 transition-transform">Copy</button>
-          </div>
+        <div style={{ marginBottom: 16 }}>
+          <input
+            value={code}
+            onChange={e => setCode(e.target.value.toUpperCase())}
+            placeholder="Enter promo code..."
+            style={{
+              width: '100%', padding: '14px', borderRadius: 14,
+              border: '1.5px solid rgba(37,99,235,0.2)',
+              fontSize: 15, color: '#fff', letterSpacing: '0.08em', fontWeight: 700,
+              background: 'rgba(255,255,255,0.04)', outline: 'none',
+              boxSizing: 'border-box', textAlign: 'center',
+            }}
+          />
         </div>
-
-        <button onClick={onClose} style={{
-          width: '100%', padding: '14px',
-          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 50, color: 'rgba(255,255,255,0.45)',
-          fontSize: 15, fontWeight: 700, cursor: 'pointer',
-        }} className="active:scale-95 transition-transform">Close</button>
+        <button
+          onClick={handleRedeem}
+          disabled={loading}
+          style={{
+            width: '100%', padding: '14px',
+            background: loading ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+            border: 'none', borderRadius: 14, color: loading ? 'rgba(255,255,255,0.3)' : '#fff',
+            fontSize: 15, fontWeight: 800, cursor: loading ? 'default' : 'pointer',
+            boxShadow: loading ? 'none' : '0 4px 20px rgba(37,99,235,0.4)',
+          }}
+          className="active:scale-95 transition-transform"
+        >
+          {loading ? 'Redeeming...' : 'Redeem'}
+        </button>
       </div>
     </div>
   );

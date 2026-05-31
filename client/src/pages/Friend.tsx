@@ -14,12 +14,14 @@ const BLUE = '#3b82f6';
 const BLUE_D = '#2563eb';
 
 const MEDAL: Record<number, { icon: React.ReactNode; color: string; glow: string }> = {
-  1: { icon: <FaCrown size={18} color="#FFD700" />, color: '#FFD700', glow: 'rgba(255,215,0,0.14)' },
-  2: { icon: <FaMedal size={18} color="#C0C0C0" />, color: '#C0C0C0', glow: 'rgba(192,192,192,0.10)' },
-  3: { icon: <FaAward size={18} color="#CD7F32" />, color: '#CD7F32', glow: 'rgba(205,127,50,0.10)' },
+  1: { icon: <FaCrown size={18} color="#FFD700" />, color: '#FFD700', glow: 'rgba(255,215,0,0.10)' },
+  2: { icon: <FaMedal size={18} color="#C0C0C0" />, color: '#C0C0C0', glow: 'rgba(192,192,192,0.07)' },
+  3: { icon: <FaAward size={18} color="#CD7F32" />, color: '#CD7F32', glow: 'rgba(205,127,50,0.07)' },
 };
 
-interface LeaderEntry {
+type LbTab = 'inviters' | 'cipher' | 'axn';
+
+interface InviterEntry {
   rank: number;
   username: string | null;
   firstName: string;
@@ -27,36 +29,187 @@ interface LeaderEntry {
   axnEarned: number;
 }
 
-interface LbResponse {
-  leaderboard: LeaderEntry[];
-  myRank: LeaderEntry | null;
+interface AmountEntry {
+  rank: number;
+  username: string | null;
+  firstName: string;
+  amount: number;
 }
 
 interface WellData {
   wellBalance: number; totalEarned: number;
   totalFriends: number; totalWithdrawalCommission: number;
+  activeFriends?: number;
+}
+
+function LbRow({ rank, username, firstName, value, unit, isMe }: {
+  rank: number; username: string | null; firstName: string;
+  value: number; unit: string; isMe: boolean;
+}) {
+  const medal = MEDAL[rank];
+  const isTop3 = rank <= 3;
+
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: '36px 1fr auto',
+      alignItems: 'center', padding: '12px 16px', gap: 12,
+      background: isMe ? 'rgba(59,130,246,0.08)' : isTop3 ? medal.glow : 'transparent',
+      borderBottom: '1px solid rgba(255,255,255,0.04)',
+      outline: isMe ? '1px solid rgba(59,130,246,0.2)' : 'none',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {isTop3 ? (
+          <span style={{ display: 'flex', alignItems: 'center' }}>{medal.icon}</span>
+        ) : (
+          <span style={{ color: isMe ? '#60a5fa' : TEXT_DIM, fontSize: 12, fontWeight: 800, fontFamily: 'monospace' }}>
+            {rank}
+          </span>
+        )}
+      </div>
+
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{
+            color: isTop3 ? medal.color : TEXT,
+            fontSize: 13, fontWeight: isTop3 ? 800 : 600,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {username ? `@${username}` : firstName}
+          </span>
+          {isMe && (
+            <span style={{
+              fontSize: 9, fontWeight: 800, letterSpacing: '0.06em',
+              color: '#60a5fa', background: 'rgba(59,130,246,0.15)',
+              border: '1px solid rgba(59,130,246,0.3)',
+              borderRadius: 4, padding: '1px 5px', flexShrink: 0,
+            }}>YOU</span>
+          )}
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <span style={{
+          color: isTop3 ? medal.color : '#4ade80',
+          fontSize: 13, fontWeight: 800,
+        }}>
+          {value.toLocaleString()}
+        </span>
+        {unit && <span style={{ color: TEXT_DIM, fontSize: 10, marginLeft: 3 }}>{unit}</span>}
+      </div>
+    </div>
+  );
+}
+
+function LeaderboardTable<T extends { rank: number; username: string | null; firstName: string }>({
+  entries, myRank, getValue, unit, myValue, isLoading, emptyText,
+}: {
+  entries: T[];
+  myRank: T | null;
+  getValue: (e: T) => number;
+  unit: string;
+  myValue: (e: T) => number;
+  isLoading: boolean;
+  emptyText: string;
+}) {
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
+        <Loader2 size={22} color="#60a5fa" className="animate-spin" />
+      </div>
+    );
+  }
+  if (entries.length === 0) {
+    return (
+      <div style={{ background: CARD, borderRadius: 14, padding: '36px 24px', textAlign: 'center' }}>
+        <FaTrophy size={36} color="rgba(255,215,0,0.4)" style={{ marginBottom: 12 }} />
+        <p style={{ color: TEXT, fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>No entries yet</p>
+        <p style={{ color: TEXT_DIM, fontSize: 12, margin: 0 }}>{emptyText}</p>
+      </div>
+    );
+  }
+
+  const myRankInTop = myRank ? entries.some(e => e.rank === myRank.rank) : false;
+
+  return (
+    <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
+      {/* Header */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '36px 1fr auto',
+        padding: '9px 16px', gap: 12,
+        background: 'rgba(255,255,255,0.04)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <span style={{ color: TEXT_DIM, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em' }}>#</span>
+        <span style={{ color: TEXT_DIM, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em' }}>USERNAME</span>
+        <span style={{ color: TEXT_DIM, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textAlign: 'right' }}>{unit || 'AMOUNT'}</span>
+      </div>
+
+      {entries.map((entry, i) => (
+        <LbRow
+          key={i}
+          rank={entry.rank}
+          username={entry.username}
+          firstName={entry.firstName}
+          value={getValue(entry)}
+          unit={unit}
+          isMe={myRank?.rank === entry.rank}
+        />
+      ))}
+
+      {myRank && !myRankInTop && myValue(myRank) > 0 && (
+        <>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '6px 16px', gap: 4,
+            borderBottom: '1px solid rgba(255,255,255,0.04)',
+          }}>
+            {[0,1,2].map(d => (
+              <div key={d} style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }} />
+            ))}
+          </div>
+          <LbRow
+            rank={myRank.rank}
+            username={myRank.username}
+            firstName={myRank.firstName}
+            value={myValue(myRank)}
+            unit={unit}
+            isMe={true}
+          />
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function Friend() {
   const [isSharing, setIsSharing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [lbTab, setLbTab] = useState<LbTab>('inviters');
 
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 60000 });
   const { data: wellData } = useQuery<WellData>({ queryKey: ['/api/referrals/well'], staleTime: 30000 });
   const { data: botInfo } = useQuery<{ username: string }>({ queryKey: ['/api/bot-info'], staleTime: 3600000 });
-  const { data: lbData, isLoading: lbLoading } = useQuery<LbResponse>({
+
+  const { data: inviterData, isLoading: inviterLoading } = useQuery<{ leaderboard: InviterEntry[]; myRank: InviterEntry | null }>({
     queryKey: ['/api/leaderboard/referrals'],
     staleTime: 60000,
+  });
+  const { data: cipherData, isLoading: cipherLoading } = useQuery<{ leaderboard: AmountEntry[]; myRank: AmountEntry | null }>({
+    queryKey: ['/api/leaderboard/cipher-earners'],
+    staleTime: 60000,
+    enabled: lbTab === 'cipher',
+  });
+  const { data: axnData, isLoading: axnLoading } = useQuery<{ leaderboard: AmountEntry[]; myRank: AmountEntry | null }>({
+    queryKey: ['/api/leaderboard/axn-holders'],
+    staleTime: 60000,
+    enabled: lbTab === 'axn',
   });
 
   const botUsername = botInfo?.username || 'bot';
   const referralLink = user?.referralCode ? `https://t.me/${botUsername}?start=${user.referralCode}` : '';
   const totalFriends = wellData?.totalFriends ?? (user?.friendsInvited ?? 0);
+  const activeFriends = wellData?.activeFriends ?? 0;
   const totalEarned = wellData?.totalEarned ?? 0;
-  const leaderboard = lbData?.leaderboard ?? [];
-  const myRank = lbData?.myRank ?? null;
-  // Is the current user already in the top 10?
-  const myRankInTop10 = myRank ? leaderboard.some(e => e.rank === myRank.rank) : false;
 
   const copyLink = () => {
     if (!referralLink) return;
@@ -69,12 +222,18 @@ export default function Friend() {
     setIsSharing(true);
     try {
       const tg = (window as any).Telegram?.WebApp;
-      const url = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent('Join Axionet! I earn 150 AXN for every friend who completes 10 tasks. Start earning now!')}`;
+      const url = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent('Join Axionet! Earn CIPHER by watching ads, completing tasks, and inviting friends!')}`;
       if (tg?.openTelegramLink) tg.openTelegramLink(url);
       else window.open(url, '_blank');
     } catch {}
     setIsSharing(false);
   };
+
+  const LB_TABS: { id: LbTab; label: string }[] = [
+    { id: 'inviters', label: 'Top Inviters' },
+    { id: 'cipher', label: 'Top CIPHER' },
+    { id: 'axn', label: 'Top AXN' },
+  ];
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column' }}>
@@ -87,236 +246,174 @@ export default function Friend() {
           <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>
             Invite &amp; <span style={{ color: BLUE }}>Earn</span>
           </div>
-          <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 3 }}>Earn 150 AXN per friend who completes 10 ad tasks</div>
+          <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 3 }}>
+            Earn 10% of your friends' CIPHER earnings
+          </div>
         </div>
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-          <div style={{ background: CARD, borderRadius: 14, padding: '14px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <line x1="19" y1="8" x2="19" y2="14"/>
-                <line x1="22" y1="11" x2="16" y2="11"/>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+          <div style={{ background: CARD, borderRadius: 14, padding: '14px 10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, textAlign: 'center' }}>
+              {/* People icon */}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" strokeWidth="0" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="9" cy="7" r="3.5" fill="rgba(255,255,255,0.55)"/>
+                <path d="M2 20c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="rgba(255,255,255,0.55)" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
+                <circle cx="17" cy="8" r="2.5" fill="rgba(255,255,255,0.3)"/>
+                <path d="M20 20c0-2.761-1.343-5-3-5.5" stroke="rgba(255,255,255,0.3)" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
               </svg>
-              <div>
-                <div style={{ color: TEXT, fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{totalFriends}</div>
-                <div style={{ color: TEXT_DIM, fontSize: 11, marginTop: 2 }}>My Friends</div>
-              </div>
+              <div style={{ color: TEXT, fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{totalFriends}</div>
+              <div style={{ color: TEXT_DIM, fontSize: 10, lineHeight: 1.3 }}>Total Friends</div>
             </div>
           </div>
-          <div style={{ background: CARD, borderRadius: 14, padding: '14px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                <polyline points="17 6 23 6 23 12"/>
+
+          <div style={{ background: CARD, borderRadius: 14, padding: '14px 10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, textAlign: 'center' }}>
+              {/* Active Friends — person with checkmark */}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <circle cx="9" cy="7" r="3.5" fill="rgba(255,255,255,0.55)"/>
+                <path d="M2 20c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="rgba(255,255,255,0.55)" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
+                <circle cx="18.5" cy="16.5" r="4" fill="#16a34a"/>
+                <polyline points="16 16.5 18 18.5 21 15" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
               </svg>
-              <div>
-                <div style={{ color: TEXT, fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{totalEarned.toFixed(0)}</div>
-                <div style={{ color: TEXT_DIM, fontSize: 11, marginTop: 2 }}>AXN Earned</div>
+              <div style={{ color: TEXT, fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{activeFriends}</div>
+              <div style={{ color: TEXT_DIM, fontSize: 10, lineHeight: 1.3 }}>Active Friends</div>
+            </div>
+          </div>
+
+          <div style={{ background: CARD, borderRadius: 14, padding: '14px 10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, textAlign: 'center' }}>
+              {/* CIPHER diamond icon */}
+              <div style={{ width: 26, height: 26, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
+                <img
+                  src="/cipher-icon.jpg"
+                  alt="CIPHER"
+                  style={{ width: '130%', height: '130%', objectFit: 'cover', marginLeft: '-15%', marginTop: '-15%' }}
+                />
               </div>
+              <div style={{ color: TEXT, fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{Math.floor(totalEarned).toLocaleString()}</div>
+              <div style={{ color: TEXT_DIM, fontSize: 10, lineHeight: 1.3 }}>Total Earned</div>
             </div>
           </div>
         </div>
 
-        {/* Invite link */}
+        {/* Active friend info */}
+        <div style={{ background: 'rgba(37,99,235,0.06)', borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: 0, lineHeight: 1.5 }}>
+            Active Friends have earned at least <span style={{ color: BLUE, fontWeight: 700 }}>500 CIPHER</span>. You earn <span style={{ color: BLUE, fontWeight: 700 }}>10% of their ad earnings</span>.
+          </p>
+        </div>
+
+        {/* Invite buttons */}
         <p style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', margin: '0 0 8px' }}>Your Invite Link</p>
-        <div style={{ background: CARD, borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
-          <div style={{
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: 10, padding: '10px 12px', marginBottom: 10,
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <span style={{ color: TEXT_DIM, fontSize: 11, fontFamily: 'monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {referralLink || 'Loading...'}
-            </span>
-            <button onClick={copyLink} disabled={!referralLink} style={{
-              background: 'rgba(37,99,235,0.15)', border: '1px solid rgba(37,99,235,0.25)',
-              borderRadius: 7, padding: '5px 12px', color: '#60a5fa',
-              fontSize: 11, fontWeight: 700, cursor: referralLink ? 'pointer' : 'not-allowed', flexShrink: 0,
-            }}>Copy</button>
-          </div>
-          <button onClick={shareLink} disabled={!referralLink || isSharing} className="active:scale-95 transition-transform" style={{
-            width: '100%',
-            background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-            border: 'none', borderRadius: 12, color: '#fff',
-            fontSize: 14, fontWeight: 800, padding: '13px 0',
-            cursor: referralLink ? 'pointer' : 'not-allowed',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            boxShadow: '0 4px 20px rgba(37,99,235,0.35)',
-            opacity: !referralLink ? 0.5 : 1,
-          }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+          <button
+            onClick={copyLink}
+            disabled={!referralLink}
+            className="active:scale-95 transition-transform"
+            style={{
+              flex: 1, background: 'rgba(255,255,255,0.07)', border: 'none',
+              borderRadius: 14, color: referralLink ? '#fff' : TEXT_DIM,
+              fontSize: 14, fontWeight: 800, padding: '14px 0',
+              cursor: referralLink ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              opacity: !referralLink ? 0.5 : 1,
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy
+          </button>
+
+          <button
+            onClick={shareLink}
+            disabled={!referralLink || isSharing}
+            className="active:scale-95 transition-transform"
+            style={{
+              flex: 1, background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
+              border: 'none', borderRadius: 14, color: '#fff',
+              fontSize: 14, fontWeight: 800, padding: '14px 0',
+              cursor: referralLink ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              boxShadow: '0 4px 20px rgba(37,99,235,0.35)',
+              opacity: !referralLink ? 0.5 : 1,
+            }}
+          >
             {isSharing ? <Loader2 size={16} className="animate-spin" /> : (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/>
               </svg>
             )}
-            Share in Telegram
+            Share
           </button>
         </div>
 
-        {/* Leaderboard */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <p style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <FaTrophy size={12} color="#FFD700" /> Top Inviters
+        {/* Leaderboard header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+          <FaTrophy size={12} color="#FFD700" />
+          <p style={{ color: TEXT_DIM, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', margin: 0 }}>
+            Leaderboard
           </p>
-          <span style={{ color: '#60a5fa', fontSize: 11, fontWeight: 700 }}>Top 10</span>
         </div>
 
-        {lbLoading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
-            <Loader2 size={22} color="#60a5fa" className="animate-spin" />
-          </div>
-        ) : leaderboard.length === 0 ? (
-          <div style={{ background: CARD, borderRadius: 14, padding: '36px 24px', textAlign: 'center' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-              <FaTrophy size={36} color="rgba(255,215,0,0.4)" />
-            </div>
-            <p style={{ color: TEXT, fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>No leaders yet</p>
-            <p style={{ color: TEXT_DIM, fontSize: 12, margin: 0 }}>Be the first to invite friends and top the board!</p>
-          </div>
-        ) : (
-          <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
-            {/* Header row */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: '36px 1fr auto',
-              padding: '9px 16px', gap: 12,
-              background: 'rgba(255,255,255,0.04)',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
-            }}>
-              <span style={{ color: TEXT_DIM, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em' }}>#</span>
-              <span style={{ color: TEXT_DIM, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em' }}>USERNAME</span>
-              <span style={{ color: TEXT_DIM, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textAlign: 'right' }}>AXN EARNED</span>
-            </div>
+        {/* Leaderboard tabs */}
+        <div style={{
+          display: 'flex', gap: 4, marginBottom: 12,
+          background: 'rgba(255,255,255,0.04)',
+          borderRadius: 50, padding: 4,
+        }}>
+          {LB_TABS.map(t => (
+            <button key={t.id} onClick={() => setLbTab(t.id)} style={{
+              flex: 1, padding: '8px 0', border: 'none',
+              background: lbTab === t.id ? `linear-gradient(135deg, ${BLUE_D}, ${BLUE})` : 'transparent',
+              fontSize: 11, fontWeight: lbTab === t.id ? 800 : 600,
+              color: lbTab === t.id ? '#fff' : TEXT_DIM,
+              cursor: 'pointer', borderRadius: 50,
+              boxShadow: lbTab === t.id ? '0 2px 10px rgba(37,99,235,0.3)' : 'none',
+              transition: 'all 0.2s', whiteSpace: 'nowrap',
+            }}>{t.label}</button>
+          ))}
+        </div>
 
-            {leaderboard.map((entry, i) => {
-              const medal = MEDAL[entry.rank];
-              const isTop3 = entry.rank <= 3;
-              const isMe = myRank?.rank === entry.rank;
-              return (
-                <div
-                  key={i}
-                  style={{
-                    display: 'grid', gridTemplateColumns: '36px 1fr auto',
-                    alignItems: 'center', padding: '12px 16px', gap: 12,
-                    background: isMe
-                      ? 'rgba(59,130,246,0.08)'
-                      : isTop3 ? medal.glow : 'transparent',
-                    borderBottom: '1px solid rgba(255,255,255,0.04)',
-                    outline: isMe ? '1px solid rgba(59,130,246,0.25)' : 'none',
-                  }}
-                >
-                  {/* Rank */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {isTop3 ? (
-                      <span style={{ display: 'flex', alignItems: 'center' }}>{medal.icon}</span>
-                    ) : (
-                      <span style={{ color: isMe ? '#60a5fa' : TEXT_DIM, fontSize: 12, fontWeight: 800, fontFamily: 'monospace' }}>
-                        {entry.rank}
-                      </span>
-                    )}
-                  </div>
+        {/* Top Inviters */}
+        {lbTab === 'inviters' && (
+          <LeaderboardTable
+            entries={inviterData?.leaderboard ?? []}
+            myRank={inviterData?.myRank ?? null}
+            getValue={(e) => e.referrals}
+            unit="INVITED"
+            myValue={(e) => e.referrals}
+            isLoading={inviterLoading}
+            emptyText="Be the first to invite friends and top the board!"
+          />
+        )}
 
-                  {/* Username */}
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{
-                        color: isTop3 ? medal.color : TEXT,
-                        fontSize: 13, fontWeight: isTop3 ? 800 : 600,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {entry.username ? `@${entry.username}` : entry.firstName}
-                      </span>
-                      {isMe && (
-                        <span style={{
-                          fontSize: 9, fontWeight: 800, letterSpacing: '0.06em',
-                          color: '#60a5fa', background: 'rgba(59,130,246,0.15)',
-                          border: '1px solid rgba(59,130,246,0.3)',
-                          borderRadius: 4, padding: '1px 5px', flexShrink: 0,
-                        }}>YOU</span>
-                      )}
-                    </div>
-                    <span style={{ color: TEXT_DIM, fontSize: 10, marginTop: 1, display: 'block' }}>
-                      {entry.referrals} {entry.referrals === 1 ? 'friend' : 'friends'}
-                    </span>
-                  </div>
+        {/* Top CIPHER Earners */}
+        {lbTab === 'cipher' && (
+          <LeaderboardTable
+            entries={cipherData?.leaderboard ?? []}
+            myRank={cipherData?.myRank ?? null}
+            getValue={(e) => e.amount}
+            unit="CIPHER"
+            myValue={(e) => e.amount}
+            isLoading={cipherLoading}
+            emptyText="Earn CIPHER by watching ads and completing tasks!"
+          />
+        )}
 
-                  {/* AXN earned */}
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <span style={{
-                      color: isTop3 ? medal.color : '#4ade80',
-                      fontSize: 13, fontWeight: 800,
-                    }}>
-                      {entry.axnEarned.toLocaleString()}
-                    </span>
-                    <span style={{ color: TEXT_DIM, fontSize: 10, marginLeft: 3 }}>AXN</span>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Your Rank row — shown only when user is outside top 10 and has ≥1 referral */}
-            {myRank && !myRankInTop10 && myRank.referrals > 0 && (
-              <>
-                {/* Separator with dots */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '6px 16px', gap: 4,
-                  borderBottom: '1px solid rgba(255,255,255,0.04)',
-                  background: 'transparent',
-                }}>
-                  {[0,1,2].map(d => (
-                    <div key={d} style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }} />
-                  ))}
-                </div>
-
-                <div style={{
-                  display: 'grid', gridTemplateColumns: '36px 1fr auto',
-                  alignItems: 'center', padding: '12px 16px', gap: 12,
-                  background: 'rgba(59,130,246,0.08)',
-                  borderTop: '1px solid rgba(59,130,246,0.2)',
-                }}>
-                  {/* Rank number */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ color: '#60a5fa', fontSize: 12, fontWeight: 800, fontFamily: 'monospace' }}>
-                      {myRank.rank}
-                    </span>
-                  </div>
-
-                  {/* Name + YOU badge */}
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{
-                        color: '#fff', fontSize: 13, fontWeight: 700,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {myRank.username ? `@${myRank.username}` : myRank.firstName}
-                      </span>
-                      <span style={{
-                        fontSize: 9, fontWeight: 800, letterSpacing: '0.06em',
-                        color: '#60a5fa', background: 'rgba(59,130,246,0.15)',
-                        border: '1px solid rgba(59,130,246,0.3)',
-                        borderRadius: 4, padding: '1px 5px', flexShrink: 0,
-                      }}>YOU</span>
-                    </div>
-                    <span style={{ color: 'rgba(255,255,255,0.38)', fontSize: 10, marginTop: 1, display: 'block' }}>
-                      {myRank.referrals} {myRank.referrals === 1 ? 'friend' : 'friends'}
-                    </span>
-                  </div>
-
-                  {/* AXN earned */}
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <span style={{ color: '#4ade80', fontSize: 13, fontWeight: 800 }}>
-                      {myRank.axnEarned.toLocaleString()}
-                    </span>
-                    <span style={{ color: 'rgba(255,255,255,0.38)', fontSize: 10, marginLeft: 3 }}>AXN</span>
-                  </div>
-                </div>
-              </>
-            )}
-
-          </div>
+        {/* Top AXN Holders */}
+        {lbTab === 'axn' && (
+          <LeaderboardTable
+            entries={axnData?.leaderboard ?? []}
+            myRank={axnData?.myRank ?? null}
+            getValue={(e) => e.amount}
+            unit="AXN"
+            myValue={(e) => e.amount}
+            isLoading={axnLoading}
+            emptyText="Farm AXN to appear on this leaderboard!"
+          />
         )}
 
       </div>
