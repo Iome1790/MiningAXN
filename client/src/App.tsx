@@ -88,14 +88,14 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
           100% { background-position: 200% center; }
         }
         @keyframes axn-logo-glow {
-          0%, 100% { filter: brightness(0) invert(1) drop-shadow(0 0 12px rgba(59,130,246,0.5)); }
-          50% { filter: brightness(0) invert(1) drop-shadow(0 0 28px rgba(96,165,250,0.9)); }
+          0%, 100% { filter: drop-shadow(0 0 12px rgba(59,130,246,0.5)); }
+          50% { filter: drop-shadow(0 0 28px rgba(96,165,250,0.9)); }
         }
       `}</style>
 
       {/* Logo — background removed, white + blue glow pulse */}
       <img
-        src="/axionet-logo-new.png"
+        src="/axionet-logo-nobg.png"
         alt="Axionet"
         style={{
           width: 180,
