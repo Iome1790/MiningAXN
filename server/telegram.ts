@@ -511,7 +511,7 @@ export async function sendWithdrawalRequestNotification(withdrawal: any, user: a
                  `🆔 User ID: <code>${userTelegramId}</code>\n` +
                  `🌐 Address: <code>${walletAddress}</code>\n` +
                  `💸 Amount: ${format$(netAmount)} AXN\n` +
-                 `🛂 Fee: ${format$(feeAmount)} AXN\n` +
+                 `🛂 Fee: 100 AXN\n` +
                  `📅 Date: ${currentDate}\n` +
                  `🤖 Bot: @${_botName}`;
 
@@ -564,7 +564,7 @@ export async function sendWithdrawalApprovedNotification(withdrawal: any, txHash
       `🆔 User ID: ${userTelegramId}\n` +
       `🌐 Address: <code>${shortAddress}</code>\n` +
       `💸 Amount: ${Math.floor(netAmount)} AXN\n` +
-      `🛂 Fee: ${Math.floor(feeAmount)} AXN\n` +
+      `🛂 Fee: 100 AXN\n` +
       `🔗 Hash: <code>${txHash}</code>\n` +
       `📅 Date: ${currentDate}\n` +
       `🤖 Bot: @${_botName}`;
@@ -1286,7 +1286,7 @@ Share your unique referral link and earn Hrum when your friends join:
 🌐 Address:
 ${walletAddress}
 💸 Amount: ${Math.floor(netAmount)} AXN
-🛂 Fee: ${Math.floor(feeAmount)} AXN (${feePercent}%)
+🛂 Fee: 100 AXN
 📅 Date: ${createdAt}
 🤖 Bot: @${_wdBotName}`;
             

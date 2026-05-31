@@ -8928,6 +8928,10 @@ ${walletAddress}
   });
 
   app.post('/api/tasks/axn-name/verify', authenticateTelegram, async (req: any, res) => {
+    return res.status(400).json({ success: false, message: 'Please use the updated app version.' });
+  });
+
+  app.post('/api/axn-name/verify', authenticateTelegram, async (req: any, res) => {
     try {
       const user = req.user?.user;
       const telegramUser = req.user?.telegramUser;
@@ -8968,8 +8972,8 @@ ${walletAddress}
         });
       }
 
-      // Award 30 AXN
-      const reward = 30;
+      // Award 50 AXN
+      const reward = 50;
       await pool.query(
         `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1, axn_name_reward_claimed = TRUE, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $2`,
         [reward, user.id]
