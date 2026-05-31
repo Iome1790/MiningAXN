@@ -19,7 +19,7 @@ const MEDAL: Record<number, { icon: React.ReactNode; color: string; glow: string
   3: { icon: <FaAward size={18} color="#CD7F32" />, color: '#CD7F32', glow: 'rgba(205,127,50,0.07)' },
 };
 
-type LbTab = 'inviters' | 'cipher' | 'axn';
+type LbTab = 'inviters' | 'axn';
 
 interface InviterEntry {
   rank: number;
@@ -194,11 +194,6 @@ export default function Friend() {
     queryKey: ['/api/leaderboard/referrals'],
     staleTime: 60000,
   });
-  const { data: cipherData, isLoading: cipherLoading } = useQuery<{ leaderboard: AmountEntry[]; myRank: AmountEntry | null }>({
-    queryKey: ['/api/leaderboard/cipher-earners'],
-    staleTime: 60000,
-    enabled: lbTab === 'cipher',
-  });
   const { data: axnData, isLoading: axnLoading } = useQuery<{ leaderboard: AmountEntry[]; myRank: AmountEntry | null }>({
     queryKey: ['/api/leaderboard/axn-holders'],
     staleTime: 60000,
@@ -231,7 +226,6 @@ export default function Friend() {
 
   const LB_TABS: { id: LbTab; label: string }[] = [
     { id: 'inviters', label: 'Top Inviters' },
-    { id: 'cipher', label: 'Top CIPHER' },
     { id: 'axn', label: 'Top AXN' },
   ];
 
@@ -375,29 +369,16 @@ export default function Friend() {
           ))}
         </div>
 
-        {/* Top Inviters */}
+        {/* Top Inviters — ranked by active friends (>= 500 CIPHER) */}
         {lbTab === 'inviters' && (
           <LeaderboardTable
             entries={inviterData?.leaderboard ?? []}
             myRank={inviterData?.myRank ?? null}
             getValue={(e) => e.referrals}
-            unit="INVITED"
+            unit="ACTIVE"
             myValue={(e) => e.referrals}
             isLoading={inviterLoading}
-            emptyText="Be the first to invite friends and top the board!"
-          />
-        )}
-
-        {/* Top CIPHER Earners */}
-        {lbTab === 'cipher' && (
-          <LeaderboardTable
-            entries={cipherData?.leaderboard ?? []}
-            myRank={cipherData?.myRank ?? null}
-            getValue={(e) => e.amount}
-            unit="CIPHER"
-            myValue={(e) => e.amount}
-            isLoading={cipherLoading}
-            emptyText="Earn CIPHER by watching ads and completing tasks!"
+            emptyText="Invite friends who earn 500+ CIPHER to appear here!"
           />
         )}
 
