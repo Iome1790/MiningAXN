@@ -37,7 +37,6 @@ const PageLoader = memo(function PageLoader() {
 
 function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDone?: () => void }) {
   const [opacity, setOpacity] = useState(1);
-  const readyRef = useRef(false);
   const rafRef = useRef<number>(0);
   const doneRef = useRef(false);
 
@@ -60,14 +59,11 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
 
   useEffect(() => {
     if (isReady) {
-      readyRef.current = true;
-      // Small delay so user sees screen briefly, then fade
       const t = setTimeout(startFadeOut, 200);
       return () => clearTimeout(t);
     }
   }, [isReady, startFadeOut]);
 
-  // Safety: force dismiss after 5s max
   useEffect(() => {
     const t = setTimeout(startFadeOut, 5000);
     return () => clearTimeout(t);
@@ -83,59 +79,34 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
       }}
     >
       <style>{`
-        @keyframes axn-ring-pulse {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.06); }
-        }
-        @keyframes axn-ring-spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes axn-ring-spin-rev {
-          from { transform: rotate(360deg); }
-          to { transform: rotate(0deg); }
-        }
-        @keyframes axn-coin-float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
         @keyframes axn-dot-bounce {
           0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
           40% { transform: translateY(-9px); opacity: 1; }
         }
-        @keyframes axn-glow-pulse {
-          0%, 100% { opacity: 0.2; transform: scale(0.95); }
-          50% { opacity: 0.6; transform: scale(1.05); }
+        @keyframes axn-text-shimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
         }
-        @keyframes axn-text-fade {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.8; }
+        @keyframes axn-logo-glow {
+          0%, 100% { filter: brightness(0) invert(1) drop-shadow(0 0 12px rgba(59,130,246,0.5)); }
+          50% { filter: brightness(0) invert(1) drop-shadow(0 0 28px rgba(96,165,250,0.9)); }
         }
       `}</style>
-      {/* Outer glow orb */}
-      <div style={{
-        position: 'absolute',
-        width: 300,
-        height: 300,
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(37,99,235,0.22) 0%, rgba(59,130,246,0.08) 50%, transparent 70%)',
-        animation: 'axn-glow-pulse 2.4s ease-in-out infinite',
-      }} />
-      {/* AXN Image — full width, no clip, pure white */}
-      <div style={{ animation: 'axn-coin-float 2.8s ease-in-out infinite', position: 'relative', zIndex: 2 }}>
-        <img
-          src="/axionet-logo.png"
-          alt="Axionet"
-          style={{
-            width: 220,
-            height: 'auto',
-            display: 'block',
-            filter: 'brightness(0) invert(1) drop-shadow(0 0 18px rgba(59,130,246,0.7))',
-          }}
-        />
-      </div>
+
+      {/* Logo — background removed, white + blue glow pulse */}
+      <img
+        src="/axionet-logo-new.png"
+        alt="Axionet"
+        style={{
+          width: 180,
+          height: 'auto',
+          display: 'block',
+          animation: 'axn-logo-glow 2.4s ease-in-out infinite',
+        }}
+      />
+
       {/* Bouncing dots */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 36, position: 'relative', zIndex: 2 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 40 }}>
         {[0, 1, 2].map(i => (
           <div key={i} style={{
             width: 7, height: 7, borderRadius: '50%',
@@ -145,13 +116,23 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
           }} />
         ))}
       </div>
-      {/* Loading label */}
+
+      {/* Animated shimmer text */}
       <div style={{
-        marginTop: 18, fontSize: 12, fontWeight: 700,
-        color: 'rgba(255,255,255,0.3)', letterSpacing: '0.15em', textTransform: 'uppercase',
-        position: 'relative', zIndex: 2,
-        animation: 'axn-text-fade 2s ease-in-out infinite',
-      }}>Axionet</div>
+        marginTop: 20,
+        fontSize: 13,
+        fontWeight: 800,
+        letterSpacing: '0.22em',
+        textTransform: 'uppercase',
+        background: 'linear-gradient(90deg, rgba(255,255,255,0.25) 0%, rgba(96,165,250,1) 40%, rgba(147,197,253,1) 50%, rgba(96,165,250,1) 60%, rgba(255,255,255,0.25) 100%)',
+        backgroundSize: '200% auto',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        backgroundClip: 'text',
+        animation: 'axn-text-shimmer 2.8s linear infinite',
+      }}>
+        AXIONET DEGITAL TOKEN
+      </div>
     </div>
   );
 }
