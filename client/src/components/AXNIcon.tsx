@@ -19,7 +19,7 @@ export function AXNIcon({ size = 20, className = "" }: AXNIconProps) {
       }}
     >
       <img
-        src="/axn-coin-new.png"
+        src="/axn-coin.jpg"
         alt="AXN"
         style={{
           position: 'absolute',

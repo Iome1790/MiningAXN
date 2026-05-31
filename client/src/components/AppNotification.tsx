@@ -97,7 +97,7 @@ export default function AppNotification() {
       >
         {getIcon()}
       </div>
-      <span className="whitespace-nowrap text-white text-[13px] font-bold tracking-wide">{message}</span>
+      <span style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em', lineHeight: 1.35, wordBreak: 'break-word', whiteSpace: 'normal' }}>{message}</span>
     </div>
   );
 
