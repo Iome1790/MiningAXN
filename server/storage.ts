@@ -684,11 +684,11 @@ export class DatabaseStorage implements IStorage {
       }
       
       try {
-        // Season 2: all earnings go to walletBalance (primary active balance)
+        // All non-farming earnings go to balance (CIPHER). AXN is farming-only.
         await db
           .update(users)
           .set({
-            walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${earning.amount}`,
+            balance: sql`COALESCE(${users.balance}, 0) + ${earning.amount}`,
             total_earned: sql`COALESCE(${users.total_earned}, 0) + ${earning.amount}`,
             total_earnings: sql`COALESCE(${users.total_earnings}, 0) + ${earning.amount}`,
             updatedAt: new Date(),

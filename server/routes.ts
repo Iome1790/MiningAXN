@@ -689,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.execute(sql`
         INSERT INTO referral_milestone_claims (user_id, milestone_count, reward) VALUES (${user.id}, ${count}, ${reward})
       `);
-      await db.execute(sql`UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${user.id}`);
+      await db.execute(sql`UPDATE users SET balance = COALESCE(balance::numeric, 0) + ${reward} WHERE id = ${user.id}`);
       res.json({ success: true, claimed: reward });
     } catch (error: any) {
       if (error?.code === '23505') return res.status(400).json({ message: "Already claimed", alreadyClaimed: true });
@@ -806,17 +806,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reward = 5;
       if (lastDate !== todayKey) {
         await dbPool.query(
-          `UPDATE users SET daily_tasks_date = NOW(), daily_checkin_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1 WHERE id = $2`,
+          `UPDATE users SET daily_tasks_date = NOW(), daily_checkin_claimed = TRUE, balance = COALESCE(balance::numeric, 0) + $1 WHERE id = $2`,
           [reward, user.id]
         );
       } else {
         await dbPool.query(
-          `UPDATE users SET daily_checkin_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1 WHERE id = $2`,
+          `UPDATE users SET daily_checkin_claimed = TRUE, balance = COALESCE(balance::numeric, 0) + $1 WHERE id = $2`,
           [reward, user.id]
         );
       }
 
-      res.json({ success: true, reward, message: `Daily check-in! +${reward} AXN` });
+      res.json({ success: true, reward, message: `Daily check-in! +${reward} CIPHER` });
     } catch (error) {
       console.error('Daily checkin error:', error);
       res.status(500).json({ success: false, message: 'Failed to claim daily check-in' });
@@ -1258,9 +1258,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
            updated_at = NOW()`,
         [user.id, slotId]
       );
-      // Give 1 AXN for watching an ad slot
+      // Give 1 CIPHER for watching an ad slot
       await pool.query(
-        `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + 1 WHERE id = $1`,
+        `UPDATE users SET balance = COALESCE(balance::numeric, 0) + 1 WHERE id = $1`,
         [user.id]
       );
       const newCount = currentCount + 1;
@@ -1332,7 +1332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const axnEarned = axnMap[taskType];
       await pool.query(
-        `UPDATE users SET ${fieldName} = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1, daily_tasks_date = NOW() WHERE id = $2`,
+        `UPDATE users SET ${fieldName} = TRUE, balance = COALESCE(balance::numeric, 0) + $1, daily_tasks_date = NOW() WHERE id = $2`,
         [axnEarned, user.id]
       );
 
@@ -1388,17 +1388,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const alreadyRes = await pool.query(`SELECT 1 FROM bounty_task_completions WHERE user_id = $1 AND task_id = $2`, [user.id, taskId]);
       if (alreadyRes.rows.length > 0) return res.status(400).json({ message: "Task already completed" });
 
-      // Add AXN reward and increment tasks_completed (no key cost)
+      // Add CIPHER reward and increment tasks_completed (no key cost)
       await pool.query(
-        `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $2`,
+        `UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $2`,
         [task.reward_axn, user.id]
       );
       await pool.query(`INSERT INTO bounty_task_completions (user_id, task_id) VALUES ($1, $2)`, [user.id, taskId]);
 
-      // Referral verification is handled via ad-watch milestone (10 ads → 50 AXN to referrer)
-      // No separate task-based referral reward needed
-
-      return res.json({ success: true, axnEarned: task.reward_axn, message: `+${task.reward_axn} AXN earned!` });
+      return res.json({ success: true, axnEarned: task.reward_axn, message: `+${task.reward_axn} CIPHER earned!` });
     } catch (error) {
       console.error("Bounty task complete error:", error);
       return res.status(500).json({ message: "Internal server error" });
@@ -2998,17 +2995,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bugReward = parseInt(bugRewardSetting);
       
       await db.transaction(async (tx) => {
-        // Season 2: Update walletBalance, BUG balance, and mark task complete
+        // All task rewards go to CIPHER (balance). AXN is farming-only.
+        // Mark task complete and credit BUG only; addEarning below handles CIPHER balance
         await tx.update(users)
           .set({ 
-            walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${rewardAmount}`,
             bugBalance: sql`COALESCE(${users.bugBalance}, '0')::numeric + ${bugReward}`,
             taskShareCompletedToday: true,
             updatedAt: new Date()
           })
           .where(eq(users.id, userId));
         
-        // Add earning record
+        // Add earning record (also updates CIPHER balance)
         await storage.addEarning({
           userId,
           amount: rewardAmount,
@@ -3165,14 +3162,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const rewardAmount = '1000';
       
       await db.transaction(async (tx) => {
+        // Mark task complete only; addEarning below handles CIPHER balance
         await tx.update(users)
           .set({ 
-            walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${rewardAmount}`,
             taskChannelCompletedToday: true,
             updatedAt: new Date()
           })
           .where(eq(users.id, userId));
         
+        // Add earning record (also updates CIPHER balance)
         await storage.addEarning({
           userId,
           amount: rewardAmount,
@@ -3241,14 +3239,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const rewardAmount = '1000';
       
       await db.transaction(async (tx) => {
+        // Mark task complete only; addEarning below handles CIPHER balance
         await tx.update(users)
           .set({ 
-            walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${rewardAmount}`,
             taskCommunityCompletedToday: true,
             updatedAt: new Date()
           })
           .where(eq(users.id, userId));
         
+        // Add earning record (also updates CIPHER balance)
         await storage.addEarning({
           userId,
           amount: rewardAmount,
@@ -8476,7 +8475,7 @@ ${walletAddress}
       const currentDay = Math.min(row.daily_activity_day ?? 1, 30);
       const reward = DAILY_REWARDS[currentDay - 1] || 5;
       const nextDay = currentDay >= 30 ? 1 : currentDay + 1;
-      await db.execute(sql`UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric,0) + ${reward}, daily_activity_claimed_at = NOW(), daily_activity_day = ${nextDay} WHERE id = ${userId}`);
+      await db.execute(sql`UPDATE users SET balance = COALESCE(balance::numeric,0) + ${reward}, daily_activity_claimed_at = NOW(), daily_activity_day = ${nextDay} WHERE id = ${userId}`);
       return res.json({ success: true, day: currentDay, reward, nextDay });
     } catch (e) {
       return res.status(500).json({ message: "Failed to claim" });
@@ -8528,7 +8527,7 @@ ${walletAddress}
       await db.execute(sql`
         UPDATE users
         SET
-          wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${pending},
+          balance = COALESCE(balance::numeric, 0) + ${pending},
           pending_referral_bonus = 0,
           total_claimed_referral_bonus = COALESCE(total_claimed_referral_bonus::numeric, 0) + ${pending}
         WHERE id = ${userId}
@@ -8676,8 +8675,8 @@ ${walletAddress}
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.missionLoginClaimed) return res.status(400).json({ error: 'Already claimed today' });
       const reward = 2;
-      await db.execute(sql`UPDATE users SET mission_login_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
-      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+      await db.execute(sql`UPDATE users SET mission_login_claimed = TRUE, balance = COALESCE(balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} CIPHER claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
     }
@@ -8693,8 +8692,8 @@ ${walletAddress}
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.missionAnnouncementClaimed) return res.status(400).json({ error: 'Already claimed today' });
       const reward = 1;
-      await db.execute(sql`UPDATE users SET mission_announcement_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
-      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+      await db.execute(sql`UPDATE users SET mission_announcement_claimed = TRUE, balance = COALESCE(balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} CIPHER claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
     }
@@ -8710,8 +8709,8 @@ ${walletAddress}
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.missionWatchAdClaimed) return res.status(400).json({ error: 'Already claimed today' });
       const reward = 3;
-      await db.execute(sql`UPDATE users SET mission_watch_ad_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
-      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+      await db.execute(sql`UPDATE users SET mission_watch_ad_claimed = TRUE, balance = COALESCE(balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} CIPHER claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
     }
@@ -8727,8 +8726,8 @@ ${walletAddress}
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.missionShareAppClaimed) return res.status(400).json({ error: 'Already claimed today' });
       const reward = 5;
-      await db.execute(sql`UPDATE users SET mission_share_app_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
-      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+      await db.execute(sql`UPDATE users SET mission_share_app_claimed = TRUE, balance = COALESCE(balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} CIPHER claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
     }
@@ -8766,8 +8765,8 @@ ${walletAddress}
       if (user.missionAppTimeClaimed) return res.status(400).json({ error: 'Already claimed today' });
       if ((user.missionAppTimeSeconds ?? 0) < 600) return res.status(400).json({ error: 'Not enough app time yet' });
       const reward = 6;
-      await db.execute(sql`UPDATE users SET mission_app_time_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
-      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+      await db.execute(sql`UPDATE users SET mission_app_time_claimed = TRUE, balance = COALESCE(balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} CIPHER claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
     }
@@ -8783,8 +8782,8 @@ ${walletAddress}
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.missionCommunityClaimed) return res.status(400).json({ error: 'Already claimed today' });
       const reward = 2;
-      await db.execute(sql`UPDATE users SET mission_community_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
-      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+      await db.execute(sql`UPDATE users SET mission_community_claimed = TRUE, balance = COALESCE(balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} CIPHER claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
     }
@@ -8805,8 +8804,8 @@ ${walletAddress}
       const hasNew = parseInt((referrals.rows[0] as any)?.cnt || '0') > 0;
       if (!hasNew) return res.status(400).json({ error: 'No new referral today' });
       const reward = 50;
-      await db.execute(sql`UPDATE users SET mission_invite_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
-      res.json({ success: true, reward, message: `+${reward} AXN claimed!` });
+      await db.execute(sql`UPDATE users SET mission_invite_claimed = TRUE, balance = COALESCE(balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} CIPHER claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim' });
     }
@@ -8835,8 +8834,8 @@ ${walletAddress}
         (hasNewReferral ? user.missionInviteClaimed : true);
       if (!allCoreDone) return res.status(400).json({ error: 'Complete all daily missions first' });
       const reward = 10;
-      await db.execute(sql`UPDATE users SET mission_bonus_claimed = TRUE, wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
-      res.json({ success: true, reward, message: `+${reward} AXN bonus claimed!` });
+      await db.execute(sql`UPDATE users SET mission_bonus_claimed = TRUE, balance = COALESCE(balance::numeric, 0) + ${reward} WHERE id = ${userId}`);
+      res.json({ success: true, reward, message: `+${reward} CIPHER bonus claimed!` });
     } catch (err) {
       res.status(500).json({ error: 'Failed to claim bonus' });
     }
@@ -8876,12 +8875,12 @@ ${walletAddress}
       }
       await db.execute(sql`
         UPDATE users
-        SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${parsed}
+        SET balance = COALESCE(balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
       await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
-      res.json({ success: true, earned: parsed, newBalance: updatedUser?.walletBalance });
+      res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
     } catch (err) {
       res.status(500).json({ error: 'Failed to credit reward' });
     }
@@ -8898,12 +8897,12 @@ ${walletAddress}
       }
       await db.execute(sql`
         UPDATE users
-        SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${parsed}
+        SET balance = COALESCE(balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
       await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
-      res.json({ success: true, earned: parsed, newBalance: updatedUser?.walletBalance });
+      res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
     } catch (err) {
       res.status(500).json({ error: 'Failed to credit reward' });
     }
@@ -8920,12 +8919,12 @@ ${walletAddress}
       }
       await db.execute(sql`
         UPDATE users
-        SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + ${parsed}
+        SET balance = COALESCE(balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
       await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
-      res.json({ success: true, earned: parsed, newBalance: updatedUser?.walletBalance });
+      res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
     } catch (err) {
       res.status(500).json({ error: 'Failed to credit reward' });
     }
@@ -9149,14 +9148,14 @@ ${walletAddress}
         });
       }
 
-      // Award 50 AXN
+      // Award 50 CIPHER
       const reward = 50;
       await pool.query(
-        `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1, axn_name_reward_claimed = TRUE, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $2`,
+        `UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1, axn_name_reward_claimed = TRUE, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $2`,
         [reward, user.id]
       );
 
-      return res.json({ success: true, hasAxn: true, axnEarned: reward, message: `+${reward} AXN earned! $AXN found in your name.` });
+      return res.json({ success: true, hasAxn: true, axnEarned: reward, message: `+${reward} CIPHER earned! $AXN found in your name.` });
     } catch (error) {
       console.error('AXN name task error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });
