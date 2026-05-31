@@ -280,7 +280,7 @@ export default function Friend() {
                 <img
                   src="/cipher-icon.jpg"
                   alt="CIPHER"
-                  style={{ width: '130%', height: '130%', objectFit: 'cover', marginLeft: '-15%', marginTop: '-15%' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
               </div>
               <div style={{ color: TEXT, fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{Math.floor(totalEarned).toLocaleString()}</div>
