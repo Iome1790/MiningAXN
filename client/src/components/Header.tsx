@@ -171,10 +171,12 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
 
           {/* Center — CIPHER balance */}
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}>
+            <div style={{ width: 18, height: 18, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src="/cipher-icon.jpg" alt="CIPHER" style={{ width: '130%', height: '130%', objectFit: 'cover', marginLeft: '-15%', marginTop: '-15%' }} />
+            </div>
             <span style={{ color: '#fff', fontSize: 15, fontWeight: 900, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
               {cipherBalance.toLocaleString()}
             </span>
-            <span style={{ color: 'rgba(255,255,255,0.38)', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', lineHeight: 1 }}>CIPHER</span>
           </div>
 
           {/* Right — Notification bell (clean, no box) */}
