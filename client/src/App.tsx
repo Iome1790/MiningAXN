@@ -162,7 +162,7 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
           boxShadow: '0 0 32px rgba(37,99,235,0.45), 0 0 60px rgba(59,130,246,0.15)',
         }}>
           <img
-            src="/axn-coin-new.png"
+            src="/axn-coin.jpg"
             alt="AXN"
             style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.18)', width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
