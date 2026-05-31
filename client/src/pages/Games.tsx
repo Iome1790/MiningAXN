@@ -18,6 +18,17 @@ function getTodayKey() {
 
 type MysteryPhase = 'idle' | 'opening' | 'revealed' | 'claiming' | 'done';
 
+const FARM_RATE = 0.001; // AXN/s
+const FARM_DURATION = 4 * 3600; // 4h in seconds
+const FARM_MAX = parseFloat((FARM_DURATION * FARM_RATE).toFixed(4)); // 14.4 AXN
+
+function fmtCountdown(secs: number): string {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
 export default function Games() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [balanceHidden, setBalanceHidden] = useState(false);
@@ -34,6 +45,12 @@ export default function Games() {
   const [mysteryReward, setMysteryReward] = useState(0);
   const [isSharing, setIsSharing] = useState(false);
   const mysteryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Farming state ──
+  const [farmCountdown, setFarmCountdown] = useState(FARM_DURATION);
+  const [farmAccum, setFarmAccum] = useState(0);
+  const [showFarmInfo, setShowFarmInfo] = useState(false);
+  const farmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -118,33 +135,40 @@ export default function Games() {
     dailyCheckMutation.mutate();
   };
 
-  const handleMysteryOpen = () => {
+  const handleMysteryOpen = async () => {
     if (mysteryOpened || mysteryPhase !== 'idle') return;
-    setMysteryReward(Math.floor(Math.random() * 100) + 1);
     setMysteryPhase('opening');
     if (mysteryTimerRef.current) clearTimeout(mysteryTimerRef.current);
-    mysteryTimerRef.current = setTimeout(() => setMysteryPhase('revealed'), 2200);
-  };
 
-  const handleMysteryClaim = async () => {
-    if (mysteryPhase !== 'revealed') return;
-    setMysteryPhase('claiming');
+    // Claim from server during the opening animation — real reward, no mismatch
+    let serverReward = 0;
     try { await showRewardedInterstitial(); } catch {}
     try {
       const res = await apiRequest('POST', '/api/mystery-box', {});
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
-      setMysteryOpened(true);
-      setMysteryReward(data.reward ?? 0);
+      serverReward = data.reward ?? 0;
+      setMysteryReward(serverReward);
       localStorage.setItem('mystery_box_date', getTodayKey());
-      showNotification(`Mystery Box! You won ${data.reward} AXN added to your wallet!`, 'success');
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      setMysteryPhase('done');
-      mysteryTimerRef.current = setTimeout(() => setMysteryPhase('idle'), 1800);
     } catch (err: any) {
       setMysteryPhase('idle');
       showNotification(err?.message || 'Failed to open mystery box. Try again.', 'error');
+      return;
     }
+
+    // Show reveal after animation delay, using the actual server reward
+    mysteryTimerRef.current = setTimeout(() => {
+      setMysteryPhase('revealed');
+    }, 2200);
+  };
+
+  const handleMysteryClaim = () => {
+    if (mysteryPhase !== 'revealed') return;
+    setMysteryOpened(true);
+    showNotification(`Mystery Box! You won ${mysteryReward} AXN!`, 'success');
+    setMysteryPhase('done');
+    mysteryTimerRef.current = setTimeout(() => setMysteryPhase('idle'), 1800);
   };
 
   const copyLink = () => {
@@ -165,6 +189,65 @@ export default function Games() {
     } catch {}
     setIsSharing(false);
   };
+
+  // ── Farming query & mutations ──
+  const { data: farmData, refetch: refetchFarm } = useQuery<any>({
+    queryKey: ['/api/farming/state'],
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Sync server farming state to local countdown/accum
+  useEffect(() => {
+    if (!farmData) return;
+    setFarmCountdown(farmData.remainingSeconds ?? FARM_DURATION);
+    setFarmAccum(farmData.minedAxn ?? 0);
+  }, [farmData]);
+
+  // Live countdown tick when farming is active
+  useEffect(() => {
+    if (farmIntervalRef.current) clearInterval(farmIntervalRef.current);
+    const isActive = farmData?.isActive && (farmData?.remainingSeconds ?? 0) > 0;
+    if (!isActive) return;
+    farmIntervalRef.current = setInterval(() => {
+      setFarmCountdown(prev => {
+        const next = Math.max(0, prev - 1);
+        if (next <= 0 && farmIntervalRef.current) clearInterval(farmIntervalRef.current);
+        return next;
+      });
+      setFarmAccum(prev => parseFloat(Math.min(prev + FARM_RATE, FARM_MAX).toFixed(4)));
+    }, 1000);
+    return () => { if (farmIntervalRef.current) clearInterval(farmIntervalRef.current); };
+  }, [farmData?.isActive, farmData?.startedAt]);
+
+  const farmStartMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/farming/start', {});
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to start');
+      return data;
+    },
+    onSuccess: () => {
+      showNotification('Farming started! +0.001 AXN/s for 4 hours', 'success');
+      refetchFarm();
+    },
+    onError: (err: any) => showNotification(err?.message || 'Failed to start farming', 'error'),
+  });
+
+  const farmClaimMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/farming/claim', {});
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to claim');
+      return data;
+    },
+    onSuccess: (data) => {
+      showNotification(`Farming reward claimed! +${data.amount} AXN`, 'success');
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      refetchFarm();
+    },
+    onError: (err: any) => showNotification(err?.message || 'Failed to claim', 'error'),
+  });
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
@@ -379,57 +462,175 @@ export default function Games() {
           </div>
         </div>
 
-        {/* REFER & EARN */}
+        {/* FARMING */}
         <div style={{ marginBottom: 10 }}>
           <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            Refer &amp; Earn
+            Farming
           </span>
         </div>
 
-        <div style={{
-          background: 'rgba(255,255,255,0.07)', borderRadius: 14,
-          overflow: 'hidden',
-        }}>
-          <div style={{ padding: '16px 16px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <line x1="19" y1="8" x2="19" y2="14"/>
-                <line x1="22" y1="11" x2="16" y2="11"/>
-              </svg>
-              <div>
-                <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>Invite Friends</div>
-                <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>
-                  Earn per referral <span style={{ color: '#60a5fa', fontWeight: 700 }}>150 AXN</span>
+        <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden', position: 'relative' }}>
+
+          {/* ? button — top-right circular, no border */}
+          <button
+            onClick={() => setShowFarmInfo(true)}
+            style={{
+              position: 'absolute', top: 12, right: 12, zIndex: 2,
+              width: 28, height: 28, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.1)',
+              border: 'none', color: 'rgba(255,255,255,0.65)',
+              fontSize: 13, fontWeight: 800, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              lineHeight: 1,
+            }}
+            className="active:scale-95 transition-transform"
+          >?</button>
+
+          <div style={{ padding: '16px 16px 18px' }}>
+
+            {/* Top row: larger image + large reward display */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+              <img
+                src="/axn-coin.jpg"
+                alt="AXN"
+                style={{
+                  width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
+                  objectFit: 'cover', border: '2px solid rgba(255,255,255,0.15)',
+                  boxShadow: '0 0 18px rgba(37,99,235,0.25)',
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: '#60a5fa', fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+                  {farmAccum.toFixed(3)}
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(96,165,250,0.7)', marginLeft: 5 }}>AXN</span>
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={shareLink} disabled={!referralLink || isSharing} style={{
-                flex: 1, padding: '13px 0',
-                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                border: 'none', borderRadius: 14, color: '#fff',
-                fontSize: 14, fontWeight: 800, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                boxShadow: '0 4px 20px rgba(37,99,235,0.4)', opacity: !referralLink ? 0.6 : 1,
-              }} className="active:scale-95 transition-transform">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
-                Invite Friend
+
+            {/* Buttons row */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+
+              {/* Center dynamic button */}
+              {(() => {
+                const isActive = farmData?.isActive;
+                const canClaim = isActive && farmCountdown <= 0;
+                const isPending = farmStartMutation.isPending || farmClaimMutation.isPending;
+
+                if (canClaim) {
+                  return (
+                    <button
+                      onClick={() => farmClaimMutation.mutate()}
+                      disabled={isPending}
+                      style={{
+                        flex: 1, padding: '13px 0',
+                        background: isPending ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #16a34a, #22c55e)',
+                        border: 'none', borderRadius: 12,
+                        color: isPending ? 'rgba(255,255,255,0.3)' : '#fff',
+                        fontSize: 13, fontWeight: 800, cursor: isPending ? 'default' : 'pointer',
+                        boxShadow: isPending ? 'none' : '0 4px 18px rgba(34,197,94,0.35)',
+                      }}
+                      className="active:scale-95 transition-transform"
+                    >
+                      {isPending ? 'Claiming…' : `CLAIM ${farmAccum.toFixed(3)} AXN`}
+                    </button>
+                  );
+                }
+                if (isActive) {
+                  return (
+                    <button
+                      disabled
+                      style={{
+                        flex: 1, padding: '13px 0',
+                        background: 'rgba(255,255,255,0.04)',
+                        border: 'none',
+                        borderRadius: 12, color: 'rgba(255,255,255,0.5)',
+                        fontSize: 14, fontWeight: 700, cursor: 'default',
+                        letterSpacing: '0.04em', fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {fmtCountdown(farmCountdown)}
+                    </button>
+                  );
+                }
+                return (
+                  <button
+                    onClick={() => farmStartMutation.mutate()}
+                    disabled={isPending}
+                    style={{
+                      flex: 1, padding: '13px 0',
+                      background: isPending ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                      border: 'none', borderRadius: 12,
+                      color: isPending ? 'rgba(255,255,255,0.3)' : '#fff',
+                      fontSize: 14, fontWeight: 800, cursor: isPending ? 'default' : 'pointer',
+                      boxShadow: isPending ? 'none' : '0 4px 20px rgba(37,99,235,0.4)',
+                    }}
+                    className="active:scale-95 transition-transform"
+                  >
+                    {isPending ? 'Starting…' : 'START'}
+                  </button>
+                );
+              })()}
+
+              {/* Speed Up button — speed value on top, label below */}
+              <button
+                onClick={() => showNotification('Speed Up feature is coming soon.', 'info')}
+                style={{
+                  flexShrink: 0, padding: '8px 14px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: 'none',
+                  borderRadius: 12, cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 2,
+                  minWidth: 64,
+                }}
+                className="active:scale-95 transition-transform"
+              >
+                <span style={{ color: '#60a5fa', fontSize: 11, fontWeight: 800 }}>0.001/s</span>
+                <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, fontWeight: 600 }}>Speed Up</span>
               </button>
-              <button onClick={copyLink} disabled={!referralLink} style={{
-                padding: '13px 20px', background: 'rgba(255,255,255,0.08)',
-                borderRadius: 14, color: 'rgba(255,255,255,0.7)',
-                fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                opacity: !referralLink ? 0.6 : 1,
-              }} className="active:scale-95 transition-transform">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                Copy
-              </button>
+
             </div>
           </div>
         </div>
+
+        {/* Farming Info Popup */}
+        {showFarmInfo && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setShowFarmInfo(false)} />
+            <div style={{
+              position: 'relative', width: '100%', maxWidth: 340,
+              background: '#111', borderRadius: 20, padding: '28px 24px',
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <img src="/axn-coin.jpg" alt="AXN" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                <span style={{ color: '#fff', fontSize: 17, fontWeight: 800 }}>Farming Info</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+                {[
+                  ['Farming Speed', '0.001 AXN/s'],
+                  ['Farming Duration', '4 Hours'],
+                  ['Max Reward', `${FARM_MAX.toFixed(3)} AXN per session`],
+                  ['How to Claim', 'Wait for countdown to end, then press CLAIM'],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                    <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>{label}</span>
+                    <span style={{ color: '#60a5fa', fontSize: 13, fontWeight: 700, textAlign: 'right' }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowFarmInfo(false)}
+                style={{
+                  width: '100%', padding: '13px 0',
+                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                  border: 'none', borderRadius: 12, color: '#fff',
+                  fontSize: 14, fontWeight: 800, cursor: 'pointer',
+                }}
+              >Got it</button>
+            </div>
+          </div>
+        )}
 
       </div>
 

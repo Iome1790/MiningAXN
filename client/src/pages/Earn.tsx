@@ -6,31 +6,39 @@ import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 import { showRewardedInterstitial } from "@/lib/showAd";
 
-type AxnNameState = 'idle' | 'checking' | 'done' | 'failed';
+type AxnNameState = 'idle' | 'copied' | 'checking' | 'done' | 'failed';
 
 function AxnNameTask({ claimed }: { claimed: boolean }) {
   const [state, setState] = useState<AxnNameState>(claimed ? 'done' : 'idle');
   const queryClient = useQueryClient();
 
-  const verify = async () => {
-    if (state !== 'idle') return;
+  const handleCopy = () => {
+    navigator.clipboard.writeText('$AXN').then(() => {
+      setState('copied');
+    }).catch(() => {
+      setState('copied');
+    });
+  };
+
+  const handleClaim = async () => {
+    if (state !== 'copied') return;
     setState('checking');
     try {
-      const res = await apiRequest('POST', '/api/tasks/axn-name/verify', {});
+      const res = await apiRequest('POST', '/api/axn-name/verify', {});
       const data = await res.json();
       if (data.success) {
         setState('done');
-        showNotification(data.message || '+30 AXN earned!', 'success');
+        showNotification(data.message || '+50 AXN earned!', 'success');
         queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       } else if (data.hasAxn === false) {
-        setState('idle');
+        setState('copied');
         showNotification(data.message || '$AXN not found in your name', 'error');
       } else {
-        setState('failed');
-        showNotification(data.message || 'Verification failed', 'error');
+        setState('copied');
+        showNotification(data.message || 'Verification failed. Try again.', 'error');
       }
     } catch (e: any) {
-      setState('idle');
+      setState('copied');
       let msg = 'Verification failed';
       try { const p = JSON.parse(e.message); if (p.message) msg = p.message; } catch {}
       showNotification(msg, 'error');
@@ -46,43 +54,43 @@ function AxnNameTask({ claimed }: { claimed: boolean }) {
     }}>
       <div style={{
         width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-        background: 'rgba(37,99,235,0.15)', border: '1px solid rgba(37,99,235,0.25)',
+        background: 'rgba(37,99,235,0.15)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <span style={{ fontSize: 18 }}>✏️</span>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginBottom: 3 }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
           <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>Add $AXN to your name</span>
           <span style={{
-            background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)',
+            background: 'rgba(37,99,235,0.15)',
             borderRadius: 6, color: BLUE, fontSize: 10, fontWeight: 800, padding: '2px 8px',
-          }}>30 AXN</span>
+          }}>50 AXN</span>
         </div>
-        <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: 11, margin: 0 }}>
-          Add <span style={{ color: BLUE, fontWeight: 700 }}>$AXN</span> anywhere in your Telegram first or last name
-        </p>
       </div>
       <div style={{ flexShrink: 0 }}>
         {state === 'done' ? (
           <span style={{ color: '#4ade80', fontSize: 12, fontWeight: 700 }}>✓ Done</span>
+        ) : state === 'checking' ? (
+          <button disabled style={{
+            background: 'rgba(255,255,255,0.04)', border: 'none',
+            fontSize: 12, fontWeight: 800, padding: '9px 16px', borderRadius: 10,
+            color: 'rgba(255,255,255,0.3)', cursor: 'default', whiteSpace: 'nowrap',
+          }}>Checking…</button>
+        ) : state === 'copied' ? (
+          <button onClick={handleClaim} style={{
+            background: 'linear-gradient(135deg, #16a34a, #22c55e)', border: 'none',
+            fontSize: 12, fontWeight: 800, padding: '9px 16px', borderRadius: 10,
+            color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap',
+            boxShadow: '0 2px 12px rgba(34,197,94,0.4)',
+          }} className="active:scale-95 transition-transform">CLAIM</button>
         ) : (
-          <button
-            onClick={verify}
-            disabled={state === 'checking'}
-            style={{
-              background: state === 'checking'
-                ? 'rgba(255,255,255,0.04)'
-                : 'linear-gradient(135deg, #1d4ed8, #3b82f6)',
-              color: state === 'checking' ? 'rgba(255,255,255,0.38)' : '#fff',
-              border: 'none', fontSize: 12, fontWeight: 800,
-              padding: '9px 16px', borderRadius: 10, cursor: state === 'checking' ? 'default' : 'pointer',
-              boxShadow: state === 'checking' ? 'none' : '0 2px 12px rgba(37,99,235,0.4)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {state === 'checking' ? 'Checking…' : 'Verify'}
-          </button>
+          <button onClick={handleCopy} style={{
+            background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)', border: 'none',
+            fontSize: 12, fontWeight: 800, padding: '9px 16px', borderRadius: 10,
+            color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap',
+            boxShadow: '0 2px 12px rgba(37,99,235,0.4)',
+          }} className="active:scale-95 transition-transform">COPY</button>
         )}
       </div>
     </div>
