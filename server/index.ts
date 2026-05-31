@@ -23,13 +23,13 @@ try {
   // Continue server startup even if setup fails
 }
 
-// Reset legacy mining_balance to 0 — app now runs as wallet-only ecosystem
+// Reset only legacy mining_balance to 0 — balance (CIPHER) is preserved
 try {
   const { pool } = await import('./db');
-  await pool.query(`UPDATE users SET mining_balance = 0, balance = 0 WHERE COALESCE(mining_balance::numeric, 0) > 0 OR COALESCE(balance::numeric, 0) > 0`);
-  console.log('✅ Legacy mining_balance and balance fields reset to 0 for all users');
+  await pool.query(`UPDATE users SET mining_balance = 0 WHERE COALESCE(mining_balance::numeric, 0) > 0`);
+  console.log('✅ Legacy mining_balance reset to 0 for all users (CIPHER balance preserved)');
 } catch (error) {
-  console.log('⚠️ Could not reset legacy balances (non-critical):', error);
+  console.log('⚠️ Could not reset legacy mining_balance (non-critical):', error);
 }
 
 const app = express();

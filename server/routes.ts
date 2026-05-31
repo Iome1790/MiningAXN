@@ -579,6 +579,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: `Ad slot ${slot} reward`,
       });
 
+      // Credit 10% referral commission to referrer (if this user was referred)
+      try {
+        const referralRows = await db.execute(sql`
+          SELECT referrer_id FROM referrals WHERE referred_id = ${user.id} LIMIT 1
+        `);
+        const referrerId = (referralRows.rows[0] as any)?.referrer_id;
+        if (referrerId) {
+          const commission = Math.floor(config.reward * 0.1);
+          if (commission > 0) {
+            await db.execute(sql`
+              UPDATE users SET balance = COALESCE(balance::numeric, 0) + ${commission} WHERE id = ${referrerId}
+            `);
+            await storage.addEarning({
+              userId: referrerId,
+              amount: commission.toString(),
+              source: 'referral_commission',
+              description: `10% commission from friend ad watch`,
+            });
+          }
+        }
+      } catch (_commErr) {
+        // Non-critical — don't fail the main reward
+      }
+
       const newCount = currentCount + 1;
       const updatedUser = await storage.getUser(user.id);
       const tomorrowMidnightMs = new Date(new Date().setUTCHours(24, 0, 0, 0)).getTime();
@@ -2188,55 +2212,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Leaderboard endpoints
-  // Top 10 referral leaderboard — public, no auth required
+  // Top 10 referral leaderboard — ranked by active friends (referred users with >= 500 CIPHER)
   app.get('/api/leaderboard/referrals', async (req: any, res) => {
     try {
       const { pool } = await import('./db');
       const userId = req.session?.user?.user?.id || req.user?.user?.id;
       const adminTgId = process.env.TELEGRAM_ADMIN_ID || null;
 
-      // Top 10 (exclude admin)
+      // Top 10 by active friends count (referred users who earned >= 500 CIPHER)
       const result = await pool.query(`
         SELECT
-          username,
-          first_name,
-          friends_invited,
-          COALESCE(friends_invited, 0) * 150 AS axn_earned
-        FROM users
-        WHERE banned = FALSE
-          AND COALESCE(friends_invited, 0) > 0
-          AND ($1::text IS NULL OR CAST(telegram_id AS TEXT) != $1)
-        ORDER BY friends_invited DESC
+          u.id,
+          u.username,
+          u.first_name,
+          COUNT(r.referred_id) FILTER (
+            WHERE COALESCE(ru.balance::numeric, 0) >= 500
+          ) AS active_friends_count
+        FROM users u
+        LEFT JOIN referrals r ON CAST(r.referrer_id AS TEXT) = CAST(u.id AS TEXT)
+        LEFT JOIN users ru ON CAST(ru.id AS TEXT) = CAST(r.referred_id AS TEXT)
+        WHERE u.banned = FALSE
+          AND ($1::text IS NULL OR CAST(u.telegram_id AS TEXT) != $1)
+        GROUP BY u.id, u.username, u.first_name
+        HAVING COUNT(r.referred_id) FILTER (
+          WHERE COALESCE(ru.balance::numeric, 0) >= 500
+        ) > 0
+        ORDER BY active_friends_count DESC
         LIMIT 10
       `, [adminTgId]);
+
       const rows = result.rows.map((r: any, i: number) => ({
         rank: i + 1,
         username: r.username || null,
         firstName: r.first_name || 'Anonymous',
-        referrals: Number(r.friends_invited) || 0,
-        axnEarned: Number(r.axn_earned) || 0,
+        referrals: Number(r.active_friends_count) || 0,
+        axnEarned: 0,
       }));
 
       // Current user's rank
       let myRank = null;
       if (userId) {
         const rankResult = await pool.query(`
-          SELECT
-            sub.rank,
-            sub.username,
-            sub.first_name,
-            sub.friends_invited,
-            COALESCE(sub.friends_invited, 0) * 150 AS axn_earned
+          SELECT sub.rank, sub.username, sub.first_name, sub.active_friends_count
           FROM (
             SELECT
-              id,
-              username,
-              first_name,
-              friends_invited,
-              RANK() OVER (ORDER BY COALESCE(friends_invited, 0) DESC) AS rank
-            FROM users
-            WHERE banned = FALSE
-              AND ($1::text IS NULL OR CAST(telegram_id AS TEXT) != $1)
+              u.id,
+              u.username,
+              u.first_name,
+              COUNT(r.referred_id) FILTER (
+                WHERE COALESCE(ru.balance::numeric, 0) >= 500
+              ) AS active_friends_count,
+              RANK() OVER (
+                ORDER BY COUNT(r.referred_id) FILTER (
+                  WHERE COALESCE(ru.balance::numeric, 0) >= 500
+                ) DESC
+              ) AS rank
+            FROM users u
+            LEFT JOIN referrals r ON CAST(r.referrer_id AS TEXT) = CAST(u.id AS TEXT)
+            LEFT JOIN users ru ON CAST(ru.id AS TEXT) = CAST(r.referred_id AS TEXT)
+            WHERE u.banned = FALSE
+              AND ($1::text IS NULL OR CAST(u.telegram_id AS TEXT) != $1)
+            GROUP BY u.id, u.username, u.first_name
           ) sub
           WHERE sub.id = $2
         `, [adminTgId, userId]);
@@ -2246,8 +2282,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             rank: Number(r.rank),
             username: r.username || null,
             firstName: r.first_name || 'Anonymous',
-            referrals: Number(r.friends_invited) || 0,
-            axnEarned: Number(r.axn_earned) || 0,
+            referrals: Number(r.active_friends_count) || 0,
+            axnEarned: 0,
           };
         }
       }
@@ -2310,7 +2346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Top AXN holders leaderboard
+  // Top AXN holders leaderboard — uses wallet_balance (actual AXN in wallet)
   app.get('/api/leaderboard/axn-holders', async (req: any, res) => {
     try {
       const { pool } = await import('./db');
@@ -8462,10 +8498,20 @@ ${walletAddress}
       const totalEarned = parseFloat((commissionRows as any).rows?.[0]?.total || '0');
       const refCountRows = await db.execute(sql`SELECT COUNT(*) as cnt FROM referrals WHERE referrer_id = ${userId}`);
       const totalFriends = parseInt((refCountRows as any).rows?.[0]?.cnt || '0');
+      // Active friends = referred users who have earned >= 500 CIPHER
+      const activeFriendsRows = await db.execute(sql`
+        SELECT COUNT(*) as cnt
+        FROM referrals r
+        JOIN users u ON CAST(u.id AS TEXT) = CAST(r.referred_id AS TEXT)
+        WHERE CAST(r.referrer_id AS TEXT) = ${userId}
+          AND COALESCE(u.balance::numeric, 0) >= 500
+      `);
+      const activeFriends = parseInt((activeFriendsRows as any).rows?.[0]?.cnt || '0');
       return res.json({
         wellBalance,
         totalEarned,
         totalFriends,
+        activeFriends,
       });
     } catch (e) {
       return res.status(500).json({ message: "Failed" });
