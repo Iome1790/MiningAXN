@@ -509,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/ads/slot-watch — watch ad for a specific slot (with 1hr cooldown)
+  // POST /api/ads/slot-watch — watch ad for a specific slot (daily count-based limit)
   app.post("/api/ads/slot-watch", authenticateTelegram, async (req: any, res) => {
     try {
       const user = req.user?.user;
@@ -517,39 +517,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { slot } = req.body;
       if (!slot || typeof slot !== 'number') return res.status(400).json({ message: "Missing slot" });
 
+      // Per-slot daily limits and rewards (matches frontend AD_TASKS config)
+      const AD_SLOT_CONFIG: Record<number, { reward: number; dailyLimit: number }> = {
+        1: { reward: 12, dailyLimit: 30 },
+        2: { reward: 20, dailyLimit: 50 },
+        3: { reward: 15, dailyLimit: 30 },
+        4: { reward: 15, dailyLimit: 30 },
+        5: { reward: 10, dailyLimit: 30 },
+        6: { reward: 10, dailyLimit: 30 },
+        7: { reward: 10, dailyLimit: 30 },
+      };
+      const config = AD_SLOT_CONFIG[slot] ?? { reward: 10, dailyLimit: 30 };
+
+      // Ensure count-based tracking table exists
       await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS ad_slot_cooldowns (
+        CREATE TABLE IF NOT EXISTS ad_slot_watches (
           id SERIAL PRIMARY KEY,
           user_id VARCHAR NOT NULL,
           slot INTEGER NOT NULL,
-          last_watched_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          UNIQUE(user_id, slot)
+          watch_date DATE NOT NULL DEFAULT CURRENT_DATE,
+          watch_count INTEGER NOT NULL DEFAULT 1,
+          UNIQUE(user_id, slot, watch_date)
         )
       `);
 
-      const todayUTCd = new Date(); todayUTCd.setUTCHours(0,0,0,0);
-      const tomorrowUTCd = new Date(todayUTCd.getTime() + 86400000);
-      const rows = await db.execute(sql`
-        SELECT last_watched_at FROM ad_slot_cooldowns WHERE user_id = ${user.id} AND slot = ${slot}
+      // Get today's watch count for this user+slot
+      const todayDate = new Date().toISOString().slice(0, 10);
+      const countRows = await db.execute(sql`
+        SELECT watch_count FROM ad_slot_watches
+        WHERE user_id = ${user.id} AND slot = ${slot} AND watch_date = ${todayDate}::date
       `);
-      if (rows.rows && rows.rows.length > 0) {
-        const lastWatched = new Date((rows.rows[0] as any).last_watched_at);
-        if (lastWatched >= todayUTCd) {
-          const msLeft = Math.max(0, tomorrowUTCd.getTime() - Date.now());
-          const hours = Math.ceil(msLeft / 3600000);
-          return res.status(429).json({ message: `Already watched today. Resets in ${hours}h.`, msLeft });
-        }
+      const currentCount: number = countRows.rows.length > 0
+        ? Number((countRows.rows[0] as any).watch_count)
+        : 0;
+
+      if (currentCount >= config.dailyLimit) {
+        const tomorrowMidnightMs = new Date(new Date().setUTCHours(24, 0, 0, 0)).getTime();
+        const msLeft = Math.max(0, tomorrowMidnightMs - Date.now());
+        const hours = Math.ceil(msLeft / 3600000);
+        return res.status(429).json({
+          message: `Daily limit reached (${config.dailyLimit}/${config.dailyLimit}). Resets in ${hours}h.`,
+          msLeft,
+          currentCount,
+          dailyLimit: config.dailyLimit,
+        });
       }
 
-      const AD_SLOT_REWARDS: Record<number, number> = { 1: 20, 2: 20, 3: 20, 4: 5, 5: 5 };
-      const rewardAmount = (AD_SLOT_REWARDS[slot] || 10).toString();
-
+      // Increment the daily watch count (upsert)
       await db.execute(sql`
-        INSERT INTO ad_slot_cooldowns (user_id, slot, last_watched_at)
-        VALUES (${user.id}, ${slot}, NOW())
-        ON CONFLICT (user_id, slot) DO UPDATE SET last_watched_at = NOW()
+        INSERT INTO ad_slot_watches (user_id, slot, watch_date, watch_count)
+        VALUES (${user.id}, ${slot}, ${todayDate}::date, 1)
+        ON CONFLICT (user_id, slot, watch_date)
+        DO UPDATE SET watch_count = ad_slot_watches.watch_count + 1
       `);
 
+      const rewardAmount = config.reward.toString();
       await storage.addEarning({
         userId: user.id,
         amount: rewardAmount,
@@ -557,14 +579,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: `Ad slot ${slot} reward`,
       });
 
+      const newCount = currentCount + 1;
       const updatedUser = await storage.getUser(user.id);
-      const tomorrowMidnightMs = new Date(new Date().setUTCHours(24,0,0,0)).getTime();
+      const tomorrowMidnightMs = new Date(new Date().setUTCHours(24, 0, 0, 0)).getTime();
       const cooldownMs = Math.max(0, tomorrowMidnightMs - Date.now());
+
       res.json({
         success: true,
-        newBalance: updatedUser?.walletBalance,
-        rewardAXN: rewardAmount,
+        newBalance: updatedUser?.balance,
+        rewardAXN: config.reward,
         slot,
+        currentCount: newCount,
+        dailyLimit: config.dailyLimit,
         cooldownMs,
       });
     } catch (error) {
@@ -794,11 +820,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reward = Math.floor(Math.random() * 100) + 1;
 
       await dbPool.query(
-        `UPDATE users SET mystery_box_date = NOW(), wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1 WHERE id = $2`,
+        `UPDATE users SET mystery_box_date = NOW(), balance = COALESCE(balance::numeric, 0) + $1 WHERE id = $2`,
         [reward, user.id]
       );
 
-      res.json({ success: true, reward, message: `You won ${reward} AXN from the mystery box!` });
+      res.json({ success: true, reward, message: `You won ${reward} CIPHER from the mystery box!` });
     } catch (error) {
       console.error('Mystery box error:', error);
       res.status(500).json({ success: false, message: 'Failed to open mystery box' });
@@ -2167,8 +2193,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { pool } = await import('./db');
       const userId = req.session?.user?.user?.id || req.user?.user?.id;
+      const adminTgId = process.env.TELEGRAM_ADMIN_ID || null;
 
-      // Top 10
+      // Top 10 (exclude admin)
       const result = await pool.query(`
         SELECT
           username,
@@ -2178,9 +2205,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         FROM users
         WHERE banned = FALSE
           AND COALESCE(friends_invited, 0) > 0
+          AND ($1::text IS NULL OR CAST(telegram_id AS TEXT) != $1)
         ORDER BY friends_invited DESC
         LIMIT 10
-      `);
+      `, [adminTgId]);
       const rows = result.rows.map((r: any, i: number) => ({
         rank: i + 1,
         username: r.username || null,
@@ -2208,9 +2236,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               RANK() OVER (ORDER BY COALESCE(friends_invited, 0) DESC) AS rank
             FROM users
             WHERE banned = FALSE
+              AND ($1::text IS NULL OR CAST(telegram_id AS TEXT) != $1)
           ) sub
-          WHERE sub.id = $1
-        `, [userId]);
+          WHERE sub.id = $2
+        `, [adminTgId, userId]);
         if (rankResult.rows.length > 0) {
           const r = rankResult.rows[0];
           myRank = {
@@ -2226,6 +2255,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({ leaderboard: rows, myRank });
     } catch (error) {
       console.error('Referral leaderboard error:', error);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Top CIPHER earners leaderboard
+  app.get('/api/leaderboard/cipher-earners', async (req: any, res) => {
+    try {
+      const { pool } = await import('./db');
+      const userId = req.session?.user?.user?.id || req.user?.user?.id;
+      const adminTgId = process.env.TELEGRAM_ADMIN_ID || null;
+
+      const result = await pool.query(`
+        SELECT username, first_name, COALESCE(balance::numeric, 0) AS amount
+        FROM users
+        WHERE banned = FALSE
+          AND COALESCE(balance::numeric, 0) > 0
+          AND ($1::text IS NULL OR CAST(telegram_id AS TEXT) != $1)
+        ORDER BY COALESCE(balance::numeric, 0) DESC
+        LIMIT 10
+      `, [adminTgId]);
+
+      const rows = result.rows.map((r: any, i: number) => ({
+        rank: i + 1,
+        username: r.username || null,
+        firstName: r.first_name || 'Anonymous',
+        amount: Number(r.amount) || 0,
+      }));
+
+      let myRank = null;
+      if (userId) {
+        const rankResult = await pool.query(`
+          SELECT sub.rank, sub.username, sub.first_name, sub.amount
+          FROM (
+            SELECT id, username, first_name,
+              COALESCE(balance::numeric, 0) AS amount,
+              RANK() OVER (ORDER BY COALESCE(balance::numeric, 0) DESC) AS rank
+            FROM users
+            WHERE banned = FALSE
+              AND ($1::text IS NULL OR CAST(telegram_id AS TEXT) != $1)
+          ) sub
+          WHERE sub.id = $2
+        `, [adminTgId, userId]);
+        if (rankResult.rows.length > 0) {
+          const r = rankResult.rows[0];
+          myRank = { rank: Number(r.rank), username: r.username || null, firstName: r.first_name || 'Anonymous', amount: Number(r.amount) || 0 };
+        }
+      }
+
+      return res.json({ leaderboard: rows, myRank });
+    } catch (error) {
+      console.error('Cipher earners leaderboard error:', error);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Top AXN holders leaderboard
+  app.get('/api/leaderboard/axn-holders', async (req: any, res) => {
+    try {
+      const { pool } = await import('./db');
+      const userId = req.session?.user?.user?.id || req.user?.user?.id;
+      const adminTgId = process.env.TELEGRAM_ADMIN_ID || null;
+
+      const result = await pool.query(`
+        SELECT username, first_name, COALESCE(wallet_balance::numeric, 0) AS amount
+        FROM users
+        WHERE banned = FALSE
+          AND COALESCE(wallet_balance::numeric, 0) > 0
+          AND ($1::text IS NULL OR CAST(telegram_id AS TEXT) != $1)
+        ORDER BY COALESCE(wallet_balance::numeric, 0) DESC
+        LIMIT 10
+      `, [adminTgId]);
+
+      const rows = result.rows.map((r: any, i: number) => ({
+        rank: i + 1,
+        username: r.username || null,
+        firstName: r.first_name || 'Anonymous',
+        amount: Number(r.amount) || 0,
+      }));
+
+      let myRank = null;
+      if (userId) {
+        const rankResult = await pool.query(`
+          SELECT sub.rank, sub.username, sub.first_name, sub.amount
+          FROM (
+            SELECT id, username, first_name,
+              COALESCE(wallet_balance::numeric, 0) AS amount,
+              RANK() OVER (ORDER BY COALESCE(wallet_balance::numeric, 0) DESC) AS rank
+            FROM users
+            WHERE banned = FALSE
+              AND ($1::text IS NULL OR CAST(telegram_id AS TEXT) != $1)
+          ) sub
+          WHERE sub.id = $2
+        `, [adminTgId, userId]);
+        if (rankResult.rows.length > 0) {
+          const r = rankResult.rows[0];
+          myRank = { rank: Number(r.rank), username: r.username || null, firstName: r.first_name || 'Anonymous', amount: Number(r.amount) || 0 };
+        }
+      }
+
+      return res.json({ leaderboard: rows, myRank });
+    } catch (error) {
+      console.error('AXN holders leaderboard error:', error);
       return res.status(500).json({ message: 'Internal server error' });
     }
   });
