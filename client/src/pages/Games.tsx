@@ -31,8 +31,6 @@ function fmtCountdown(secs: number): string {
 export default function Games() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [balanceHidden, setBalanceHidden] = useState(false);
-  const [showSendPopup, setShowSendPopup] = useState(false);
-  const [showReceivePopup, setShowReceivePopup] = useState(false);
   const [showStakingPopup, setShowStakingPopup] = useState(false);
   const [showWithdrawPopup, setShowWithdrawPopup] = useState(false);
   const [showPromoPopup, setShowPromoPopup] = useState(false);
@@ -303,9 +301,9 @@ export default function Games() {
           {/* Action Buttons */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 18 }}>
 
-            {/* Send */}
+            {/* Withdraw */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
-              <button onClick={() => setShowSendPopup(true)} style={{
+              <button onClick={() => setShowWithdrawPopup(true)} style={{
                 width: 52, height: 52, borderRadius: '50%',
                 background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
                 border: 'none',
@@ -313,11 +311,11 @@ export default function Games() {
                 boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
               }} className="active:scale-90 transition-transform">
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13"/>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" fill="white" stroke="none" opacity="0.9"/>
+                  <path d="M12 2v14M5 9l7 7 7-7"/>
+                  <path d="M3 20h18"/>
                 </svg>
               </button>
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.48)' }}>Send</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.48)' }}>Withdraw</span>
             </div>
 
             {/* Swap */}
@@ -498,22 +496,24 @@ export default function Games() {
                 )}
               </div>
 
-              {/* Speed Up button */}
+              {/* Upgrade button — icon only */}
               <button
-                onClick={() => showNotification('Speed Up feature is coming soon.', 'info')}
+                onClick={() => setShowAlertPopup(true)}
                 style={{
-                  flexShrink: 0, padding: '10px 16px',
+                  flexShrink: 0,
+                  width: 48, height: 48,
                   background: 'rgba(255,255,255,0.06)',
                   border: 'none',
                   borderRadius: 12, cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: 3,
-                  minWidth: 76,
+                  display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
                 }}
                 className="active:scale-95 transition-transform"
               >
-                <span style={{ color: '#60a5fa', fontSize: 11, fontWeight: 800, lineHeight: 1 }}>0.001/s</span>
-                <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, fontWeight: 700, lineHeight: 1 }}>Speed Up</span>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                  <polyline points="17 6 23 6 23 12"/>
+                </svg>
               </button>
             </div>
 
@@ -707,21 +707,6 @@ export default function Games() {
 
       </div>
 
-      {/* Send Popup */}
-      {showSendPopup && (
-        <SendChoicePopup
-          user={user}
-          onClose={() => setShowSendPopup(false)}
-          onWithdraw={() => { setShowSendPopup(false); setShowWithdrawPopup(true); }}
-          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }); setShowSendPopup(false); }}
-        />
-      )}
-
-      {/* Receive Popup */}
-      {showReceivePopup && (
-        <ReceivePopup user={user} onClose={() => setShowReceivePopup(false)} />
-      )}
-
       {/* Promo Popup */}
       {showPromoPopup && (
         <PromoPopup
@@ -870,7 +855,8 @@ export default function Games() {
   );
 }
 
-function SendChoicePopup({ user, onClose, onWithdraw, onSuccess }: {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _SendChoicePopupRemoved({ user, onClose, onWithdraw, onSuccess }: {
   user: any;
   onClose: () => void;
   onWithdraw: () => void;
@@ -1032,7 +1018,8 @@ function SendChoicePopup({ user, onClose, onWithdraw, onSuccess }: {
   );
 }
 
-function ReceivePopup({ user, onClose }: { user: any; onClose: () => void }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _ReceivePopupRemoved({ user, onClose }: { user: any; onClose: () => void }) {
   const copyId = () => {
     const id = user?.id?.toString() || '';
     navigator.clipboard.writeText(id).then(() => showNotification('User ID copied!', 'success')).catch(() => {});

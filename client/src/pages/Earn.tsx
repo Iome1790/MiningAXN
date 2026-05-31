@@ -64,9 +64,13 @@ function AdTaskRow({ slotId, label, reward, dailyLimit }: { slotId: number; labe
       const earned = data.rewardAXN ?? reward;
       const newCount = incrementSlotCount(slotId);
       setCount(newCount);
+      // Instantly update header CIPHER balance
+      queryClient.setQueryData(['/api/auth/user'], (old: any) => {
+        if (!old) return old;
+        return { ...old, balance: String(Math.floor(parseFloat(old.balance || '0') + earned)) };
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       showNotification(`+${earned} CIPHER earned!`, 'success');
-      // Always reset to idle — if limit reached the atLimit flag will disable Watch
       setState('idle');
     } catch (e: any) {
       let msg = 'Failed to claim. Try again.';
@@ -86,7 +90,6 @@ function AdTaskRow({ slotId, label, reward, dailyLimit }: { slotId: number; labe
       display: 'flex', alignItems: 'center', gap: 14,
       marginBottom: 8,
     }}>
-      {/* Icon */}
       <div style={{ flexShrink: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {atLimit ? (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.2" strokeLinecap="round">
@@ -99,7 +102,6 @@ function AdTaskRow({ slotId, label, reward, dailyLimit }: { slotId: number; labe
         )}
       </div>
 
-      {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ color: TEXT, fontSize: 14, fontWeight: 800, lineHeight: 1.2 }}>
           +{reward} CIPHER
@@ -109,7 +111,6 @@ function AdTaskRow({ slotId, label, reward, dailyLimit }: { slotId: number; labe
         </div>
       </div>
 
-      {/* Action */}
       {state === 'claim' ? (
         <button
           onClick={handleClaim}
@@ -147,9 +148,9 @@ function AdTaskRow({ slotId, label, reward, dailyLimit }: { slotId: number; labe
 }
 
 function AxnNameTask({ claimed }: { claimed: boolean }) {
-  const [state, setState] = useState<'idle' | 'copied' | 'checking'>(claimed ? 'idle' : 'idle');
   const [copied, setCopied] = useState(false);
   const [done, setDone] = useState(claimed);
+  const [state, setState] = useState<'idle' | 'checking'>('idle');
   const queryClient = useQueryClient();
 
   if (done) return null;
@@ -167,6 +168,10 @@ function AxnNameTask({ claimed }: { claimed: boolean }) {
       if (data.success) {
         setDone(true);
         showNotification(data.message || '+50 CIPHER earned!', 'success');
+        queryClient.setQueryData(['/api/auth/user'], (old: any) => {
+          if (!old) return old;
+          return { ...old, balance: String(Math.floor(parseFloat(old.balance || '0') + 50)), axnNameRewardClaimed: true };
+        });
         queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       } else {
         setState('idle');
@@ -239,6 +244,9 @@ export default function Earn() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
 
+  const axnNameClaimed = !!user?.axnNameRewardClaimed;
+  const hasSpecialTasks = !axnNameClaimed;
+
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -246,7 +254,6 @@ export default function Earn() {
 
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 86, paddingTop: 'calc(var(--header-height, 62px) + 12px)' }}>
 
-        {/* Page title */}
         <div style={{ padding: '0 16px', marginBottom: 18 }}>
           <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>
             Earn in the <span style={{ color: BLUE }}>Axionet</span>
@@ -254,7 +261,6 @@ export default function Earn() {
           <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 3 }}>Watch ads · Complete tasks · Earn CIPHER</div>
         </div>
 
-        {/* Tab bar */}
         <div style={{ padding: '0 16px', marginBottom: 18 }}>
           <div style={{
             display: 'flex', gap: 4,
@@ -278,16 +284,20 @@ export default function Earn() {
 
         {tab === 'tasks' && (
           <div style={{ padding: '0 16px' }}>
-            {/* Special Tasks */}
-            <div style={{ marginBottom: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                Special Tasks
-              </span>
-            </div>
-            <AxnNameTask claimed={!!user?.axnNameRewardClaimed} />
+            {/* Special Tasks — only shown when there are uncompleted tasks */}
+            {hasSpecialTasks && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                    Special Tasks
+                  </span>
+                </div>
+                <AxnNameTask claimed={axnNameClaimed} />
+              </div>
+            )}
 
             {/* Ad Rewards */}
-            <div style={{ marginTop: 18, marginBottom: 10 }}>
+            <div style={{ marginTop: hasSpecialTasks ? 8 : 0, marginBottom: 10 }}>
               <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                 Ad Rewards
               </span>

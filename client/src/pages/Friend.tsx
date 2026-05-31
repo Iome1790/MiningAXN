@@ -253,45 +253,43 @@ export default function Friend() {
 
         {/* Stats row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
-          <div style={{ background: CARD, borderRadius: 14, padding: '14px 10px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, textAlign: 'center' }}>
-              {/* People icon */}
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" strokeWidth="0" xmlns="http://www.w3.org/2000/svg">
+          <div style={{ background: CARD, borderRadius: 14, padding: '10px 8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, textAlign: 'center' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="0" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="9" cy="7" r="3.5" fill="rgba(255,255,255,0.55)"/>
                 <path d="M2 20c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="rgba(255,255,255,0.55)" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
                 <circle cx="17" cy="8" r="2.5" fill="rgba(255,255,255,0.3)"/>
                 <path d="M20 20c0-2.761-1.343-5-3-5.5" stroke="rgba(255,255,255,0.3)" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
               </svg>
-              <div style={{ color: TEXT, fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{totalFriends}</div>
+              <div style={{ color: TEXT, fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{totalFriends}</div>
               <div style={{ color: TEXT_DIM, fontSize: 10, lineHeight: 1.3 }}>Total Friends</div>
             </div>
           </div>
 
-          <div style={{ background: CARD, borderRadius: 14, padding: '14px 10px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, textAlign: 'center' }}>
-              {/* Active Friends — person with checkmark */}
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <div style={{ background: CARD, borderRadius: 14, padding: '10px 8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, textAlign: 'center' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <circle cx="9" cy="7" r="3.5" fill="rgba(255,255,255,0.55)"/>
                 <path d="M2 20c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="rgba(255,255,255,0.55)" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
                 <circle cx="18.5" cy="16.5" r="4" fill="#16a34a"/>
                 <polyline points="16 16.5 18 18.5 21 15" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
               </svg>
-              <div style={{ color: TEXT, fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{activeFriends}</div>
+              <div style={{ color: TEXT, fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{activeFriends}</div>
               <div style={{ color: TEXT_DIM, fontSize: 10, lineHeight: 1.3 }}>Active Friends</div>
             </div>
           </div>
 
-          <div style={{ background: CARD, borderRadius: 14, padding: '14px 10px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, textAlign: 'center' }}>
-              {/* CIPHER diamond icon */}
-              <div style={{ width: 26, height: 26, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ background: CARD, borderRadius: 14, padding: '10px 8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, textAlign: 'center' }}>
+              {/* Circular CIPHER icon */}
+              <div style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
                 <img
                   src="/cipher-icon.jpg"
                   alt="CIPHER"
                   style={{ width: '130%', height: '130%', objectFit: 'cover', marginLeft: '-15%', marginTop: '-15%' }}
                 />
               </div>
-              <div style={{ color: TEXT, fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{Math.floor(totalEarned).toLocaleString()}</div>
+              <div style={{ color: TEXT, fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{Math.floor(totalEarned).toLocaleString()}</div>
               <div style={{ color: TEXT_DIM, fontSize: 10, lineHeight: 1.3 }}>Total Earned</div>
             </div>
           </div>
