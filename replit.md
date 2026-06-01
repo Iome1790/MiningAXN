@@ -1,7 +1,7 @@
-# CashWatch - AXN Mining Platform
+# Axionet - CIPHER Earning Platform
 
 ## Overview
-CashWatch is a Telegram-based AXN mining platform where users mine AXN by running their machine, watching ads, completing tasks, and referring others. Users withdraw AXN through the platform. Currency is AXN throughout — no BTC/SAT references anywhere.
+Axionet is a Telegram-based CIPHER earning platform. Users earn CIPHER by watching ads, completing tasks, farming, daily check-ins, mystery box, and referring friends. Users withdraw AXN (wallet balance) through the platform. Two currencies in use: CIPHER (earned via ads/tasks, stored in `balance`) and AXN (wallet balance, stored in `wallet_balance`).
 
 ## User Preferences
 - Task type icons should be small and compact (w-4 h-4 with p-2.5 padding)
@@ -20,32 +20,35 @@ CashWatch is a Telegram-based AXN mining platform where users mine AXN by runnin
 ### Technical Implementations
 - **Stack**: React, TypeScript, Vite (frontend); Express.js, Node.js (backend); PostgreSQL with Drizzle ORM (database).
 - **Authentication**: Telegram WebApp Authentication.
-- **AXN Mining Machine**: Home page features a full AXN Mining Machine system (levels 1–25). Users start the CPU to mine AXN into a capacity buffer, then claim. Machine has independent Mining Level, Capacity Level, and CPU Level (each upgradable 1–25). Energy is required to start CPU (boolean; refill costs AXN). Health degrades when antivirus is OFF and virus attacks occur (-1 AXN + -5 health every 120s). Machine repairs cost AXN. Stored in `user_machines` table. All actions via `/api/axn-mining/*` routes.
-- **Currency**: AXN is the ONLY currency throughout. No BTC, SAT, Satoshi, or Lightning Sats references anywhere in the UI.
+- **No Mining Machine**: The old AXN Mining Machine system (levels 1–25, CPU start, antivirus, health, energy) has been fully removed. Do NOT add it back.
+- **Currency**: Two currencies — CIPHER (earning currency, `balance` field) and AXN (wallet/withdrawal currency, `wallet_balance` field). No BTC, SAT, Satoshi, or Lightning Sats references anywhere in the UI.
 - **Branding**: App uses AXN logo (public/axn-logo.svg) — futuristic, no text, no Bitcoin symbol. Loading screen shows only the logo + bouncing dots, no app name text.
 - **Notification UI**: Black background (#0a0a0a), silver/light gray text (#c8c8c8), colored accent border per type.
-- **Referral Mining Boost System**: Each active referral adds +0.1/h to the inviter's mining speed. Stored in `referral_mining_boost` (per-hour value) on the users table. Boosts are auto-removed if the friend leaves the required channel/group, and auto-restored when they rejoin. Referrer receives Telegram notifications on changes. Invite popup accessible via header button.
+- **Referral System**: Users invite friends and earn CIPHER from their activity. No mining speed boost — referral boost system is removed. Invite popup accessible via header button.
 - **Withdrawal System**: Direct AXN withdrawals. Minimum 20 AXN, with configurable fee. Balance deducted from `balance` field on admin approval. Admin can approve/reject with automatic balance deduction/refund.
 - **ArcPay Integration**: Full integration for PDZ top-ups, including secure API credential handling, retry logic, and a webhook for payment notifications.
-- **Earning Mechanics**: Includes Faucetpay (+1 Hrum), Referral System, and Ad Rewards, all managed as Hrum integers.
-- **Number Formatting**: Uses compact notation (1k, 1M) for large Hrum amounts.
-- **Hrum Balance Handling**: Ensures Hrum rewards are stored as integers, with auto-conversion for legacy  balances.
+- **Earning Mechanics**:
+  - **Ads (Earn page)**: Monetag (+10 CIPHER, 50/day), Adgram (+10 CIPHER, 10/day), Gigapub (+10 CIPHER, 30/day)
+  - **Special Task**: Add `$AXN` to Telegram name — one-time +50 CIPHER reward
+  - **Farming (Games page)**: Simple farming at 0.001 CIPHER/s, 4-hour session, claim anytime via `/api/farming/start` and `/api/farming/claim`
+  - **Daily Check-in (Games page)**: +5 CIPHER per day, requires watching a rewarded ad
+  - **Mystery Box (Games page)**: Win 1–100 CIPHER daily, requires watching a rewarded ad
+  - **Promo Codes (Games page)**: Admin issues promo codes, users redeem for bonus CIPHER
+  - **Referral (Friend page)**: Invite friends, earn CIPHER from their activity
 - **Data Persistence**: Employs a dual storage strategy (IndexedDB primary, localStorage fallback) with a custom `PersistentStorage` class for robust data saving, auto-sync, and fallback handling.
 - **Mandatory Channel & Group Join Security**: Locks app access until users join specified Telegram channel and group, verified in real-time on every app launch.
-- **Ad Watch System**: Implements hourly (60 ads) and daily (500 ads) limits with a countdown timer for hourly resets.
-- **Ad Requirements**: Requires watching Monetag + AdGram ads for Daily Check-in and Promo Code redemption.
+- **Ad Watch System**: Three providers — Monetag (50/day), Adgram (10/day), Gigapub (30/day). Each gives +10 CIPHER. Daily limits reset at UTC midnight, tracked via `ad_slot_cooldowns` table and localStorage.
+- **Ad Requirements**: Rewarded interstitial ad required before Daily Check-in and Mystery Box claim.
 - **Native Share Dialog**: Utilizes Telegram's `shareMessage()` API for rich, native sharing experiences, with fallbacks.
 
 ### Feature Specifications
 - **Top-Up PDZ**: `/topup-pdz` route with ArcPay, minimum 0.1 .
 - **Withdrawal Toggle**: Custom grid toggle for "Withdraw" and "Wallet Setup".
 - **Health Check**: `/api/health` endpoint for system diagnostics.
-- **Task Category System**: Three icon-based task types (Channel, Bot, Partner) with a 3-second countdown before claim. Partner tasks are admin-only with a fixed 5 Hrum reward.
-- **Ad Sequence**: Monetag popup first, then AdGram for streak/promo code claims.
-- **Home Page Display**: Prioritized display of Telegram username.
-- **Withdrawal Requirements**: Admin-controlled for invites and ad watches, with dynamic error messages.
-- **Daily Missions**: Includes "Check for Updates" mission rewarding 5 Hrum, requiring an ad flow for claiming.
-- **Store Page**: New `/store` route showcasing income boosters with various durations and a 0% withdrawal fee booster (UI only).
+- **Task Category System (Earn page)**: Two tabs — "Active" (ads + special tasks) and "Partner" (coming soon).
+- **Games Page**: Contains Wallet Balance display (AXN + TON + USD equivalent), action buttons (Withdraw, Swap, Staking, Promo), Daily Rewards section (Check-in, Mystery Box), and Farming section.
+- **Withdrawal Requirements**: Admin-controlled, with dynamic error messages.
+- **Partner Tasks**: Coming soon — currently shows placeholder.
 
 ### System Design Choices
 - **Configuration**: Environment variable-driven for all sensitive credentials.
