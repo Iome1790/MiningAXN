@@ -95,7 +95,7 @@ function LoadingFallback({ isReady = false, onDone }: { isReady?: boolean; onDon
 
       {/* Logo — background removed, white + blue glow pulse */}
       <img
-        src="/axionet-logo-nobg.png"
+        src="/axionet-logo-new.png"
         alt="Axionet"
         style={{
           width: 180,
@@ -169,63 +169,7 @@ function AppContent() {
   const [showSeasonEnd, setShowSeasonEnd] = useState(false);
   const [seasonLockActive, setSeasonLockActive] = useState(false);
   const { isAdmin } = useAdmin();
-  const inAppAdIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const inAppAdInitialized = useRef(false);
-  const [popupAdsEnabled, setPopupAdsEnabled] = useState(true);
-  const [popupAdInterval, setPopupAdInterval] = useState(60);
-  
   const isDevMode = import.meta.env.DEV || import.meta.env.MODE === 'development';
-
-  useEffect(() => {
-    if (isDevMode) return;
-    // Fetch popup ad settings
-    fetch("/api/app-settings")
-      .then(res => res.json())
-      .then(settings => {
-        setPopupAdsEnabled(settings.popupAdsEnabled !== false);
-        setPopupAdInterval(settings.popupAdInterval || 60);
-      })
-      .catch(() => {});
-  }, [isDevMode]);
-
-  useEffect(() => {
-    if (isDevMode) return;
-    if (inAppAdInitialized.current) return;
-    if (!popupAdsEnabled) return;
-    inAppAdInitialized.current = true;
-
-    const showInAppAd = () => {
-      if (window.location.pathname.startsWith('/game/')) return;
-      if (typeof window.show_10963365 === 'function') {
-        window.show_10963365({
-          type: 'inApp',
-          inAppSettings: {
-            frequency: 2,
-            capping: 0.1,
-            interval: 30,
-            timeout: 5,
-            everyPage: false,
-          }
-        }).catch(() => {});
-      }
-    };
-
-    const intervalMs = popupAdInterval * 1000;
-    const initialDelay = setTimeout(() => {
-      showInAppAd();
-      
-      inAppAdIntervalRef.current = setInterval(() => {
-        showInAppAd();
-      }, intervalMs);
-    }, 5000);
-
-    return () => {
-      clearTimeout(initialDelay);
-      if (inAppAdIntervalRef.current) {
-        clearInterval(inAppAdIntervalRef.current);
-      }
-    };
-  }, [popupAdsEnabled, popupAdInterval]);
 
   // ── Global long-press / context-menu protection ──
   useEffect(() => {
