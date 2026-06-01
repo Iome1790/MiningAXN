@@ -8,6 +8,7 @@ import { useLocation } from "wouter";
 import { showRewardedInterstitial } from "@/lib/showAd";
 import WithdrawPopup from "@/components/WithdrawPopup";
 import { getTONPrice } from "@/lib/tonPriceService";
+import { useTonConnectUI, useTonAddress } from "@tonconnect/ui-react";
 
 const AXN_PER_TON = 100000;
 
@@ -48,7 +49,16 @@ export default function Games() {
   const [farmAccum, setFarmAccum] = useState(0);
   const [showFarmInfo, setShowFarmInfo] = useState(false);
   const [showAlertPopup, setShowAlertPopup] = useState(false);
+  const [showSpeedUpPopup, setShowSpeedUpPopup] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  // 'idle' | 'paying' | 'verifying' | 'needs_verify' (paid but verify failed — show retry)
+  const [upgradeStep, setUpgradeStep] = useState<'idle'|'paying'|'verifying'|'needs_verify'>('idle');
   const farmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // TonConnect — get both friendly (for display) and raw (for API matching)
+  const [tonConnectUI] = useTonConnectUI();
+  const tonWalletAddress = useTonAddress();       // friendly: UQabc...
+  const tonWalletRaw = useTonAddress(false);       // raw: 0:hexhex...
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -199,18 +209,16 @@ export default function Games() {
 
   useEffect(() => {
     if (farmIntervalRef.current) clearInterval(farmIntervalRef.current);
-    const isActive = farmData?.isActive && (farmData?.remainingSeconds ?? 0) > 0;
+    const isActive = farmData?.isActive;
     if (!isActive) return;
+    const rate = farmData?.effectiveRate ?? FARM_RATE;
+    const maxAxn = FARM_DURATION * rate;
     farmIntervalRef.current = setInterval(() => {
-      setFarmCountdown(prev => {
-        const next = Math.max(0, prev - 1);
-        if (next <= 0 && farmIntervalRef.current) clearInterval(farmIntervalRef.current);
-        return next;
-      });
-      setFarmAccum(prev => parseFloat(Math.min(prev + FARM_RATE, FARM_MAX).toFixed(4)));
+      setFarmCountdown(prev => Math.max(0, prev - 1));
+      setFarmAccum(prev => parseFloat(Math.min(prev + rate, maxAxn).toFixed(4)));
     }, 1000);
     return () => { if (farmIntervalRef.current) clearInterval(farmIntervalRef.current); };
-  }, [farmData?.isActive, farmData?.startedAt]);
+  }, [farmData?.isActive, farmData?.startedAt, farmData?.effectiveRate]);
 
   const farmStartMutation = useMutation({
     mutationFn: async () => {
@@ -220,7 +228,7 @@ export default function Games() {
       return data;
     },
     onSuccess: () => {
-      showNotification('Farming started! +0.001 AXN/s for 4 hours', 'success');
+      showNotification('Farming started! Claim anytime — no need to wait.', 'success');
       refetchFarm();
     },
     onError: (err: any) => showNotification(err?.message || 'Failed to start farming', 'error'),
@@ -460,247 +468,288 @@ export default function Games() {
           </span>
         </div>
 
-        <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden', position: 'relative' }}>
-          <div style={{ padding: '16px 16px 18px' }}>
-
-            {/* Top row: image + amount + speed up */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              {/* Farming image */}
-              <div style={{
-                width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
-                boxShadow: '0 0 18px rgba(37,99,235,0.25)',
-                overflow: 'hidden', background: '#000',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <img
-                  src="/axn-coin.jpg"
-                  alt="AXN"
-                  style={{
-                    width: '110%', height: '110%',
-                    objectFit: 'cover',
-                  }}
-                />
-              </div>
-
-              {/* Amount — large and prominent */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {farmData?.isActive ? (
-                  <div style={{ color: '#ffffff', fontSize: 28, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1 }}>
-                    {farmAccum.toFixed(3)}
-                    <span style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginLeft: 6 }}>AXN</span>
-                  </div>
-                ) : (
-                  <div style={{ color: 'rgba(255,255,255,0.28)', fontSize: 13, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                    OFFLINE
-                  </div>
-                )}
-              </div>
-
-              {/* Upgrade button — icon only */}
-              <button
-                onClick={() => setShowAlertPopup(true)}
-                style={{
-                  flexShrink: 0,
-                  width: 48, height: 48,
-                  background: 'rgba(255,255,255,0.06)',
-                  border: 'none',
-                  borderRadius: 12, cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                }}
-                className="active:scale-95 transition-transform"
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                  <polyline points="17 6 23 6 23 12"/>
-                </svg>
-              </button>
+        <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden', marginBottom: 20 }}>
+          {/* Main row: coin + info + action button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: '#000',
+              boxShadow: farmData?.isActive ? '0 0 14px rgba(34,197,94,0.4)' : '0 0 12px rgba(37,99,235,0.2)',
+            }}>
+              <img src="/axn-coin.jpg" alt="AXN" style={{ width: '110%', height: '110%', objectFit: 'cover' }} />
             </div>
-
-            {/* Bottom row: ? | Start/Timer/Claim | Alert */}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-
-              {/* ? button — circular, no outline */}
-              <button
-                onClick={() => setShowFarmInfo(true)}
-                style={{
-                  flexShrink: 0,
-                  width: 44, height: 44, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.08)',
-                  border: 'none', color: 'rgba(255,255,255,0.7)',
-                  fontSize: 16, fontWeight: 900, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  lineHeight: 1,
-                }}
-                className="active:scale-95 transition-transform"
-              >?</button>
-
-              {/* Center dynamic button */}
-              {(() => {
-                const isActive = farmData?.isActive;
-                const canClaim = isActive && farmCountdown <= 0;
-                const isPending = farmStartMutation.isPending || farmClaimMutation.isPending;
-
-                if (canClaim) {
-                  return (
-                    <button
-                      onClick={() => farmClaimMutation.mutate()}
-                      disabled={isPending}
-                      style={{
-                        flex: 1, padding: '13px 0',
-                        background: isPending ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #16a34a, #22c55e)',
-                        border: 'none', borderRadius: 12,
-                        color: isPending ? 'rgba(255,255,255,0.3)' : '#fff',
-                        fontSize: 13, fontWeight: 800, cursor: isPending ? 'default' : 'pointer',
-                        boxShadow: isPending ? 'none' : '0 4px 18px rgba(34,197,94,0.35)',
-                      }}
-                      className="active:scale-95 transition-transform"
-                    >
-                      {isPending ? 'Claiming…' : `CLAIM ${farmAccum.toFixed(3)} AXN`}
-                    </button>
-                  );
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>AXN Farming</div>
+              <div style={{ fontSize: 12, marginTop: 2 }}>
+                {farmData?.isActive
+                  ? <span style={{ color: '#4ade80', fontWeight: 700 }}>{farmAccum.toFixed(3)} AXN ready</span>
+                  : <span style={{ color: 'rgba(255,255,255,0.35)' }}>0.001/s · 14.4 AXN per cycle</span>
                 }
-                if (isActive) {
-                  return (
-                    <button
-                      disabled
-                      style={{
-                        flex: 1, padding: '13px 0',
-                        background: 'rgba(255,255,255,0.04)',
-                        border: 'none',
-                        borderRadius: 12, color: 'rgba(255,255,255,0.5)',
-                        fontSize: 14, fontWeight: 700, cursor: 'default',
-                        letterSpacing: '0.04em', fontVariantNumeric: 'tabular-nums',
-                      }}
-                    >
-                      {fmtCountdown(farmCountdown)}
-                    </button>
-                  );
-                }
-                return (
-                  <button
-                    onClick={() => showNotification('Farming is temporarily unavailable.', 'info')}
-                    style={{
-                      flex: 1, padding: '13px 0',
-                      background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                      border: 'none', borderRadius: 12,
-                      color: '#fff',
-                      fontSize: 14, fontWeight: 800, cursor: 'pointer',
-                      boxShadow: '0 4px 20px rgba(37,99,235,0.4)',
-                    }}
-                    className="active:scale-95 transition-transform"
-                  >
-                    START
-                  </button>
-                );
-              })()}
-
-              {/* Alert button */}
-              <button
-                onClick={() => setShowAlertPopup(true)}
-                style={{
-                  flexShrink: 0,
-                  width: 44, height: 44, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.08)',
-                  border: 'none', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-                className="active:scale-95 transition-transform"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/>
-                  <line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-              </button>
-
+              </div>
             </div>
+            {/* Compact action button */}
+            {(() => {
+              const isActive = farmData?.isActive;
+              const isPending = farmStartMutation.isPending || farmClaimMutation.isPending;
+              if (isPending) return (
+                <button disabled style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: 10, padding: '9px 14px', color: 'rgba(255,255,255,0.3)', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                  <span style={{ width: 11, height: 11, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', borderTopColor: 'rgba(255,255,255,0.5)', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                  {farmClaimMutation.isPending ? 'Claiming' : 'Starting'}
+                </button>
+              );
+              if (isActive) return (
+                <button onClick={() => farmClaimMutation.mutate()} style={{
+                  background: 'linear-gradient(135deg, #16a34a, #22c55e)', border: 'none', borderRadius: 10,
+                  padding: '8px 13px', cursor: 'pointer', flexShrink: 0,
+                  boxShadow: '0 2px 12px rgba(34,197,94,0.4)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0,
+                }} className="active:scale-95 transition-transform">
+                  <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em' }}>CLAIM</span>
+                  <span style={{ color: '#fff', fontSize: 13, fontWeight: 900, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{farmAccum.toFixed(3)}</span>
+                </button>
+              );
+              return (
+                <button onClick={() => farmStartMutation.mutate()} style={{
+                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)', border: 'none', borderRadius: 10,
+                  padding: '9px 20px', color: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0,
+                  boxShadow: '0 2px 12px rgba(37,99,235,0.4)', letterSpacing: '0.05em',
+                }} className="active:scale-95 transition-transform">START</button>
+              );
+            })()}
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
+
+          {/* Sub-row: Info | Speed Up | Alert */}
+          <div style={{ display: 'flex', alignItems: 'stretch' }}>
+            <button onClick={() => setShowFarmInfo(true)} style={{ flex: 1, padding: '11px 0', background: 'none', border: 'none', color: 'rgba(255,255,255,0.38)', fontSize: 15, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="active:scale-95 transition-transform">?</button>
+            <div style={{ width: 1, background: 'rgba(255,255,255,0.05)' }} />
+            <button onClick={() => setShowSpeedUpPopup(true)} style={{
+              flex: 3, padding: '11px 0', background: 'none', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+              color: farmData?.multiplier && farmData.multiplier > 1 ? '#4ade80' : '#fbbf24',
+              fontSize: 12, fontWeight: 800,
+            }} className="active:scale-95 transition-transform">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              {farmData?.multiplier && farmData.multiplier > 1 ? `×${farmData.multiplier} Speed Active` : 'Speed Up'}
+            </button>
+            <div style={{ width: 1, background: 'rgba(255,255,255,0.05)' }} />
+            <button onClick={() => setShowAlertPopup(true)} style={{ flex: 1, padding: '11px 0', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="active:scale-95 transition-transform">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.38)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </button>
           </div>
         </div>
 
-        {/* Farming Info Popup */}
+        {/* Farm Info Popup — bottom sheet */}
         {showFarmInfo && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'flex-end' }}>
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setShowFarmInfo(false)} />
-            <div style={{
-              position: 'relative', width: '100%', maxWidth: 340,
-              background: '#111', borderRadius: 20, padding: '28px 24px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: '50%', overflow: 'hidden',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000',
-                }}>
+            <div style={{ position: 'relative', width: '100%', background: 'linear-gradient(160deg, #0d0d0f, #111118)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '28px 28px 0 0', padding: '28px 20px 48px', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)' }} />
+              <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 24px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: '#000', flexShrink: 0 }}>
                   <img src="/axn-coin.jpg" alt="AXN" style={{ width: '110%', height: '110%', objectFit: 'cover' }} />
                 </div>
-                <span style={{ color: '#fff', fontSize: 17, fontWeight: 900 }}>What is Farming?</span>
+                <div>
+                  <div style={{ color: '#fff', fontSize: 17, fontWeight: 900 }}>AXN Farming</div>
+                  <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>How it works</div>
+                </div>
               </div>
-              <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, lineHeight: 1.6, marginBottom: 18 }}>
-                Farming allows users to earn AXN directly into their Wallet Balance.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+              <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '4px 0', marginBottom: 20 }}>
                 {[
-                  'Earn AXN every farming cycle.',
-                  'Complete farming cycles and claim rewards.',
-                  'AXN is the main token of Axionet.',
-                ].map((item) => (
-                  <div key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#3b82f6', marginTop: 6, flexShrink: 0 }} />
-                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 1.5 }}>{item}</span>
+                  { label: 'Base speed', val: '0.001 AXN/s' },
+                  { label: 'Cycle duration', val: '4 hours' },
+                  { label: 'Max per cycle', val: '14.4 AXN' },
+                  { label: 'Speed Up boost', val: '×10 for 7 days' },
+                  { label: 'Speed Up cost', val: '10 TON' },
+                ].map((r, i, arr) => (
+                  <div key={r.label}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
+                      <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>{r.label}</span>
+                      <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>{r.val}</span>
+                    </div>
+                    {i < arr.length - 1 && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />}
                   </div>
                 ))}
               </div>
-              <button
-                onClick={() => setShowFarmInfo(false)}
-                style={{
-                  width: '100%', padding: '13px 0',
-                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                  border: 'none', borderRadius: 12, color: '#fff',
-                  fontSize: 14, fontWeight: 800, cursor: 'pointer',
-                  boxShadow: '0 4px 16px rgba(37,99,235,0.35)',
-                }}
-                className="active:scale-95 transition-transform"
-              >Got it</button>
+              <button onClick={() => setShowFarmInfo(false)} style={{ width: '100%', padding: '14px 0', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', border: 'none', borderRadius: 14, color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 16px rgba(37,99,235,0.35)' }} className="active:scale-95 transition-transform">Got it</button>
             </div>
           </div>
         )}
 
-        {/* Alert "Coming Soon" Popup */}
+        {/* Speed Up Popup — bottom sheet */}
+        {showSpeedUpPopup && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'flex-end' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)' }} onClick={() => { if (!upgradeLoading) { setShowSpeedUpPopup(false); setUpgradeStep('idle'); } }} />
+            <div style={{ position: 'relative', width: '100%', background: 'linear-gradient(160deg, #0d0d0f, #111118)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: '28px 28px 0 0', padding: '28px 20px 52px', overflow: 'hidden', boxShadow: '0 -8px 60px rgba(245,158,11,0.07)' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #d97706, #f59e0b, #d97706, transparent)' }} />
+              <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 24px' }} />
+
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
+                <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <div>
+                  <div style={{ color: '#fff', fontSize: 18, fontWeight: 900 }}>Speed Up Farming</div>
+                  <div style={{ color: 'rgba(255,255,255,0.38)', fontSize: 13, marginTop: 2 }}>Boost your AXN mining rate</div>
+                </div>
+              </div>
+
+              {/* Boost active state */}
+              {farmData?.boostExpiresAt ? (
+                <div style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 14, padding: '16px 18px', marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', animation: 'axn-pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
+                    <span style={{ color: '#4ade80', fontSize: 15, fontWeight: 900 }}>×10 Speed Boost Active</span>
+                  </div>
+                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+                    Expires {new Date(farmData.boostExpiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 14, overflow: 'hidden', marginBottom: 20 }}>
+                  {/* Speed before → after */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', marginBottom: 4 }}>NOW</div>
+                      <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 17, fontWeight: 900 }}>0.001<span style={{ fontSize: 11, fontWeight: 600 }}>/s</span></div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <svg width="26" height="14" viewBox="0 0 26 14" fill="none"><path d="M1 7h18M15 2l7 5-7 5" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <span style={{ color: '#f59e0b', fontSize: 12, fontWeight: 900 }}>×10</span>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', marginBottom: 4 }}>BOOSTED</div>
+                      <div style={{ color: '#f59e0b', fontSize: 17, fontWeight: 900 }}>0.01<span style={{ fontSize: 11, fontWeight: 600 }}>/s</span></div>
+                    </div>
+                  </div>
+                  {/* Benefits + price */}
+                  <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {[
+                      { icon: '⚡', text: '10× faster AXN farming for 7 days' },
+                      { icon: '🎁', text: '+250,000 AXN instant bonus' },
+                      { icon: '💎', text: 'One-time — 10 TON' },
+                    ].map(b => (
+                      <div key={b.text} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 14 }}>{b.icon}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13 }}>{b.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recipient wallet (only when not boosted) */}
+              {!farmData?.boostExpiresAt && (
+                <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '9px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                  <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, fontFamily: 'monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>UQC3F3vDP_W0pKMoEHWtFn...F6pikm</span>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              {(() => {
+                const doVerify = async () => {
+                  setUpgradeStep('verifying');
+                  setUpgradeLoading(true);
+                  try {
+                    const resp = await apiRequest('POST', '/api/farming/verify-ton-upgrade', { walletAddress: tonWalletRaw || tonWalletAddress });
+                    const data = await resp.json();
+                    if (!resp.ok) throw new Error(data.message || 'Verification failed');
+                    showNotification(data.message || 'Speed upgraded! ×10 boost active.', 'success');
+                    queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/farming/state'] });
+                    setUpgradeStep('idle');
+                    setShowSpeedUpPopup(false);
+                  } catch (err: any) {
+                    showNotification(err?.message || 'Not confirmed yet — tap Verify Again in 1–2 min.', 'error');
+                    setUpgradeStep('needs_verify');
+                  } finally {
+                    setUpgradeLoading(false);
+                  }
+                };
+
+                if (farmData?.boostExpiresAt) return null;
+
+                if (!tonWalletAddress) return (
+                  <button onClick={() => tonConnectUI.openModal()} style={{ width: '100%', padding: '15px', marginBottom: 10, background: 'linear-gradient(135deg, #0088CC, #229ED9)', border: 'none', borderRadius: 14, color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 18px rgba(0,136,204,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }} className="active:scale-95 transition-transform">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    Connect TON Wallet
+                  </button>
+                );
+
+                if (upgradeLoading) return (
+                  <button disabled style={{ width: '100%', padding: '15px', marginBottom: 10, background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: 14, color: 'rgba(255,255,255,0.3)', fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                    <span style={{ width: 15, height: 15, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.15)', borderTopColor: 'rgba(255,255,255,0.6)', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                    {upgradeStep === 'paying' ? 'Waiting for wallet...' : 'Verifying on blockchain...'}
+                  </button>
+                );
+
+                if (upgradeStep === 'needs_verify') return (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 10, padding: '10px 14px', marginBottom: 10, fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>
+                      Payment sent but not confirmed yet. Wait 1–2 min then tap Verify Again.
+                    </div>
+                    <button onClick={doVerify} style={{ width: '100%', padding: '15px', background: 'linear-gradient(135deg, #d97706, #f59e0b)', border: 'none', borderRadius: 14, color: '#000', fontSize: 14, fontWeight: 900, cursor: 'pointer', boxShadow: '0 4px 18px rgba(245,158,11,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} className="active:scale-95 transition-transform">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                      Verify Again
+                    </button>
+                  </div>
+                );
+
+                return (
+                  <div style={{ marginBottom: 10 }}>
+                    <button onClick={async () => {
+                      setUpgradeStep('paying'); setUpgradeLoading(true);
+                      try {
+                        await tonConnectUI.sendTransaction({ validUntil: Math.floor(Date.now() / 1000) + 600, messages: [{ address: 'UQC3F3vDP_W0pKMoEHWtFnpfNBOR336AriAOned-uhF6pikm', amount: '10000000000' }] });
+                      } catch (err: any) {
+                        showNotification(err?.message?.includes('reject') || err?.message?.includes('cancel') ? 'Transaction cancelled.' : (err?.message || 'Transaction failed.'), 'info');
+                        setUpgradeStep('idle'); setUpgradeLoading(false); return;
+                      }
+                      showNotification('Payment sent! Verifying on blockchain...', 'info');
+                      setUpgradeLoading(false); await doVerify();
+                    }} style={{ width: '100%', padding: '15px', background: 'linear-gradient(135deg, #d97706, #f59e0b)', border: 'none', borderRadius: 14, color: '#000', fontSize: 14, fontWeight: 900, cursor: 'pointer', boxShadow: '0 4px 20px rgba(245,158,11,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }} className="active:scale-95 transition-transform">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      Pay 10 TON — Upgrade Speed
+                    </button>
+                    <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, textAlign: 'center', marginTop: 8 }}>Wallet: {tonWalletAddress.slice(0, 6)}...{tonWalletAddress.slice(-4)}</div>
+                  </div>
+                );
+              })()}
+
+              <button onClick={() => { if (!upgradeLoading) { setShowSpeedUpPopup(false); setUpgradeStep('idle'); } }} style={{ width: '100%', padding: '13px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: 12, color: 'rgba(255,255,255,0.45)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }} className="active:scale-95 transition-transform">
+                {farmData?.boostExpiresAt ? 'Close' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Alert Popup — bottom sheet */}
         {showAlertPopup && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'flex-end' }}>
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setShowAlertPopup(false)} />
-            <div style={{
-              position: 'relative', width: '100%', maxWidth: 320,
-              background: '#111', borderRadius: 20, padding: '32px 24px',
-              textAlign: 'center',
-            }}>
-              <div style={{
-                width: 56, height: 56, borderRadius: '50%',
-                background: 'rgba(245,158,11,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 16px',
-              }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/>
-                  <line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
+            <div style={{ position: 'relative', width: '100%', background: 'linear-gradient(160deg, #0d0d0f, #111118)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '28px 28px 0 0', padding: '28px 20px 48px', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #f59e0b, transparent)' }} />
+              <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 24px' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                <div style={{ width: 54, height: 54, borderRadius: '50%', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                </div>
+                <div style={{ color: '#fff', fontSize: 18, fontWeight: 900, marginBottom: 10 }}>Notice</div>
+                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
+                  Press START to begin farming AXN. You can claim your earned AXN at any time — no need to wait for the full cycle.
+                </div>
+                <button onClick={() => setShowAlertPopup(false)} style={{ width: '100%', padding: '14px 0', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', border: 'none', borderRadius: 14, color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 16px rgba(37,99,235,0.35)' }} className="active:scale-95 transition-transform">Got it</button>
               </div>
-              <div style={{ color: '#fff', fontSize: 18, fontWeight: 900, marginBottom: 8 }}>Coming Soon</div>
-              <div style={{ color: 'rgba(255,255,255,0.38)', fontSize: 13, marginBottom: 24 }}>
-                This feature is under development. Stay tuned for updates!
-              </div>
-              <button
-                onClick={() => setShowAlertPopup(false)}
-                style={{
-                  width: '100%', padding: '13px 0',
-                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                  border: 'none', borderRadius: 12, color: '#fff',
-                  fontSize: 14, fontWeight: 800, cursor: 'pointer',
-                  boxShadow: '0 4px 16px rgba(37,99,235,0.35)',
-                }}
-                className="active:scale-95 transition-transform"
-              >Got it</button>
             </div>
           </div>
         )}

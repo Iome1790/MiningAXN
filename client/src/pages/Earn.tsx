@@ -43,24 +43,19 @@ async function runAdForProvider(provider: AdProvider): Promise<void> {
 
 type AdState = 'idle' | 'loading' | 'claiming';
 
-const ProviderIcon = ({ provider }: { provider: AdProvider }) => {
-  if (provider === 'Monetag') return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="5 3 19 12 5 21 5 3"/>
-    </svg>
-  );
-  if (provider === 'Adgram') return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-    </svg>
-  );
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="2"/>
-      <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/>
-    </svg>
-  );
+const PROVIDER_LOGOS: Record<AdProvider, string> = {
+  Monetag: '/monetag-logo.jpg',
+  Adgram:  '/adsgram-logo.jpg',
+  Gigapub: '/gigapub-logo.jpg',
 };
+
+const ProviderIcon = ({ provider }: { provider: AdProvider }) => (
+  <img
+    src={PROVIDER_LOGOS[provider]}
+    alt={provider}
+    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }}
+  />
+);
 
 function AdRow({ slotId, provider, desc, reward, dailyLimit, isLast }: {
   slotId: number; provider: AdProvider; desc: string; reward: number; dailyLimit: number; isLast: boolean;
@@ -111,8 +106,10 @@ function AdRow({ slotId, provider, desc, reward, dailyLimit, isLast }: {
         {/* Icon circle */}
         <div style={{
           width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-          background: atLimit ? 'rgba(74,222,128,0.1)' : 'rgba(59,130,246,0.1)',
+          background: atLimit ? 'rgba(74,222,128,0.1)' : 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+          border: atLimit ? '1.5px solid rgba(74,222,128,0.25)' : 'none',
         }}>
           {atLimit
             ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
