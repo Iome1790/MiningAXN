@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import { useLocation } from "wouter";
 import { showRewardedInterstitial } from "@/lib/showAd";
 import WithdrawPopup from "@/components/WithdrawPopup";
+import { getTONPrice, axnToTon, tonToUsd, formatTon, formatUsd } from "@/lib/tonPriceService";
 const AXN_PER_TON = 100000;
 
 function getTodayKey() {
@@ -29,6 +30,7 @@ function fmtCountdown(secs: number): string {
 export default function Games() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [balanceHidden, setBalanceHidden] = useState(false);
+  const [tonPrice, setTonPrice] = useState<number>(3.5);
   const [showStakingPopup, setShowStakingPopup] = useState(false);
   const [showWithdrawPopup, setShowWithdrawPopup] = useState(false);
   const [showPromoPopup, setShowPromoPopup] = useState(false);
@@ -54,13 +56,15 @@ export default function Games() {
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
   const { data: botInfo } = useQuery<{ username: string }>({ queryKey: ['/api/bot-info'], staleTime: 3600000 });
 
-  const axnBalance = Math.floor(parseFloat(user?.walletBalance || '0'));
-  const axnDisplayValue = axnBalance / AXN_PER_TON;
-  const axnDisplayStr = (() => {
-    if (axnDisplayValue === 0) return '0';
-    const s = axnDisplayValue.toFixed(5).replace(/\.?0+$/, '');
-    return s;
-  })();
+  const axnRaw = parseFloat(user?.walletBalance || '0');
+  const axnBalance = Math.floor(axnRaw);
+  const tonValue = axnToTon(axnRaw);
+  const usdValue = tonToUsd(tonValue, tonPrice);
+  const tonDisplay = formatTon(tonValue);
+  const usdDisplay = formatUsd(usdValue);
+  const axnDisplay = axnRaw === 0 ? '0' : axnRaw % 1 === 0
+    ? axnRaw.toLocaleString()
+    : parseFloat(axnRaw.toFixed(6)).toLocaleString(undefined, { maximumFractionDigits: 6 });
 
   const firstName: string = user?.firstName || user?.username || "User";
   const profileImageUrl: string | null =
@@ -71,6 +75,17 @@ export default function Games() {
 
   const botUsername = botInfo?.username || 'bot';
   const referralLink = user?.referralCode ? `https://t.me/${botUsername}?start=${user.referralCode}` : '';
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetch = async () => {
+      const price = await getTONPrice();
+      if (!cancelled) setTonPrice(price);
+    };
+    fetch();
+    const interval = setInterval(fetch, 60000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -238,7 +253,7 @@ export default function Games() {
   });
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
+    <div style={{ height: '100dvh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes boxPulse {
@@ -259,45 +274,53 @@ export default function Games() {
 
       {/* Balance Section */}
       <div style={{
-        padding: 'calc(var(--header-height, 62px) + 32px) 16px 20px',
+        flexShrink: 0,
+        paddingTop: 'calc(var(--header-height, 62px) + 14px)',
+        paddingLeft: 'clamp(12px, 4vw, 24px)',
+        paddingRight: 'clamp(12px, 4vw, 24px)',
+        paddingBottom: 12,
         textAlign: 'center',
+        overflow: 'hidden',
       }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>
             Wallet Balance
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1, maxWidth: '90vw', overflow: 'hidden' }}>
-              <span style={{
-                fontSize: axnDisplayStr.length > 12 ? 18 : 24, fontWeight: 600, color: 'rgba(255,255,255,0.45)',
-                fontFamily: "'Space Grotesk', 'Outfit', sans-serif",
-                letterSpacing: '0px', userSelect: 'none', flexShrink: 0,
-              }}>$</span>
-              <span style={{
-                fontSize: axnDisplayStr.length > 14 ? 28 : axnDisplayStr.length > 10 ? 36 : 48,
-                fontWeight: 700, color: '#fff',
-                fontFamily: "'Oxanium', 'Space Grotesk', sans-serif",
-                letterSpacing: '-1px', fontVariantNumeric: 'tabular-nums', lineHeight: 1,
-                wordBreak: 'break-all',
-              }}>
-                {balanceHidden ? '••••' : axnDisplayStr}
-              </span>
-            </div>
-            <button onClick={() => setBalanceHidden(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, marginTop: 4, flexShrink: 0 }}>
+          {/* AXN main balance */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 1, maxWidth: '100%', flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: axnDisplay.length > 16 ? 22 : axnDisplay.length > 14 ? 26 : axnDisplay.length > 10 ? 34 : 42,
+              fontWeight: 700, color: '#fff',
+              fontFamily: "'Oxanium', 'Space Grotesk', sans-serif",
+              letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+              wordBreak: 'break-all', overflowWrap: 'break-word', minWidth: 0,
+              maxWidth: 'calc(100vw - 80px)',
+            }}>
+              {balanceHidden ? '••••' : axnDisplay}
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.45)', alignSelf: 'flex-end', paddingBottom: 4 }}>AXN</span>
+            <button onClick={() => setBalanceHidden(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, alignSelf: 'center', flexShrink: 0 }}>
               {balanceHidden ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
               ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               )}
             </button>
           </div>
 
-          <div style={{ color: 'rgba(255,255,255,0.38)', fontSize: 15, fontWeight: 600, marginBottom: 28 }}>
-            {balanceHidden ? '•••• AXN' : `${axnBalance.toLocaleString()} AXN`}
+          {/* TON and USD sub-values */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 14 }}>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', fontWeight: 500 }}>
+              {balanceHidden ? '≈ •••• TON' : `≈ ${tonDisplay} TON`}
+            </span>
+            <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'inline-block' }} />
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', fontWeight: 500 }}>
+              {balanceHidden ? '≈ $••••' : `≈ $${usdDisplay}`}
+            </span>
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 'clamp(10px, 4vw, 22px)', flexWrap: 'wrap', maxWidth: '100%' }}>
 
             {/* Withdraw */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
@@ -373,7 +396,7 @@ export default function Games() {
       </div>
 
       {/* Scrollable Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px', paddingBottom: 90 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '8px clamp(12px, 4vw, 20px)', paddingBottom: 'max(90px, calc(env(safe-area-inset-bottom, 0px) + 90px))', width: '100%' }}>
 
         {/* DAILY REWARDS */}
         <div style={{ marginBottom: 10 }}>
@@ -461,26 +484,26 @@ export default function Games() {
         {/* FARMING */}
         <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden', marginBottom: 20 }}>
           {/* Main row: coin + counting */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px' }}>
             <div style={{
-              width: 44, height: 44, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: '#000',
+              width: 50, height: 50, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: '#000',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <img src="/axn-coin.jpg" alt="AXN" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
               {(() => {
                 const val = farmAccum.toFixed(3);
                 const [intPart, decPart] = val.split('.');
                 return (
-                  <div style={{ fontVariantNumeric: 'tabular-nums', lineHeight: 1, display: 'flex', alignItems: 'baseline', flexWrap: 'nowrap' }}>
-                    <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 36, fontWeight: 800 }}>{intPart}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 22, fontWeight: 700 }}>.{decPart}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 15, fontWeight: 600, marginLeft: 6 }}>AXN</span>
+                  <div style={{ fontVariantNumeric: 'tabular-nums', lineHeight: 1, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', minWidth: 0 }}>
+                    <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(24px, 8vw, 36px)', fontWeight: 800 }}>{intPart}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 'clamp(16px, 5vw, 22px)', fontWeight: 700 }}>.{decPart}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: 600, marginLeft: 5 }}>AXN</span>
                   </div>
                 );
               })()}
-              <div style={{ color: 'rgba(255,255,255,0.32)', fontSize: 13, marginTop: 6 }}>0.001/s · 14.4 AXN per cycle</div>
+              <div style={{ color: 'rgba(255,255,255,0.32)', fontSize: 12, marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>0.001/s · 14.4 AXN per cycle</div>
             </div>
           </div>
 
@@ -530,7 +553,7 @@ export default function Games() {
         {showFarmInfo && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'flex-end' }}>
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setShowFarmInfo(false)} />
-            <div style={{ position: 'relative', width: '100%', background: 'linear-gradient(160deg, #0d0d0f, #111118)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '28px 28px 0 0', padding: '28px 20px 48px', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', background: 'linear-gradient(160deg, #0d0d0f, #111118)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '28px 28px 0 0', padding: '28px 20px', paddingBottom: 'max(48px, calc(env(safe-area-inset-bottom, 0px) + 24px))', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)' }} />
               <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 24px' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
@@ -570,7 +593,7 @@ export default function Games() {
         {showAlertPopup && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'flex-end' }}>
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setShowAlertPopup(false)} />
-            <div style={{ position: 'relative', width: '100%', background: 'linear-gradient(160deg, #0d0d0f, #111118)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '28px 28px 0 0', padding: '28px 20px 48px', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', background: 'linear-gradient(160deg, #0d0d0f, #111118)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '28px 28px 0 0', padding: '28px 20px', paddingBottom: 'max(48px, calc(env(safe-area-inset-bottom, 0px) + 24px))', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }} />
               <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 24px' }} />
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
@@ -615,7 +638,7 @@ export default function Games() {
             position: 'relative', width: '100%',
             background: 'linear-gradient(160deg, #0d0d0f 0%, #111118 100%)',
             border: '1px solid rgba(37,99,235,0.25)',
-            borderRadius: '28px 28px 0 0', padding: '28px 20px 52px', zIndex: 901, textAlign: 'center',
+            borderRadius: '28px 28px 0 0', padding: '28px 20px', paddingBottom: 'max(52px, calc(env(safe-area-inset-bottom, 0px) + 28px))', zIndex: 901, textAlign: 'center',
             boxShadow: '0 -8px 60px rgba(37,99,235,0.2), 0 0 0 1px rgba(255,255,255,0.03)',
             overflow: 'hidden',
           }}>

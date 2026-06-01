@@ -262,11 +262,11 @@ export default function Earn() {
   const hasSpecialTasks = !axnNameClaimed;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', overflowX: 'hidden', width: '100%' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <Header onMenuOpen={() => setMenuOpen(true)} />
 
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 86, paddingTop: 'calc(var(--header-height, 62px) + 12px)' }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 'max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px))', paddingTop: 'calc(var(--header-height, 62px) + 12px)', width: '100%' }}>
 
         {/* Page title */}
         <div style={{ padding: '0 16px', marginBottom: 18 }}>
