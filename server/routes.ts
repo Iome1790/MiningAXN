@@ -442,18 +442,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user?.user;
       if (!user) return res.status(401).json({ message: "Not authenticated" });
       const { amount, address } = req.body;
-      
-      const satBalance = parseFloat(user.walletBalance?.toString() || user.balance || "0");
-      const withdrawAmount = parseFloat(String(amount));
-      
-      if (withdrawAmount > satBalance) {
-        return res.status(400).json({ message: "Insufficient AXN balance" });
+
+      if (!amount || isNaN(parseFloat(String(amount))) || parseFloat(String(amount)) <= 0) {
+        return res.status(400).json({ message: "Invalid withdrawal amount" });
       }
 
+      const withdrawAmount = parseFloat(String(amount));
+      // All balance validation (including race-condition-safe balance check) happens inside createPayoutRequest transaction
       const result = await storage.createPayoutRequest(user.id, withdrawAmount.toString(), 'sat_withdraw', address);
       if (!result.success) return res.status(400).json({ message: result.message });
 
-      // Send real-time notification to admin
+      // Send real-time balance update + withdrawal notification to the user immediately
+      try {
+        const freshUser = await storage.getUser(user.id);
+        if (freshUser) {
+          sendRealtimeUpdate(user.id, {
+            type: 'withdrawal_requested',
+            walletBalance: freshUser.walletBalance?.toString() ?? '0',
+          });
+        }
+      } catch (wsError) {
+        console.error("Failed to send real-time withdrawal update:", wsError);
+      }
+
+      // Send Telegram notification to admin
       try {
         const { sendWithdrawalRequestNotification } = await import("./telegram");
         const fullUser = await storage.getUser(user.id);

@@ -1580,12 +1580,11 @@ export class DatabaseStorage implements IStorage {
           return { success: false, message: 'You already have a pending withdrawal request. Please wait for it to be processed.' };
         }
 
-        const isAdmin = user.telegram_id === process.env.TELEGRAM_ADMIN_ID;
-        const userBalance = parseFloat(user.walletBalance?.toString() || user.balance || '0');
+        const userBalance = parseFloat(user.walletBalance?.toString() || '0');
 
-        console.log('Balance check details:', { isAdmin, userBalance, requestedAmount, paymentSystemId: effectivePaymentSystemId });
+        console.log('Balance check:', { userId, userBalance, requestedAmount });
 
-        if (!isAdmin && userBalance < requestedAmount) {
+        if (userBalance < requestedAmount) {
           return {
             success: false,
             message: `Insufficient AXN balance. You have ${Math.floor(userBalance)} AXN, but requested ${Math.floor(requestedAmount)} AXN.`
@@ -1602,26 +1601,26 @@ export class DatabaseStorage implements IStorage {
           totalDeducted: requestedAmount.toString()
         };
 
-        // Deduct balance FIRST (before inserting withdrawal) to prevent negative balance race
-        if (!isAdmin) {
-          const newBalance = sql`GREATEST(0, COALESCE(${users.walletBalance}, 0) - ${requestedAmount.toString()})`;
-          const [updated] = await tx
-            .update(users)
-            .set({ walletBalance: newBalance, updatedAt: new Date() })
-            .where(and(
-              eq(users.id, userId),
-              sql`COALESCE(${users.walletBalance}, 0) >= ${requestedAmount.toString()}`
-            ))
-            .returning({ walletBalance: users.walletBalance });
+        // Deduct balance atomically — use SQL-level check to prevent any race condition
+        const [updated] = await tx
+          .update(users)
+          .set({
+            walletBalance: sql`COALESCE(${users.walletBalance}, 0) - ${requestedAmount.toString()}`,
+            updatedAt: new Date()
+          })
+          .where(and(
+            eq(users.id, userId),
+            sql`COALESCE(${users.walletBalance}, 0) >= ${requestedAmount.toString()}`
+          ))
+          .returning({ walletBalance: users.walletBalance });
 
-          if (!updated) {
-            return {
-              success: false,
-              message: `Insufficient AXN balance. You have ${Math.floor(userBalance)} AXN, but requested ${Math.floor(requestedAmount)} AXN.`
-            };
-          }
-          console.log(`💰 Withdrawal submitted: walletBalance deducted ${userBalance} → ${updated.walletBalance}`);
+        if (!updated) {
+          return {
+            success: false,
+            message: `Insufficient AXN balance. You have ${Math.floor(userBalance)} AXN, but requested ${Math.floor(requestedAmount)} AXN.`
+          };
         }
+        console.log(`💰 Withdrawal submitted: walletBalance deducted ${userBalance} → ${updated.walletBalance}`);
 
         // Create pending withdrawal record (balance already deducted above)
         const [withdrawal] = await tx.insert(withdrawals).values({
