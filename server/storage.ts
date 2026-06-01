@@ -77,10 +77,8 @@ export interface IStorage {
   
   // Ads tracking
   incrementAdsWatched(userId: string): Promise<void>;
-  incrementExtraAdsWatched(userId: string): Promise<void>;
   resetDailyAdsCount(userId: string): Promise<void>;
   canWatchAd(userId: string): Promise<boolean>;
-  canWatchExtraAd(userId: string): Promise<boolean>;
   
   // Withdrawal operations
   createWithdrawal(withdrawal: InsertWithdrawal): Promise<Withdrawal>;
@@ -106,10 +104,6 @@ export interface IStorage {
   // Telegram user operations
   getUserByTelegramId(telegramId: string): Promise<User | undefined>;
   upsertTelegramUser(telegramId: string, userData: Omit<UpsertUser, 'id' | 'telegramId'>): Promise<{ user: User; isNewUser: boolean }>;
-  
-  // Mining operations (miningBoosts table dropped - use any)
-  getMiningBoosts(userId: string): Promise<any[]>;
-  addMiningBoost(boost: any): Promise<any>;
   
   // Daily reset system
   performDailyReset(): Promise<void>;
@@ -321,14 +315,14 @@ export class DatabaseStorage implements IStorage {
           INSERT INTO users (
             telegram_id, email, first_name, last_name, username, personal_code, 
             withdraw_balance, total_earnings, ads_watched, daily_ads_watched, 
-            daily_earnings, level, flagged, banned, migration_completed
+            daily_earnings, level, flagged, banned
           )
           VALUES (
             ${telegramId}, ${finalEmail}, ${sanitizedData.firstName}, ${sanitizedData.lastName}, 
             ${sanitizedData.username}, ${sanitizedData.personalCode}, ${'0'}, 
             ${'0'}, ${sanitizedData.adsWatched}, ${sanitizedData.dailyAdsWatched}, 
             ${sanitizedData.dailyEarnings}, ${sanitizedData.level}, ${sanitizedData.flagged}, 
-            ${sanitizedData.banned}, TRUE
+            ${sanitizedData.banned}
           )
           RETURNING *
         `);
@@ -367,14 +361,14 @@ export class DatabaseStorage implements IStorage {
             INSERT INTO users (
               telegram_id, email, first_name, last_name, username, personal_code, 
               withdraw_balance, total_earnings, ads_watched, daily_ads_watched, 
-              daily_earnings, level, flagged, banned, migration_completed
+              daily_earnings, level, flagged, banned
             )
             VALUES (
               ${telegramId}, ${finalEmail}, ${sanitizedData.firstName}, ${sanitizedData.lastName}, 
               ${sanitizedData.username}, ${sanitizedData.personalCode}, ${'0'}, 
               ${'0'}, ${sanitizedData.adsWatched}, ${sanitizedData.dailyAdsWatched}, 
               ${sanitizedData.dailyEarnings}, ${sanitizedData.level}, ${sanitizedData.flagged}, 
-              ${sanitizedData.banned}, TRUE
+              ${sanitizedData.banned}
             )
             RETURNING *
           `);
@@ -456,86 +450,6 @@ export class DatabaseStorage implements IStorage {
     await this.updateAdminSetting('minimum_withdrawal_ton', minWithdraw.toString());
     await this.updateAdminSetting('withdrawal_fee_ton', fee.toString());
     console.log(`✅ Payment system settings updated: Min=${minWithdraw}, Fee=${fee}`);
-  }
-
-  // Mining operations
-  async claimMining(userId: string): Promise<{ success: boolean; amount: string; message: string }> {
-    try {
-      const user = await this.getUser(userId);
-      if (!user) throw new Error("User not found");
-
-      const miningState = await this.getMiningState(userId);
-      const amount = miningState.currentMining;
-
-      if (parseFloat(amount) < 1) {
-        return { success: false, amount: "0", message: "Minimum claim is 1 AXN" };
-      }
-
-      await db.transaction(async (tx) => {
-        const now = new Date();
-        const updateData: any = {
-          walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${amount}`,
-          total_earnings: sql`COALESCE(${users.total_earnings}, 0) + ${amount}`,
-          lastMiningClaim: now,
-          updatedAt: now
-        };
-
-        await tx.update(users)
-          .set(updateData)
-          .where(eq(users.id, userId));
-
-        await tx.insert(earnings).values({
-          userId,
-          amount,
-          source: "mining",
-          description: "Mining claim",
-        });
-      });
-
-      return { success: true, amount, message: `Successfully claimed ${amount} AXN` };
-    } catch (error) {
-      console.error("Error claiming mining:", error);
-      return { success: false, amount: "0", message: "Failed to claim mining" };
-    }
-  }
-
-  async getMiningState(userId: string) {
-    const user = await this.getUser(userId);
-    if (!user) throw new Error("User not found");
-
-    const now = new Date();
-    const lastClaim = user.lastMiningClaim || user.createdAt || new Date();
-    
-    // Get all active boosts from DB
-    const boosts = await this.getMiningBoosts(userId);
-    
-    // Base rate
-    const baseRate = 0.00001;
-    // Referral boost stored as per-hour value
-    const referralBoostHourly = parseFloat(user.referralMiningBoost || "0");
-    const referralBoostPerSec = referralBoostHourly / 3600;
-    // Ad section boosts (per-hour values stored on user record)
-    const adSection1BoostHourly = parseFloat((user as any).adSection1Boost || "0");
-    const adSection2BoostHourly = parseFloat((user as any).adSection2Boost || "0");
-    const adBoostPerSec = (adSection1BoostHourly + adSection2BoostHourly) / 3600;
-    let totalRate = baseRate + referralBoostPerSec + adBoostPerSec;
-    boosts.forEach(boost => {
-      totalRate += parseFloat(boost.miningRate);
-    });
-    
-    const secondsPassed = Math.floor((now.getTime() - lastClaim.getTime()) / 1000);
-    const currentMining = (secondsPassed * totalRate).toFixed(5);
-    const maxMining = (24 * 60 * 60 * totalRate).toFixed(2);
-
-    return {
-      currentMining,
-      miningRate: (totalRate * 3600).toFixed(4),
-      lastClaim,
-      maxMining,
-      rawMiningRate: totalRate,
-      referralBoost: referralBoostHourly.toFixed(4),
-      boosts
-    };
   }
 
   // ============================================================
@@ -896,35 +810,6 @@ export class DatabaseStorage implements IStorage {
     return { newStreak, rewardEarned, isBonusDay };
   }
 
-  async incrementExtraAdsWatched(userId: string): Promise<void> {
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
-    if (!user) return;
-    const now = new Date();
-    await db.update(users).set({
-      extraAdsWatchedToday: sql`${users.extraAdsWatchedToday} + 1`,
-      lastExtraAdDate: now,
-      updatedAt: now,
-    }).where(eq(users.id, userId));
-  }
-
-  async canWatchExtraAd(userId: string): Promise<boolean> {
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
-    if (!user) return false;
-    const now = new Date();
-    const lastAdDate = user.lastExtraAdDate;
-    const isSameDay = lastAdDate && 
-      lastAdDate.getUTCFullYear() === now.getUTCFullYear() &&
-      lastAdDate.getUTCMonth() === now.getUTCMonth() &&
-      lastAdDate.getUTCDate() === now.getUTCDate();
-    
-    if (!isSameDay) {
-      await db.update(users).set({ extraAdsWatchedToday: 0, lastExtraAdDate: now }).where(eq(users.id, userId));
-      return true;
-    }
-
-    return (user.extraAdsWatchedToday || 0) < 100;
-  }
-
   // Helper function for consistent 12:00 PM UTC reset date calculation
   private getResetDate(date = new Date()): string {
     const utcDate = date.toISOString().split('T')[0];
@@ -1069,121 +954,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Check and activate referral bonus when friend watches 10 ads — gives 150 AXN one-time to referrer
-  async checkAndActivateReferralBonus(userId: string): Promise<void> {
-    try {
-      // Check if this user has already triggered the referral bonus (firstAdWatched flag)
-      const [user] = await db.select().from(users).where(eq(users.id, userId));
-      if (!user || user.firstAdWatched) {
-        return;
-      }
-
-      // Count ad_watch earnings for this user
-      const [adCount] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(earnings)
-        .where(and(
-          eq(earnings.userId, userId),
-          eq(earnings.source, 'ad_watch')
-        ));
-
-      const adsWatched = adCount?.count || 0;
-
-      // Require exactly 10 ads before activating
-      if (adsWatched < 10) return;
-
-      // Mark this user as having triggered the referral bonus (prevents re-triggering)
-      await db
-        .update(users)
-        .set({ firstAdWatched: true })
-        .where(eq(users.id, userId));
-
-      // Find pending referrals where this user is the referee
-      const pendingReferrals = await db
-        .select()
-        .from(referrals)
-        .where(and(
-          eq(referrals.refereeId, userId),
-          eq(referrals.status, 'pending')
-        ));
-
-      for (const referral of pendingReferrals) {
-        // Mark referral completed and record completion timestamp
-        await db.execute(sql`
-          UPDATE referrals
-          SET status = 'completed', completed_at = NOW()
-          WHERE id = ${referral.id}
-        `);
-
-        // Award 150 AXN one-time to referrer (fixed, no percentage)
-        await this.addEarning({
-          userId: referral.referrerId,
-          amount: '150',
-          source: 'referral',
-          description: 'Referral bonus — friend completed 10 ad tasks (+150 AXN)',
-        });
-
-        // Sync friendsInvited count
-        await db.update(users)
-          .set({
-            friendsInvited: sql`COALESCE(${users.friendsInvited}, 0) + 1`,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, referral.referrerId));
-
-        console.log(`✅ Referral bonus: 150 AXN awarded to ${referral.referrerId} (friend ${userId} completed 10 ads)`);
-
-        // Check daily 3-friend milestone for referrer (50 AXN bonus)
-        try {
-          await this.checkAndAwardDailyMilestoneBonus(referral.referrerId);
-        } catch (milestoneError) {
-          console.error('⚠️ Daily milestone check failed (non-critical):', milestoneError);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking referral bonus activation:', error);
-    }
-  }
-
-  // Award 50 AXN daily milestone bonus when referrer gets 3 completed friends in one day
-  async checkAndAwardDailyMilestoneBonus(referrerId: string): Promise<void> {
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setUTCHours(23, 59, 59, 999);
-
-    // Count referrals completed today
-    const result = await db.execute(sql`
-      SELECT COUNT(*) as count FROM referrals
-      WHERE referrer_id = ${referrerId}
-        AND status = 'completed'
-        AND completed_at >= ${todayStart.toISOString()}::timestamptz
-        AND completed_at <= ${todayEnd.toISOString()}::timestamptz
-    `);
-    const completedToday = parseInt((result.rows?.[0] as any)?.count || '0');
-
-    if (completedToday < 3) return;
-
-    // Check if daily milestone bonus already awarded today
-    const alreadyAwarded = await db.execute(sql`
-      SELECT id FROM earnings
-      WHERE user_id = ${referrerId}
-        AND source = 'daily_milestone'
-        AND created_at >= ${todayStart.toISOString()}::timestamptz
-      LIMIT 1
-    `);
-    if (alreadyAwarded.rows && alreadyAwarded.rows.length > 0) return;
-
-    // Award 50 AXN daily milestone bonus
-    await this.addEarning({
-      userId: referrerId,
-      amount: '50',
-      source: 'daily_milestone',
-      description: 'Daily milestone bonus — 3 friends completed 10 ads today (+50 AXN)',
-    });
-
-    console.log(`✅ Daily milestone bonus: 50 AXN awarded to ${referrerId} (3 friends completed today)`);
-  }
-
   async checkAndActivateReferralOnChannelJoin(userId: string): Promise<void> {
     try {
       const [user] = await db.select().from(users).where(eq(users.id, userId));
@@ -1216,41 +986,6 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.error('Error activating referral on channel join:', error);
-    }
-  }
-
-  // Called when a withdrawal is approved — credits 10% to referrer's well balance
-  async processWithdrawalCommission(refereeId: string, withdrawalAmount: number): Promise<void> {
-    try {
-      if (withdrawalAmount <= 0) return;
-
-      const [referralInfo] = await db
-        .select({ referrerId: referrals.referrerId })
-        .from(referrals)
-        .where(eq(referrals.refereeId, refereeId))
-        .limit(1);
-
-      if (!referralInfo) return;
-
-      const commission = parseFloat((withdrawalAmount * 0.10).toFixed(2));
-
-      await db.transaction(async (tx) => {
-        await tx.update(users).set({
-          walletBalance: sql`COALESCE(${users.walletBalance}, 0) + ${commission.toString()}`,
-          updatedAt: new Date(),
-        }).where(eq(users.id, referralInfo.referrerId));
-
-        await tx.insert(earnings).values({
-          userId: referralInfo.referrerId,
-          amount: commission.toString(),
-          source: 'referral_commission',
-          description: `10% referral commission from friend's ${withdrawalAmount} AXN withdrawal`,
-        });
-      });
-
-      console.log(`💰 Referral commission: +${commission} AXN to ${referralInfo.referrerId} from ${refereeId}'s withdrawal of ${withdrawalAmount}`);
-    } catch (error) {
-      console.error('Error processing withdrawal commission:', error);
     }
   }
 
@@ -1373,13 +1108,10 @@ export class DatabaseStorage implements IStorage {
                   referrerId: referrer.id,
                   refereeId: user.userId,
                   rewardAmount: "0.01",
-                  status: 'pending', // Will be updated by checkAndActivateReferralBonus if user has 10+ ads
+                  status: 'pending',
                 });
               
               console.log(`✅ Created missing referral: ${referrer.id} -> ${user.userId}`);
-              
-              // Check if this user should have activated referral bonus
-              await this.checkAndActivateReferralBonus(user.userId);
             }
           } else {
             console.log(`⚠️  Referrer not found for referral code: ${user.referredBy}`);
@@ -1818,8 +1550,6 @@ export class DatabaseStorage implements IStorage {
         totalWithdrawn: users.totalClaimedReferralBonus,
         totalEarned: users.total_earned,
         friendsInvited: users.friendsInvited,
-        miningRate: users.miningRate,
-        referralMiningBoost: users.referralMiningBoost,
         referralCount: sql<number>`(SELECT count(*) FROM ${referrals} WHERE ${referrals.referrerId} = ${users.id})`
       }).from(users).orderBy(desc(users.createdAt));
       
@@ -1831,8 +1561,6 @@ export class DatabaseStorage implements IStorage {
         bugBalance: user.bugBalance?.toString() || '0',
         totalWithdrawn: user.totalWithdrawn?.toString() || '0',
         totalEarned: user.totalEarned?.toString() || '0',
-        miningRate: user.miningRate?.toString() || '0',
-        referralMiningBoost: user.referralMiningBoost?.toString() || '0',
         friendsInvited: user.friendsInvited ?? 0,
       }));
     } catch (error) {
@@ -1954,11 +1682,6 @@ export class DatabaseStorage implements IStorage {
       
       console.log(`✅ Withdrawal #${withdrawalId} approved with balance deduction — ${currency} balance updated ✅`);
       
-      // Process 10% referral commission to referrer's well (non-blocking)
-      this.processWithdrawalCommission(withdrawal.userId, withdrawalAmount).catch(e =>
-        console.error('⚠️ Withdrawal commission processing failed (non-critical):', e)
-      );
-
       // Notification is sent by the caller (hash handler or admin panel route)
       
       return { success: true, message: 'Withdrawal approved and processed', withdrawal: updatedWithdrawal };
@@ -2344,11 +2067,6 @@ export class DatabaseStorage implements IStorage {
     return null;
   }
 
-  // hasEverBoughtBoost stub (miningBoosts table dropped)
-  async hasEverBoughtBoost(_userId: string): Promise<boolean> {
-    return false;
-  }
-
   // Deposit stubs (deposits table dropped)
   async getPendingDeposit(_userId: string): Promise<any | undefined> {
     return undefined;
@@ -2369,15 +2087,6 @@ export class DatabaseStorage implements IStorage {
   }
   async claimReferralTask(_userId: string, _taskId: string): Promise<{ success: boolean; message: string; rewardAXN?: string; miningBoost?: string }> {
     return { success: false, message: 'Referral task system removed' };
-  }
-
-  // getMiningBoosts / addMiningBoost stubs (miningBoosts table dropped)
-  async getMiningBoosts(_userId: string): Promise<any[]> {
-    return [];
-  }
-
-  async addMiningBoost(_boost: any): Promise<any> {
-    return null;
   }
 
   // ============== NEW TASK STATUS SYSTEM FUNCTIONS ==============
@@ -2616,10 +2325,6 @@ export class DatabaseStorage implements IStorage {
           channelVisited: false,
           appShared: false,
           friendsInvited: 0,
-          adSection1Boost: "0",
-          adSection2Boost: "0",
-          adSection1Count: 0,
-          adSection2Count: 0,
           lastResetDate: currentDate,
           lastAdDate: currentDate 
         })
@@ -2868,14 +2573,10 @@ export class DatabaseStorage implements IStorage {
       
       console.log(`🔄 Resetting ${usersNeedingReset.length} users for ${currentDateString}`);
       
-      // Reset all users' daily counters and ad watch boosts
+      // Reset all users' daily counters
       await db.update(users)
         .set({ 
           adsWatchedToday: 0,
-          adSection1Boost: "0",
-          adSection2Boost: "0",
-          adSection1Count: 0,
-          adSection2Count: 0,
           lastResetDate: currentDate,
           updatedAt: new Date(),
         })

@@ -11,8 +11,6 @@ import {
   userBalances,
   transactions,
   adminSettings,
-  spinData,
-  spinHistory,
   banLogs,
 } from "../shared/schema";
 import { db } from "./db";
@@ -370,72 +368,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
-  app.post("/api/ads/extra-watch", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-
-      const canWatch = await storage.canWatchExtraAd(user.id);
-      if (!canWatch) {
-        return res.status(429).json({ message: "Daily extra earn limit reached (250 ads/day)" });
-      }
-
-      await storage.incrementExtraAdsWatched(user.id);
-      const rewardAmount = "10"; // Updated reward
-      await storage.addEarning({
-        userId: user.id,
-        amount: rewardAmount,
-        source: "extra_earn",
-        description: "Extra earn ad reward",
-      });
-
-      const updatedUser = await storage.getUser(user.id);
-      res.json({
-        success: true,
-        newBalance: updatedUser?.walletBalance,
-        extraAdsWatchedToday: updatedUser?.extraAdsWatchedToday,
-        rewardAXN: rewardAmount,
-      });
-    } catch (error) {
-      console.error("Extra earn ad reward error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/withdraw/request", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-
-      const { amount, paymentSystemId, paymentDetails } = req.body;
-      if (!amount || isNaN(amount) || amount <= 0) {
-        return res.status(400).json({ message: "Invalid amount" });
-      }
-
-      const result = await storage.createPayoutRequest(user.id, amount.toString(), paymentSystemId, paymentDetails);
-      if (!result.success) {
-        return res.status(400).json({ message: result.message });
-      }
-
-      // Send real-time notification to admin
-      try {
-        const { sendWithdrawalRequestNotification } = await import("./telegram");
-        const fullUser = await storage.getUser(user.id);
-        const withdrawal = await storage.getWithdrawal(result.withdrawalId!);
-        if (fullUser && withdrawal) {
-          await sendWithdrawalRequestNotification(withdrawal, fullUser);
-        }
-      } catch (notifyError) {
-        console.error("Failed to send withdrawal request notification:", notifyError);
-      }
-
-      res.json(result);
-    } catch (error) {
-      console.error("Withdrawal request error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
 
   app.post("/api/withdrawals", authenticateTelegram, async (req: any, res) => {
     try {
@@ -1716,14 +1648,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const botUsername = await getBotUsername();
       const referralLink = `https://t.me/${botUsername}?start=${user.referralCode}`;
       
-      const hasBoughtBoost = await storage.hasEverBoughtBoost(userId);
-
       res.json({
         ...user,
         friendsInvited,
         todayReferrals,
         referralLink,
-        planStatus: hasBoughtBoost ? 'Premium' : 'Trial',
+        planStatus: 'Trial',
       });
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -2024,15 +1954,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`🐛 Added ${bugRewardPerAd} BUG to user ${userId} for ad watch`);
         }
         
-        // Check and activate referral bonuses (anti-fraud: requires 10 ads)
-        try {
-          await storage.checkAndActivateReferralBonus(userId);
-        } catch (bonusError) {
-          // Log but don't fail the request if bonus processing fails
-          console.error("⚠️ Referral bonus processing failed (non-critical):", bonusError);
-        }
-        
-        // No percentage-based referral commission — rewards are milestone-based only (150 AXN per friend)
       } catch (earningError) {
         console.error("❌ Critical error adding earning:", earningError);
         // Even if earning fails, still try to return success to avoid user-facing errors
@@ -7043,18 +6964,13 @@ ${walletAddress}
           rewardType: 'BUG'
         });
       } else if (promoCode.rewardType === 'TON' && (promoCode.rewardCurrency === 'ton_app' || promoCode.rewardCurrency === 'App')) {
-        // TON App Balance
-        const [currentUser] = await db
-          .select({ tonAppBalance: users.tonAppBalance })
-          .from(users)
-          .where(eq(users.id, userId));
-        
-        const currentBalance = parseFloat(currentUser?.tonAppBalance || '0');
+        // TON App Balance — treat as TON balance
+        const currentBalance = parseFloat(user.tonBalance || '0');
         const newBalance = (currentBalance + parseFloat(rewardAmount || '0')).toFixed(6);
         
         await db
           .update(users)
-          .set({ tonAppBalance: newBalance, updatedAt: new Date() })
+          .set({ tonBalance: newBalance, updatedAt: new Date() })
           .where(eq(users.id, userId));
         
         await storage.logTransaction({
@@ -7464,438 +7380,11 @@ ${walletAddress}
     }
   });
 
-  app.post("/api/shop/buy-plan", authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id;
-      const { planId } = req.body;
-
-      const PLANS: Record<string, { price: number; axnProfit: number }> = {
-        cookgo: { price: 0.2, axnProfit: 200 },
-        wannacook: { price: 0.35, axnProfit: 450 },
-        cookpad: { price: 0.5, axnProfit: 750 },
-        pepper: { price: 0.7, axnProfit: 1100 },
-        mrcook: { price: 1.0, axnProfit: 1500 },
-        mealplanner: { price: 1.3, axnProfit: 2000 },
-        recify: { price: 1.6, axnProfit: 2600 },
-        chowman: { price: 2.0, axnProfit: 3300 },
-        cookbook: { price: 2.5, axnProfit: 4100 },
-        recime: { price: 3.0, axnProfit: 5000 },
-      };
-
-      const plan = PLANS[planId];
-      if (!plan) return res.status(400).json({ success: false, message: "Invalid plan ID" });
-
-      const user = await storage.getUser(userId);
-      if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-      const now = new Date();
-      if (user.activePlanId && user.planExpiresAt && new Date(user.planExpiresAt) > now) {
-        return res.status(400).json({ success: false, message: "You already have an active plan" });
-      }
-
-      const tonBalance = parseFloat(user.tonBalance || "0");
-      if (tonBalance < plan.price) {
-        return res.status(400).json({ success: false, message: "Insufficient TON balance" });
-      }
-
-      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      const axnPerHour = plan.axnProfit / 24;
-      const miningRate = axnPerHour / 3600;
-
-      await db.transaction(async (tx) => {
-        await tx.update(users)
-          .set({
-            tonBalance: (tonBalance - plan.price).toFixed(10),
-            activePlanId: planId,
-            planExpiresAt: expiresAt,
-            miningRate: miningRate.toFixed(10),
-            lastMiningClaim: now,
-            updatedAt: now
-          })
-          .where(eq(users.id, userId));
-
-        await tx.insert(transactions).values({
-          userId,
-          amount: plan.price.toString(),
-          type: "deduction",
-          source: "shop_purchase",
-          description: `Purchased ${planId} plan`,
-          metadata: { planId, expiresAt }
-        });
-      });
-
-      res.json({ success: true, message: "Plan activated successfully" });
-    } catch (error) {
-      console.error("Plan purchase error:", error);
-      res.status(500).json({ success: false, message: "Internal server error" });
-    }
-  });
-
-  // ==================== FREE SPIN SYSTEM (DISABLED) ====================
-  // Middleware to block all spin-related API endpoints
-  app.use('/api/spin', (req, res, next) => {
-    res.status(403).json({
-      success: false,
-      message: 'Spin feature has been disabled'
-    });
-  });
-
   // Helper function to get today's date as YYYY-MM-DD
   const getTodayDate = () => {
     const now = new Date();
     return now.toISOString().split('T')[0];
   };
-
-  // Spin reward configuration - heavily biased toward low rewards (DISABLED)
-  const SPIN_REWARDS = [
-    { type: 'AXN', amount: 1, rarity: 'common', weight: 400 },      // VERY HIGH CHANCE
-    { type: 'AXN', amount: 20, rarity: 'common', weight: 350 },     // VERY HIGH CHANCE
-    { type: 'AXN', amount: 200, rarity: 'rare', weight: 15 },       // VERY LOW CHANCE
-    { type: 'AXN', amount: 800, rarity: 'rare', weight: 8 },        // VERY LOW CHANCE
-    { type: 'AXN', amount: 1000, rarity: 'rare', weight: 3 },       // EXTREMELY LOW CHANCE
-    { type: 'AXN', amount: 10000, rarity: 'ultra_rare', weight: 1 }, // EXTREMELY LOW CHANCE
-    { type: '', amount: 0.01, rarity: 'rare', weight: 5 },       // VERY LOW CHANCE
-    { type: '', amount: 0.10, rarity: 'ultra_rare', weight: 1 }, // EXTREMELY LOW CHANCE
-  ];
-
-  // Weighted random selection
-  const selectSpinReward = () => {
-    const totalWeight = SPIN_REWARDS.reduce((sum, r) => sum + r.weight, 0);
-    let random = Math.random() * totalWeight;
-    
-    for (const reward of SPIN_REWARDS) {
-      random -= reward.weight;
-      if (random <= 0) {
-        return reward;
-      }
-    }
-    return SPIN_REWARDS[0]; // Fallback to lowest reward
-  };
-
-  // GET /api/spin/status - Returns spin availability and counters
-  app.get('/api/spin/status', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
-      }
-
-      const today = getTodayDate();
-
-      // Get or create spin data for user
-      let spinDataResult = await db.query.spinData.findFirst({
-        where: eq(spinData.userId, userId),
-      }) as any;
-
-      // Check if we need to reset for new day
-      if (spinDataResult && spinDataResult.lastSpinDate !== today) {
-        // Reset daily values
-        await db.update(spinData).set({
-          freeSpinUsed: false,
-          spinAdsWatched: 0,
-          lastSpinDate: today,
-          updatedAt: new Date(),
-        }).where(eq(spinData.userId, userId));
-        
-        spinDataResult = {
-          ...spinDataResult,
-          freeSpinUsed: false,
-          spinAdsWatched: 0,
-          lastSpinDate: today,
-        };
-      }
-
-      if (!spinDataResult) {
-        // Create new spin data
-        await db.insert(spinData).values({
-          userId,
-          freeSpinUsed: false,
-          extraSpins: 0,
-          spinAdsWatched: 0,
-          inviteSpinsEarned: 0,
-          lastSpinDate: today,
-        });
-        spinDataResult = {
-          freeSpinUsed: false,
-          extraSpins: 0,
-          spinAdsWatched: 0,
-          inviteSpinsEarned: 0,
-          lastSpinDate: today,
-        };
-      }
-
-      // Calculate total available spins
-      const freeSpinAvailable = !spinDataResult.freeSpinUsed;
-      const extraSpins = spinDataResult.extraSpins || 0;
-      const totalSpins = (freeSpinAvailable ? 1 : 0) + extraSpins;
-
-      res.json({
-        success: true,
-        freeSpinAvailable,
-        extraSpins,
-        totalSpins,
-        spinAdsWatched: spinDataResult.spinAdsWatched || 0,
-        maxDailyAds: 50,
-        adsPerSpin: 10,
-        inviteSpinsEarned: spinDataResult.inviteSpinsEarned || 0,
-      });
-    } catch (error) {
-      console.error('❌ Error getting spin status:', error);
-      res.status(500).json({ error: 'Failed to get spin status' });
-    }
-  });
-
-  // POST /api/spin/use - Spin the wheel
-  app.post('/api/spin/use', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
-      }
-
-      const today = getTodayDate();
-
-      // Get spin data
-      let spinDataResult = await db.query.spinData.findFirst({
-        where: eq(spinData.userId, userId),
-      }) as any;
-
-      // Check daily reset
-      if (spinDataResult && spinDataResult.lastSpinDate !== today) {
-        await db.update(spinData).set({
-          freeSpinUsed: false,
-          spinAdsWatched: 0,
-          lastSpinDate: today,
-          updatedAt: new Date(),
-        }).where(eq(spinData.userId, userId));
-        
-        spinDataResult = {
-          ...spinDataResult,
-          freeSpinUsed: false,
-          spinAdsWatched: 0,
-          lastSpinDate: today,
-        };
-      }
-
-      if (!spinDataResult) {
-        return res.status(400).json({ error: 'No spin data found' });
-      }
-
-      const freeSpinAvailable = !spinDataResult.freeSpinUsed;
-      const extraSpins = spinDataResult.extraSpins || 0;
-
-      // Check if user has any spins available
-      if (!freeSpinAvailable && extraSpins <= 0) {
-        return res.status(400).json({ error: 'No spins available' });
-      }
-
-      // Select reward
-      const reward = selectSpinReward();
-      let spinType = 'free';
-
-      // Deduct spin
-      if (freeSpinAvailable) {
-        await db.update(spinData).set({
-          freeSpinUsed: true,
-          updatedAt: new Date(),
-        }).where(eq(spinData.userId, userId));
-        spinType = 'free';
-      } else {
-        await db.update(spinData).set({
-          extraSpins: extraSpins - 1,
-          updatedAt: new Date(),
-        }).where(eq(spinData.userId, userId));
-        spinType = 'extra';
-      }
-
-      // Credit reward to user
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      if (reward.type === 'AXN') {
-        const currentBalance = parseFloat(user.walletBalance?.toString() || '0');
-        const newBalance = currentBalance + reward.amount;
-        await db.update(users).set({
-          walletBalance: newBalance.toString(),
-          updatedAt: new Date(),
-        }).where(eq(users.id, userId));
-      } else if (reward.type === '') {
-        const currentTon = parseFloat(user.tonBalance?.toString() || '0');
-        const newTon = currentTon + reward.amount;
-        await db.update(users).set({
-          tonBalance: newTon.toString(),
-          updatedAt: new Date(),
-        }).where(eq(users.id, userId));
-      }
-
-      // Record spin history
-      await db.insert(spinHistory).values({
-        userId,
-        rewardType: reward.type,
-        rewardAmount: reward.amount.toString(),
-        spinType,
-      });
-
-      // Record transaction
-      await db.insert(transactions).values({
-        userId,
-        amount: reward.amount.toString(),
-        type: 'addition',
-        source: 'spin_reward',
-        description: `Free Spin Reward: ${reward.amount} ${reward.type}`,
-        metadata: { spinType, rarity: reward.rarity },
-      });
-
-      res.json({
-        success: true,
-        reward: {
-          type: reward.type,
-          amount: reward.amount,
-          rarity: reward.rarity,
-        },
-      });
-    } catch (error) {
-      console.error('❌ Error using spin:', error);
-      res.status(500).json({ error: 'Failed to use spin' });
-    }
-  });
-
-  // POST /api/spin/adwatch - Watch ad to earn spins
-  app.post('/api/spin/adwatch', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
-      }
-
-      const today = getTodayDate();
-
-      // Get or create spin data
-      let spinDataResult = await db.query.spinData.findFirst({
-        where: eq(spinData.userId, userId),
-      }) as any;
-
-      // Check daily reset
-      if (spinDataResult && spinDataResult.lastSpinDate !== today) {
-        await db.update(spinData).set({
-          freeSpinUsed: false,
-          spinAdsWatched: 0,
-          lastSpinDate: today,
-          updatedAt: new Date(),
-        }).where(eq(spinData.userId, userId));
-        
-        spinDataResult = {
-          ...spinDataResult,
-          freeSpinUsed: false,
-          spinAdsWatched: 0,
-          lastSpinDate: today,
-        };
-      }
-
-      if (!spinDataResult) {
-        await db.insert(spinData).values({
-          userId,
-          freeSpinUsed: false,
-          extraSpins: 0,
-          spinAdsWatched: 0,
-          inviteSpinsEarned: 0,
-          lastSpinDate: today,
-        });
-        spinDataResult = {
-          freeSpinUsed: false,
-          extraSpins: 0,
-          spinAdsWatched: 0,
-          inviteSpinsEarned: 0,
-          lastSpinDate: today,
-        };
-      }
-
-      const currentAdsWatched = spinDataResult.spinAdsWatched || 0;
-      const maxAds = 50;
-
-      // Check if max ads reached
-      if (currentAdsWatched >= maxAds) {
-        return res.status(400).json({ 
-          error: 'Maximum daily ads reached',
-          adsWatched: currentAdsWatched,
-          maxAds,
-        });
-      }
-
-      // Increment ad counter
-      const newAdsWatched = currentAdsWatched + 1;
-      let newExtraSpins = spinDataResult.extraSpins || 0;
-      let spinEarned = false;
-
-      // Check if 10 ads reached - grant extra spin
-      if (newAdsWatched % 10 === 0) {
-        newExtraSpins += 1;
-        spinEarned = true;
-      }
-
-      await db.update(spinData).set({
-        spinAdsWatched: newAdsWatched,
-        extraSpins: newExtraSpins,
-        updatedAt: new Date(),
-      }).where(eq(spinData.userId, userId));
-
-      res.json({
-        success: true,
-        adsWatched: newAdsWatched,
-        maxAds,
-        spinEarned,
-        extraSpins: newExtraSpins,
-        adsUntilNextSpin: 10 - (newAdsWatched % 10),
-      });
-    } catch (error) {
-      console.error('❌ Error recording spin ad watch:', error);
-      res.status(500).json({ error: 'Failed to record ad watch' });
-    }
-  });
-
-  // POST /api/spin/invite - Grant spin for verified invite (called when referral is verified)
-  app.post('/api/spin/invite', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
-      }
-
-      const today = getTodayDate();
-
-      // Get or create spin data
-      let spinDataResult = await db.query.spinData.findFirst({
-        where: eq(spinData.userId, userId),
-      }) as any;
-
-      if (!spinDataResult) {
-        await db.insert(spinData).values({
-          userId,
-          freeSpinUsed: false,
-          extraSpins: 1, // Start with the bonus spin
-          spinAdsWatched: 0,
-          inviteSpinsEarned: 1,
-          lastSpinDate: today,
-        });
-      } else {
-        await db.update(spinData).set({
-          extraSpins: (spinDataResult.extraSpins || 0) + 1,
-          inviteSpinsEarned: (spinDataResult.inviteSpinsEarned || 0) + 1,
-          updatedAt: new Date(),
-        }).where(eq(spinData.userId, userId));
-      }
-
-      res.json({
-        success: true,
-        message: 'Spin earned from verified invite!',
-      });
-    } catch (error) {
-      console.error('❌ Error granting invite spin:', error);
-      res.status(500).json({ error: 'Failed to grant invite spin' });
-    }
-  });
 
   // ==================== DAILY MISSIONS ====================
 
@@ -8507,61 +7996,6 @@ ${walletAddress}
     }
   });
 
-  // ── Referral Well ─────────────────────────────────────────────────────────
-  app.get('/api/referrals/well', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) return res.status(401).json({ message: "Unauthorized" });
-      const user = await storage.getUser(userId);
-      const wellBalance = parseFloat((user?.pendingReferralBonus as any) || '0');
-      const commissionRows = await db.execute(sql`
-        SELECT COALESCE(SUM(amount::numeric), 0) as total
-        FROM earnings
-        WHERE user_id = ${userId} AND source = 'referral_commission'
-      `);
-      const totalEarned = parseFloat((commissionRows as any).rows?.[0]?.total || '0');
-      const refCountRows = await db.execute(sql`SELECT COUNT(*) as cnt FROM referrals WHERE referrer_id = ${userId}`);
-      const totalFriends = parseInt((refCountRows as any).rows?.[0]?.cnt || '0');
-      // Active friends = referred users who have earned >= 500 CIPHER
-      const activeFriendsRows = await db.execute(sql`
-        SELECT COUNT(*) as cnt
-        FROM referrals r
-        JOIN users u ON CAST(u.id AS TEXT) = CAST(r.referred_id AS TEXT)
-        WHERE CAST(r.referrer_id AS TEXT) = ${userId}
-          AND COALESCE(u.balance::numeric, 0) >= 500
-      `);
-      const activeFriends = parseInt((activeFriendsRows as any).rows?.[0]?.cnt || '0');
-      return res.json({
-        wellBalance,
-        totalEarned,
-        totalFriends,
-        activeFriends,
-      });
-    } catch (e) {
-      return res.status(500).json({ message: "Failed" });
-    }
-  });
-
-  app.post('/api/referrals/well/claim', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) return res.status(401).json({ message: "Unauthorized" });
-      const user = await storage.getUser(userId);
-      const pending = parseFloat((user?.pendingReferralBonus as any) || '0');
-      if (pending <= 0) return res.status(400).json({ message: "Nothing to claim" });
-      await db.execute(sql`
-        UPDATE users
-        SET
-          balance = COALESCE(balance::numeric, 0) + ${pending},
-          pending_referral_bonus = 0,
-          total_claimed_referral_bonus = COALESCE(total_claimed_referral_bonus::numeric, 0) + ${pending}
-        WHERE id = ${userId}
-      `);
-      return res.json({ success: true, amount: pending });
-    } catch (e) {
-      return res.status(500).json({ message: "Failed to claim" });
-    }
-  });
 
   // Contest submission endpoint
   app.post('/api/contest/submit', authenticateTelegram, async (req: any, res) => {
@@ -8866,29 +8300,6 @@ ${walletAddress}
     }
   });
 
-  // Helper: credit 10% of game earnings to the referrer's Well (pending_referral_bonus)
-  async function creditGameReferralBonus(playerId: string, gameEarned: number): Promise<void> {
-    try {
-      const player = await storage.getUser(playerId);
-      if (!player?.referredBy) return;
-      const referrer = await storage.getUserByReferralCode(player.referredBy);
-      if (!referrer) return;
-      const bonus = Math.round(gameEarned * 0.1 * 10000) / 10000;
-      if (bonus <= 0) return;
-      await db.execute(sql`
-        UPDATE users
-        SET pending_referral_bonus = COALESCE(pending_referral_bonus::numeric, 0) + ${bonus}
-        WHERE id = ${referrer.id}
-      `);
-      await db.execute(sql`
-        INSERT INTO earnings (user_id, amount, source, description)
-        VALUES (${referrer.id}, ${bonus}, 'referral_commission', ${'Game bonus from friend'})
-      `);
-    } catch (e) {
-      console.error('creditGameReferralBonus error:', e);
-    }
-  }
-
   app.post("/api/game/sliding-sense/reward", authenticateTelegram, async (req: any, res) => {
     try {
       const userId = req.user?.user?.id;
@@ -8903,7 +8314,6 @@ ${walletAddress}
         SET balance = COALESCE(balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
-      await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
       res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
     } catch (err) {
@@ -8925,7 +8335,6 @@ ${walletAddress}
         SET balance = COALESCE(balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
-      await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
       res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
     } catch (err) {
@@ -8947,138 +8356,10 @@ ${walletAddress}
         SET balance = COALESCE(balance::numeric, 0) + ${parsed}
         WHERE id = ${userId}
       `);
-      await creditGameReferralBonus(userId, parsed);
       const updatedUser = await storage.getUser(userId);
       res.json({ success: true, earned: parsed, newBalance: updatedUser?.balance });
     } catch (err) {
       res.status(500).json({ error: 'Failed to credit reward' });
-    }
-  });
-
-  // ── Season 2 Migration Routes ──
-
-  // Mark intro as seen
-  app.post('/api/migration/intro-seen', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-      await db.execute(sql`UPDATE users SET migration_intro_seen = TRUE WHERE id = ${userId}`);
-      res.json({ success: true });
-    } catch (err) {
-      res.status(500).json({ error: 'Failed to update intro seen' });
-    }
-  });
-
-  // Swap mining balance to wallet balance (dynamic fee: 50% of swap amount, min: 2000 AXN)
-  app.post('/api/migration/swap', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-      const userResult = await db.execute(sql`
-        SELECT id, balance, mining_balance, migration_completed
-        FROM users WHERE id = ${userId}
-      `);
-      const user = userResult.rows[0];
-      if (!user) return res.status(404).json({ error: 'User not found' });
-      if (user.migration_completed) return res.status(400).json({ error: 'Migration already completed' });
-
-      const miningBal = Math.floor(parseFloat(String(user.mining_balance || user.balance || '0')));
-      const MIN_SWAP = 2000;
-
-      // Amount to swap — defaults to full mining balance if not provided
-      const requestedAmount = req.body?.amount ? Math.floor(Number(req.body.amount)) : miningBal;
-
-      if (requestedAmount < MIN_SWAP) {
-        return res.status(400).json({ error: `Minimum swap amount is ${MIN_SWAP.toLocaleString()} AXN` });
-      }
-      if (requestedAmount > miningBal) {
-        return res.status(400).json({ error: `Amount exceeds your mining balance of ${miningBal.toLocaleString()} AXN` });
-      }
-
-      // Dynamic fee: 500 AXN per 1000 AXN swapped (50%)
-      const fee = Math.floor(requestedAmount / 2);
-      const walletReceives = requestedAmount - fee;
-
-      await db.execute(sql`
-        UPDATE users
-        SET
-          mining_balance = 0,
-          wallet_balance = ${walletReceives},
-          balance = 0,
-          migration_completed = TRUE,
-          migration_intro_seen = TRUE,
-          updated_at = NOW()
-        WHERE id = ${userId}
-      `);
-
-      res.json({
-        success: true,
-        swapAmount: requestedAmount,
-        fee,
-        walletBalance: walletReceives,
-      });
-    } catch (err) {
-      console.error('Migration swap error:', err);
-      res.status(500).json({ error: 'Failed to process migration' });
-    }
-  });
-
-  // Burn mining balance (no reward)
-  app.post('/api/migration/burn', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-      const userResult = await db.execute(sql`
-        SELECT id, migration_completed FROM users WHERE id = ${userId}
-      `);
-      const user = userResult.rows[0];
-      if (!user) return res.status(404).json({ error: 'User not found' });
-      if (user.migration_completed) return res.status(400).json({ error: 'Migration already completed' });
-
-      await db.execute(sql`
-        UPDATE users
-        SET
-          mining_balance = 0,
-          wallet_balance = 0,
-          balance = 0,
-          migration_completed = TRUE,
-          migration_intro_seen = TRUE,
-          updated_at = NOW()
-        WHERE id = ${userId}
-      `);
-
-      res.json({ success: true });
-    } catch (err) {
-      console.error('Migration burn error:', err);
-      res.status(500).json({ error: 'Failed to process burn' });
-    }
-  });
-
-  // Get migration status
-  app.get('/api/migration/status', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user?.user?.id;
-      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-      const result = await db.execute(sql`
-        SELECT balance, mining_balance, wallet_balance, migration_completed, migration_intro_seen
-        FROM users WHERE id = ${userId}
-      `);
-      const user = result.rows[0];
-      if (!user) return res.status(404).json({ error: 'User not found' });
-
-      const miningBalance = Math.floor(parseFloat(String(user.mining_balance || user.balance || '0')));
-
-      res.json({
-        miningBalance,
-        walletBalance: Math.floor(parseFloat(String(user.wallet_balance || '0'))),
-        migrationCompleted: user.migration_completed ?? false,
-        migrationIntroSeen: user.migration_intro_seen ?? false,
-      });
-    } catch (err) {
-      res.status(500).json({ error: 'Failed to get migration status' });
     }
   });
 
