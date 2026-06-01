@@ -9068,8 +9068,8 @@ ${walletAddress}
         .where(eq(users.id, userId));
       const axnTask = userData?.axnNameRewardClaimed ? 0 : 1;
 
-      // 2. Ad slot tasks (5 slots, daily cooldown resets at UTC midnight)
-      let adTasks = 5;
+      // 2. Ad slot tasks (3 slots: Monetag, Adgram, Gigapub — daily cooldown resets at UTC midnight)
+      let adTasks = 3;
       try {
         // Ensure table exists first
         await db.execute(sql`
@@ -9089,9 +9089,9 @@ ${walletAddress}
             AND last_watched_at >= ${todayUTC}
         `);
         const watchedToday = Number((slotRows.rows[0] as any)?.watched ?? 0);
-        adTasks = Math.max(0, 5 - watchedToday);
+        adTasks = Math.max(0, 3 - watchedToday);
       } catch {
-        adTasks = 5;
+        adTasks = 3;
       }
 
       return res.json({ count: axnTask + adTasks });
