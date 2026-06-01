@@ -1918,8 +1918,22 @@ export class DatabaseStorage implements IStorage {
       
       // ALL withdrawals use AXN walletBalance (Season 2 primary balance)
       const currency = 'AXN';
-      // Balance is already deducted on submission — no deduction needed on approval
-      console.log(`✅ Approving withdrawal #${withdrawalId} — balance was already deducted on submission`);
+
+      // Deduct balance on approval ONLY if not already deducted at submission time
+      if (!withdrawal.deducted) {
+        const currentBalance = parseFloat(user.walletBalance?.toString() || user.balance || '0');
+        if (currentBalance < totalToDeduct) {
+          return { success: false, message: `Insufficient AXN balance. User has ${Math.floor(currentBalance)} AXN but withdrawal requires ${Math.floor(totalToDeduct)} AXN.` };
+        }
+        const newBalance = (currentBalance - totalToDeduct).toFixed(2);
+        await db.update(users).set({
+          walletBalance: newBalance,
+          updatedAt: new Date()
+        }).where(eq(users.id, withdrawal.userId));
+        console.log(`💰 Withdrawal #${withdrawalId} approved — walletBalance deducted: ${currentBalance} → ${newBalance} AXN`);
+      } else {
+        console.log(`✅ Withdrawal #${withdrawalId} — balance already deducted at submission, skipping deduction`);
+      }
 
       // Record withdrawal in earnings history for proper stats tracking
       const paymentSystemName = withdrawal.method;
