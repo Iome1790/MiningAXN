@@ -84,9 +84,14 @@ export function useWebSocket() {
               break;
               
             case 'withdrawal_requested':
-              // ✅ FIX: Show proper notification message for withdrawal request
-              showNotification("You have sent a withdrawal request.", "success");
-              // Invalidate queries to update UI
+              showNotification("Withdrawal request submitted.", "success");
+              // Instantly patch walletBalance in cache if server sent new value
+              if ((message as any).walletBalance !== undefined) {
+                queryClient.setQueryData(['/api/auth/user'], (oldUser: any) => {
+                  if (!oldUser) return oldUser;
+                  return { ...oldUser, walletBalance: (message as any).walletBalance };
+                });
+              }
               queryClient.invalidateQueries({ queryKey: ['/api/withdrawals'] });
               queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
               break;
@@ -125,6 +130,7 @@ export function useWebSocket() {
                 if (!oldUser) return oldUser;
                 return {
                   ...oldUser,
+                  walletBalance: (message as any).walletBalance ?? oldUser.walletBalance,
                   tonBalance: (message as any).tonBalance ?? oldUser.tonBalance,
                   tonAppBalance: (message as any).tonAppBalance ?? oldUser.tonAppBalance,
                   balance: (message as any).balance ?? oldUser.balance,
