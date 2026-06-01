@@ -91,7 +91,7 @@ export default function WithdrawPopup({ onClose, userBalance, connectedAddress }
         position: 'relative', width: '100%',
         background: 'linear-gradient(160deg, #0d0d0f 0%, #111118 100%)',
         border: '1px solid rgba(37,99,235,0.25)',
-        borderRadius: '28px 28px 0 0', padding: '24px 20px 52px', zIndex: 901,
+        borderRadius: '28px 28px 0 0', padding: '24px 20px', paddingBottom: 'max(52px, calc(env(safe-area-inset-bottom, 0px) + 28px))', zIndex: 901,
         boxShadow: '0 -8px 60px rgba(37,99,235,0.2), 0 0 0 1px rgba(255,255,255,0.03)',
         overflow: 'hidden',
       }} onClick={e => e.stopPropagation()}>

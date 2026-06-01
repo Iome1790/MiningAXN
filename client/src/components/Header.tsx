@@ -212,7 +212,7 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(
                 <div style={{
                   position: 'fixed',
                   top: 'calc(var(--header-height, 62px) + 8px)',
-                  right: 12, width: 290, zIndex: 999,
+                  right: 12, width: 'min(290px, calc(100vw - 24px))', zIndex: 999,
                   background: '#0d0d0f',
                   border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 18,
