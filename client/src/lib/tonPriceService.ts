@@ -1,59 +1,100 @@
-//  price fetching service - gets live market data
 let cachedPrice: { price: number; lastUpdated: number } | null = null;
-const CACHE_DURATION = 60000; // Cache for 60 seconds
+const CACHE_DURATION = 60000;
+
+async function fetchFromBinance(): Promise<number> {
+  const res = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=TONUSDT', {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) throw new Error('Binance failed');
+  const data = await res.json();
+  const price = parseFloat(data.price);
+  if (!price || isNaN(price)) throw new Error('Binance invalid');
+  return price;
+}
+
+async function fetchFromOKX(): Promise<number> {
+  const res = await fetch('https://www.okx.com/api/v5/market/ticker?instId=TON-USDT', {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) throw new Error('OKX failed');
+  const data = await res.json();
+  const price = parseFloat(data?.data?.[0]?.last);
+  if (!price || isNaN(price)) throw new Error('OKX invalid');
+  return price;
+}
+
+async function fetchFromBybit(): Promise<number> {
+  const res = await fetch('https://api.bybit.com/v5/market/tickers?category=spot&symbol=TONUSDT', {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) throw new Error('Bybit failed');
+  const data = await res.json();
+  const price = parseFloat(data?.result?.list?.[0]?.lastPrice);
+  if (!price || isNaN(price)) throw new Error('Bybit invalid');
+  return price;
+}
+
+async function fetchFromCoinCap(): Promise<number> {
+  const res = await fetch('https://api.coincap.io/v2/assets/the-open-network', {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) throw new Error('CoinCap failed');
+  const data = await res.json();
+  const price = parseFloat(data?.data?.priceUsd);
+  if (!price || isNaN(price)) throw new Error('CoinCap invalid');
+  return price;
+}
+
+async function fetchFromCoinGecko(): Promise<number> {
+  const res = await fetch(
+    'https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd',
+    { headers: { 'Accept': 'application/json' } }
+  );
+  if (!res.ok) throw new Error('CoinGecko failed');
+  const data = await res.json();
+  const price = data['the-open-network']?.usd;
+  if (!price || typeof price !== 'number') throw new Error('CoinGecko invalid');
+  return price;
+}
 
 export async function getTONPrice(): Promise<number> {
   const now = Date.now();
-  
-  // Return cached price if still valid
   if (cachedPrice && now - cachedPrice.lastUpdated < CACHE_DURATION) {
     return cachedPrice.price;
   }
 
-  try {
-    // Fetch from CoinGecko free API (no key required)
-    const response = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd',
-      { 
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      }
-    );
-    
-    if (!response.ok) throw new Error('Failed to fetch  price');
-    
-    const data = await response.json();
-    const price = data['the-open-network']?.usd;
-    
-    if (!price || typeof price !== 'number') {
-      throw new Error('Invalid price data');
-    }
+  const sources = [fetchFromBinance, fetchFromOKX, fetchFromBybit, fetchFromCoinCap, fetchFromCoinGecko];
 
-    // Cache the price
-    cachedPrice = { price, lastUpdated: now };
-    return price;
-  } catch (error) {
-    console.error('Error fetching  price:', error);
-    
-    // Fallback to cached price if available, even if expired
-    if (cachedPrice) {
-      return cachedPrice.price;
+  for (const source of sources) {
+    try {
+      const price = await source();
+      cachedPrice = { price, lastUpdated: now };
+      return price;
+    } catch {
+      continue;
     }
-    
-    // Fallback to a reasonable default (will update when API works)
-    return 5.5; // Conservative default
   }
+
+  if (cachedPrice) return cachedPrice.price;
+  return 3.5;
 }
 
-export function calculateConversions(tonPriceTON: number) {
-  const Hrum_PER_ = 10000;
-  
-  return {
-    tonPriceTON: Number(tonPrice.toFixed(4)),
-    padPerDollar: Hrum_PER_TON,
-    dollarPerTon: Number((tonPrice).toFixed(4)),
-    tonPerDollar: Number((1 / tonPrice).toFixed(8)),
-    padPerTon: Number((tonPrice * Hrum_PER_).toFixed(0)),
-    tonPerPad: Number((1 / (tonPrice * Hrum_PER_)).toFixed(12)),
-  };
+export function axnToTon(axnRaw: number): number {
+  return axnRaw / 100000;
+}
+
+export function tonToUsd(ton: number, tonPrice: number): number {
+  return ton * tonPrice;
+}
+
+export function formatTon(ton: number): string {
+  if (ton === 0) return '0';
+  if (ton < 0.0001) return ton.toFixed(8).replace(/\.?0+$/, '');
+  if (ton < 1) return ton.toFixed(6).replace(/\.?0+$/, '');
+  return ton.toFixed(4).replace(/\.?0+$/, '');
+}
+
+export function formatUsd(usd: number): string {
+  if (usd < 0.01) return usd.toFixed(4).replace(/\.?0+$/, '');
+  return usd.toFixed(2);
 }
