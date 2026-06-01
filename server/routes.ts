@@ -6128,21 +6128,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         withdrawalDetails.requestedAmount = usdToDeduct.toFixed(10); // Total amount before fee
         withdrawalDetails.netAmount = withdrawalAmount.toFixed(10); // Amount after fee
 
+        // Deduct the TON balance IMMEDIATELY and atomically (before insert)
+        const [balanceUpdated] = await tx
+          .update(users)
+          .set({
+            tonBalance: sql`GREATEST(0, COALESCE(${users.tonBalance}, 0) - ${usdToDeduct.toFixed(10)})`,
+            updatedAt: new Date()
+          })
+          .where(and(
+            eq(users.id, userId),
+            sql`COALESCE(${users.tonBalance}, 0) >= ${usdToDeduct.toFixed(10)}`
+          ))
+          .returning({ tonBalance: users.tonBalance });
+
+        if (!balanceUpdated) {
+          throw new Error(`Insufficient balance. You have ${currentUsdBalance.toFixed(2)} TON but need ${usdToDeduct.toFixed(2)} TON.`);
+        }
+
+        console.log(`💰 Withdrawal submitted: tonBalance deducted ${currentUsdBalance.toFixed(4)} → ${balanceUpdated.tonBalance} TON`);
+
         const withdrawalData: any = {
           userId,
           amount: withdrawalAmount.toFixed(10),
           method: method,
           status: 'pending',
-          deducted: false,
+          deducted: true,
           refunded: false,
           details: withdrawalDetails
         };
 
         const [withdrawal] = await tx.insert(withdrawals).values(withdrawalData).returning();
-        
-        // NOTE: Balance is NOT deducted here - it will be deducted ONLY when admin approves the withdrawal
-        // This prevents "insufficient balance" errors during approval when balance was already deducted at request time
-        console.log(`📋 Withdrawal request created for ${usdToDeduct.toFixed(2)} TON (balance will be deducted on admin approval)`);
+        console.log(`📋 Withdrawal request created for ${usdToDeduct.toFixed(2)} TON — balance deducted immediately`);
         
         return { 
           withdrawal, 

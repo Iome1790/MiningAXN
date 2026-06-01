@@ -1532,90 +1532,114 @@ export class DatabaseStorage implements IStorage {
 
   async createPayoutRequest(userId: string, amount: string, paymentSystemId: string, paymentDetails?: string): Promise<{ success: boolean; message: string; withdrawalId?: string }> {
     try {
-      // Get user data
-      const user = await this.getUser(userId);
-      if (!user) {
-        return { success: false, message: 'User not found' };
-      }
-
-      // Sync payment systems with admin settings before processing
+      // Fetch settings outside transaction (read-only, no lock needed)
       const minWithdrawSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'minimum_withdrawal_sat')).limit(1);
       const feeSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'withdrawal_fee_sat')).limit(1);
-      
       const minWithdrawValue = parseFloat(minWithdrawSetting[0]?.settingValue || "100");
       const feeValue = parseFloat(feeSetting[0]?.settingValue || "10");
-      
       updatePaymentSystemsFromSettings(minWithdrawValue, feeValue);
 
-      // AXN withdrawal only
       const effectivePaymentSystemId = 'axn_withdraw';
       const paymentSystem = PAYMENT_SYSTEMS.find(p => p.id === effectivePaymentSystemId);
       if (!paymentSystem) {
         return { success: false, message: 'Invalid payment system' };
       }
-      
+
       const requestedAmount = parseFloat(amount);
       const fee = paymentSystem.fee;
       const netAmount = requestedAmount - fee;
-      
-      // Validate minimum withdrawal amount and ensure net amount is positive
+
       if (requestedAmount < paymentSystem.minWithdrawal) {
         return { success: false, message: `Minimum withdrawal is ${paymentSystem.minWithdrawal} AXN` };
       }
-      
       if (netAmount <= 0) {
         return { success: false, message: `Withdrawal amount must be greater than the fee of ${fee} AXN` };
       }
 
-      // Check AXN balance (Season 2: use walletBalance as primary)
-      const isAdmin = user.telegram_id === process.env.TELEGRAM_ADMIN_ID;
-      
-      const userBalance = parseFloat(user.walletBalance?.toString() || user.balance || '0');
-      
-      console.log('Balance check details:', { isAdmin, userBalance, requestedAmount, paymentSystemId: effectivePaymentSystemId });
+      // --- ATOMIC TRANSACTION: lock user row, validate, deduct, create record ---
+      return await db.transaction(async (tx) => {
+        // Lock the user row to prevent race conditions
+        const [user] = await tx
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .for('update');
 
-      if (!isAdmin && userBalance < requestedAmount) {
-        return { 
-          success: false, 
-          message: `Insufficient AXN balance. You have ${Math.floor(userBalance)} AXN, but requested ${Math.floor(requestedAmount)} AXN.` 
+        if (!user) {
+          return { success: false, message: 'User not found' };
+        }
+
+        // Prevent duplicate pending withdrawals
+        const [existingPending] = await tx
+          .select({ id: withdrawals.id })
+          .from(withdrawals)
+          .where(and(eq(withdrawals.userId, userId), eq(withdrawals.status, 'pending')))
+          .limit(1);
+
+        if (existingPending) {
+          return { success: false, message: 'You already have a pending withdrawal request. Please wait for it to be processed.' };
+        }
+
+        const isAdmin = user.telegram_id === process.env.TELEGRAM_ADMIN_ID;
+        const userBalance = parseFloat(user.walletBalance?.toString() || user.balance || '0');
+
+        console.log('Balance check details:', { isAdmin, userBalance, requestedAmount, paymentSystemId: effectivePaymentSystemId });
+
+        if (!isAdmin && userBalance < requestedAmount) {
+          return {
+            success: false,
+            message: `Insufficient AXN balance. You have ${Math.floor(userBalance)} AXN, but requested ${Math.floor(requestedAmount)} AXN.`
+          };
+        }
+
+        const withdrawalDetails = {
+          paymentSystem: paymentSystem.name,
+          paymentDetails: paymentDetails,
+          paymentSystemId: effectivePaymentSystemId,
+          requestedAmount: requestedAmount.toString(),
+          fee: fee.toString(),
+          netAmount: netAmount.toString(),
+          totalDeducted: requestedAmount.toString()
         };
-      }
 
-      // Create pending withdrawal record AND deduct balance immediately
-      const withdrawalDetails = {
-        paymentSystem: paymentSystem.name,
-        paymentDetails: paymentDetails,
-        paymentSystemId: effectivePaymentSystemId,
-        requestedAmount: requestedAmount.toString(),
-        fee: fee.toString(),
-        netAmount: netAmount.toString(),
-        totalDeducted: requestedAmount.toString()
-      };
+        // Deduct balance FIRST (before inserting withdrawal) to prevent negative balance race
+        if (!isAdmin) {
+          const newBalance = sql`GREATEST(0, COALESCE(${users.walletBalance}, 0) - ${requestedAmount.toString()})`;
+          const [updated] = await tx
+            .update(users)
+            .set({ walletBalance: newBalance, updatedAt: new Date() })
+            .where(and(
+              eq(users.id, userId),
+              sql`COALESCE(${users.walletBalance}, 0) >= ${requestedAmount.toString()}`
+            ))
+            .returning({ walletBalance: users.walletBalance });
 
-      const [withdrawal] = await db.insert(withdrawals).values({
-        userId: userId,
-        amount: amount,
-        status: 'pending',
-        method: paymentSystem.name,
-        details: withdrawalDetails,
-        deducted: true,
-      }).returning();
+          if (!updated) {
+            return {
+              success: false,
+              message: `Insufficient AXN balance. You have ${Math.floor(userBalance)} AXN, but requested ${Math.floor(requestedAmount)} AXN.`
+            };
+          }
+          console.log(`💰 Withdrawal submitted: walletBalance deducted ${userBalance} → ${updated.walletBalance}`);
+        }
 
-      // Deduct balance immediately on submission (so user sees updated balance)
-      if (!isAdmin) {
-        const newBalance = (userBalance - requestedAmount).toFixed(2);
-        await db.update(users).set({
-          walletBalance: newBalance,
-          updatedAt: new Date()
-        }).where(eq(users.id, userId));
-        console.log(`💰 Withdrawal submitted: walletBalance deducted ${userBalance} → ${newBalance}`);
-      }
+        // Create pending withdrawal record (balance already deducted above)
+        const [withdrawal] = await tx.insert(withdrawals).values({
+          userId: userId,
+          amount: amount,
+          status: 'pending',
+          method: paymentSystem.name,
+          details: withdrawalDetails,
+          deducted: true,
+          refunded: false,
+        }).returning();
 
-      return { 
-        success: true, 
-        message: `Withdrawal request created successfully. You will receive ${Math.floor(netAmount)} AXN.`,
-        withdrawalId: withdrawal.id
-      };
+        return {
+          success: true,
+          message: `Withdrawal request created successfully. You will receive ${Math.floor(netAmount)} AXN.`,
+          withdrawalId: withdrawal.id
+        };
+      });
     } catch (error) {
       console.error('Error creating payout request:', error);
       return { success: false, message: 'Error processing payout request' };
@@ -1844,48 +1868,10 @@ export class DatabaseStorage implements IStorage {
     const updateData: any = { status, updatedAt: new Date() };
     if (transactionHash) updateData.transactionHash = transactionHash;
     if (adminNotes) updateData.adminNotes = adminNotes;
-    
-    const [result] = await db.update(withdrawals).set(updateData).where(eq(withdrawals.id, withdrawalId)).returning();
-    
-    // If withdrawal is approved, deduct balance now
-    if (status === 'approved' || status === 'completed' || status === 'success' || status === 'Approved') {
-      console.log(`💰 Deducting balance for approved withdrawal ${withdrawalId} from user ${result.userId}`);
-      
-      const user = await this.getUser(result.userId);
-      if (user) {
-        const withdrawalAmount = parseFloat(result.amount);
-        const currentTonBalance = parseFloat(user.tonBalance || "0");
-        const currentWithdrawBalance = parseFloat((user as any).withdraw_balance || "0");
-        
-        // Update user balances in users table
-        await db.update(users)
-          .set({
-            tonBalance: (currentTonBalance - withdrawalAmount).toFixed(10),
-            withdraw_balance: (currentWithdrawBalance - withdrawalAmount).toFixed(10),
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, result.userId));
 
-        // Update user_balances table
-        await db.update(userBalances)
-          .set({
-            balance: sql`COALESCE(${userBalances.balance}, 0) - ${result.amount}`,
-            updatedAt: new Date(),
-          })
-          .where(eq(userBalances.userId, result.userId));
-          
-        // Log transaction for the deduction
-        await this.logTransaction({
-          userId: result.userId,
-          amount: result.amount,
-          type: 'deduction',
-          source: 'withdrawal',
-          description: `Withdrawal ${status}`,
-          metadata: { withdrawalId: result.id }
-        });
-      }
-    }
-    
+    // Balance management is handled exclusively by approveWithdrawal / rejectWithdrawal.
+    // This method only updates the status column — no balance side-effects.
+    const [result] = await db.update(withdrawals).set(updateData).where(eq(withdrawals.id, withdrawalId)).returning();
     return result;
   }
 
@@ -2003,35 +1989,56 @@ export class DatabaseStorage implements IStorage {
       
       const withdrawalAmount = parseFloat(withdrawal.amount);
       const withdrawalDetails = withdrawal.details as any;
-      const totalToRefund = withdrawalDetails?.totalDeducted 
-        ? parseFloat(withdrawalDetails.totalDeducted) 
+      const totalToRefund = withdrawalDetails?.totalDeducted
+        ? parseFloat(withdrawalDetails.totalDeducted)
         : withdrawalAmount;
-      const bugToRefund = withdrawalDetails?.bugDeducted ? parseFloat(withdrawalDetails.bugDeducted) : 0;
-      const currentSatBalance = parseFloat(user.walletBalance?.toString() || user.balance || '0');
-      
-      // Always refund — balance was deducted on submission
-      const newSatBalance = (currentSatBalance + totalToRefund).toFixed(2);
-      await db
-        .update(users)
-        .set({
-          walletBalance: newSatBalance,
-          updatedAt: new Date()
-        })
-        .where(eq(users.id, withdrawal.userId));
-      console.log(`💰 Withdrawal #${withdrawalId} rejected — walletBalance refunded: ${currentSatBalance} → ${newSatBalance}`);
 
-      // Update withdrawal status to rejected
+      // Determine which balance field was deducted based on the withdrawal method
+      const isTonMethod = withdrawal.method === 'TON' || withdrawal.method === 'STARS' || withdrawal.method === 'TONT';
+      const refundField = isTonMethod ? 'tonBalance' : 'walletBalance';
+
+      if (isTonMethod) {
+        // Refund to tonBalance
+        const currentTonBalance = parseFloat(user.tonBalance || '0');
+        const newTonBalance = (currentTonBalance + totalToRefund).toFixed(10);
+        await db
+          .update(users)
+          .set({ tonBalance: newTonBalance, updatedAt: new Date() })
+          .where(eq(users.id, withdrawal.userId));
+        console.log(`💰 Withdrawal #${withdrawalId} rejected — tonBalance refunded: ${currentTonBalance} → ${newTonBalance}`);
+      } else {
+        // Refund to walletBalance (AXN)
+        const currentSatBalance = parseFloat(user.walletBalance?.toString() || user.balance || '0');
+        const newSatBalance = (currentSatBalance + totalToRefund).toFixed(2);
+        await db
+          .update(users)
+          .set({ walletBalance: newSatBalance, updatedAt: new Date() })
+          .where(eq(users.id, withdrawal.userId));
+        console.log(`💰 Withdrawal #${withdrawalId} rejected — walletBalance refunded: ${currentSatBalance} → ${newSatBalance}`);
+      }
+
+      // Update withdrawal status to rejected, mark as refunded
       const updateData: any = { 
         status: 'rejected', 
-        refunded: false,
-        deducted: false,
+        refunded: true,
+        deducted: true,
         updatedAt: new Date() 
       };
       if (adminNotes) updateData.adminNotes = adminNotes;
       
       const [updatedWithdrawal] = await db.update(withdrawals).set(updateData).where(eq(withdrawals.id, withdrawalId)).returning();
+
+      // Log refund transaction for audit trail
+      await this.logTransaction({
+        userId: withdrawal.userId,
+        amount: totalToRefund.toString(),
+        type: 'credit',
+        source: 'withdrawal_refund',
+        description: `Withdrawal #${withdrawalId} rejected — ${totalToRefund} AXN refunded`,
+        metadata: { withdrawalId }
+      });
       
-      console.log(`✅ Withdrawal #${withdrawalId} rejected - balance remains untouched`);
+      console.log(`✅ Withdrawal #${withdrawalId} rejected — ${totalToRefund} AXN refunded to user wallet`);
       
       return { success: true, message: 'Withdrawal rejected', withdrawal: updatedWithdrawal };
     } catch (error) {
