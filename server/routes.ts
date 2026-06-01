@@ -519,15 +519,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Per-slot daily limits and rewards (matches frontend AD_TASKS config)
       const AD_SLOT_CONFIG: Record<number, { reward: number; dailyLimit: number }> = {
-        1: { reward: 12, dailyLimit: 30 },
-        2: { reward: 20, dailyLimit: 50 },
-        3: { reward: 15, dailyLimit: 30 },
-        4: { reward: 15, dailyLimit: 30 },
-        5: { reward: 10, dailyLimit: 30 },
-        6: { reward: 10, dailyLimit: 30 },
-        7: { reward: 10, dailyLimit: 30 },
+        1: { reward: 10, dailyLimit: 50 },
+        2: { reward: 10, dailyLimit: 10 },
+        3: { reward: 10, dailyLimit: 30 },
       };
-      const config = AD_SLOT_CONFIG[slot] ?? { reward: 10, dailyLimit: 30 };
+      const config = AD_SLOT_CONFIG[slot];
+      if (!config) return res.status(400).json({ message: "Invalid ad slot" });
 
       // Ensure count-based tracking table exists
       await db.execute(sql`
