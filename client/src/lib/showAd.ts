@@ -81,7 +81,7 @@ export async function showMonatagRewardedAd(): Promise<void> {
 }
 
 export async function showAdgramAd(): Promise<void> {
-  const ADSGRAM_BLOCK_ID = "4783";
+  const ADSGRAM_BLOCK_ID = "33715";
   let waited = 0;
   while (typeof window.Adsgram === "undefined" && waited < 8000) {
     await new Promise(r => setTimeout(r, 200));
