@@ -1581,7 +1581,7 @@ export class DatabaseStorage implements IStorage {
         };
       }
 
-      // Create pending withdrawal record (DO NOT deduct balance yet)
+      // Create pending withdrawal record AND deduct balance immediately
       const withdrawalDetails = {
         paymentSystem: paymentSystem.name,
         paymentDetails: paymentDetails,
@@ -1597,8 +1597,19 @@ export class DatabaseStorage implements IStorage {
         amount: amount,
         status: 'pending',
         method: paymentSystem.name,
-        details: withdrawalDetails
+        details: withdrawalDetails,
+        deducted: true,
       }).returning();
+
+      // Deduct balance immediately on submission (so user sees updated balance)
+      if (!isAdmin) {
+        const newBalance = (userBalance - requestedAmount).toFixed(2);
+        await db.update(users).set({
+          walletBalance: newBalance,
+          updatedAt: new Date()
+        }).where(eq(users.id, userId));
+        console.log(`💰 Withdrawal submitted: walletBalance deducted ${userBalance} → ${newBalance}`);
+      }
 
       return { 
         success: true, 
@@ -1907,30 +1918,8 @@ export class DatabaseStorage implements IStorage {
       
       // ALL withdrawals use AXN walletBalance (Season 2 primary balance)
       const currency = 'AXN';
-      const userBalance = parseFloat(user.walletBalance?.toString() || user.balance || '0');
-      
-      if (userBalance >= totalToDeduct) {
-        // Deduct walletBalance on approval
-        console.log(`💰 Deducting AXN walletBalance now for approved withdrawal`);
-        console.log(`💰 Net amount: ${withdrawalAmount} AXN, Total to deduct (with fee): ${totalToDeduct} AXN`);
-        console.log(`💰 Previous walletBalance: ${userBalance}, New balance: ${(userBalance - totalToDeduct).toFixed(2)}`);
-
-        const newBalance = (userBalance - totalToDeduct).toFixed(2);
-        
-        await db
-          .update(users)
-          .set({
-            walletBalance: newBalance,
-            updatedAt: new Date()
-          })
-          .where(eq(users.id, withdrawal.userId));
-        console.log(`✅ walletBalance deducted: ${userBalance} → ${newBalance}`);
-      } else {
-        // Legacy withdrawal — balance already deducted at request time, just approve
-        console.log(`⚠️ Legacy withdrawal detected - balance was already deducted at request time`);
-        console.log(`💰 Current AXN balance: ${userBalance}, Required: ${totalToDeduct}`);
-        console.log(`✅ Approving without additional balance deduction (legacy flow)`);
-      }
+      // Balance is already deducted on submission — no deduction needed on approval
+      console.log(`✅ Approving withdrawal #${withdrawalId} — balance was already deducted on submission`);
 
       // Record withdrawal in earnings history for proper stats tracking
       const paymentSystemName = withdrawal.method;
@@ -2006,24 +1995,16 @@ export class DatabaseStorage implements IStorage {
       const bugToRefund = withdrawalDetails?.bugDeducted ? parseFloat(withdrawalDetails.bugDeducted) : 0;
       const currentSatBalance = parseFloat(user.walletBalance?.toString() || user.balance || '0');
       
-      // For legacy withdrawals, refund the walletBalance
-      if (currentSatBalance < totalToRefund) {
-        console.log(`⚠️ Legacy withdrawal detected - refunding walletBalance that was deducted at request time`);
-        const newSatBalance = (currentSatBalance + totalToRefund).toFixed(2);
-        
-        await db
-          .update(users)
-          .set({
-            walletBalance: newSatBalance,
-            updatedAt: new Date()
-          })
-          .where(eq(users.id, withdrawal.userId));
-        console.log(`💰 walletBalance refunded: ${currentSatBalance} → ${newSatBalance}`);
-      } else {
-        // NEW withdrawal - balance was never deducted, nothing to refund
-        console.log(`❌ Withdrawal #${withdrawalId} rejected - no refund needed (balance was never deducted)`);
-        console.log(`💡 User balance remains unchanged`);
-      }
+      // Always refund — balance was deducted on submission
+      const newSatBalance = (currentSatBalance + totalToRefund).toFixed(2);
+      await db
+        .update(users)
+        .set({
+          walletBalance: newSatBalance,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, withdrawal.userId));
+      console.log(`💰 Withdrawal #${withdrawalId} rejected — walletBalance refunded: ${currentSatBalance} → ${newSatBalance}`);
 
       // Update withdrawal status to rejected
       const updateData: any = { 
