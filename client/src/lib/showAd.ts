@@ -2,6 +2,12 @@ declare global {
   interface Window {
     show_10963365: (type?: any) => Promise<void>;
     __axnGamePlaying: boolean;
+    showGiga: () => Promise<void>;
+    Adsgram: {
+      init: (config: { blockId: string; debug?: boolean }) => {
+        show: () => Promise<{ done: boolean }>;
+      };
+    };
   }
 }
 
@@ -64,4 +70,41 @@ export function setGamePlaying(playing: boolean): void {
 
 export async function showAd(): Promise<void> {
   await showRewardedInterstitial();
+}
+
+export async function showMonatagRewardedAd(): Promise<void> {
+  const ready = await waitForSdk();
+  if (!ready) {
+    throw new Error("Monetag SDK not available");
+  }
+  await (window.show_10963365 as any)();
+}
+
+export async function showAdgramAd(): Promise<void> {
+  const ADSGRAM_BLOCK_ID = "4783";
+  let waited = 0;
+  while (typeof window.Adsgram === "undefined" && waited < 8000) {
+    await new Promise(r => setTimeout(r, 200));
+    waited += 200;
+  }
+  if (typeof window.Adsgram === "undefined") {
+    throw new Error("Adsgram SDK not available");
+  }
+  const controller = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+  const result = await controller.show();
+  if (!result?.done) {
+    throw new Error("Adgram ad was not completed");
+  }
+}
+
+export async function showGigapubAd(): Promise<void> {
+  let waited = 0;
+  while (typeof window.showGiga !== "function" && waited < 8000) {
+    await new Promise(r => setTimeout(r, 200));
+    waited += 200;
+  }
+  if (typeof window.showGiga !== "function") {
+    throw new Error("GigaPub SDK not available");
+  }
+  await window.showGiga();
 }
