@@ -55,7 +55,12 @@ export default function Games() {
   const { data: botInfo } = useQuery<{ username: string }>({ queryKey: ['/api/bot-info'], staleTime: 3600000 });
 
   const axnBalance = Math.floor(parseFloat(user?.walletBalance || '0'));
-  const axnUsdValue = axnBalance;
+  const axnDisplayValue = axnBalance / AXN_PER_TON;
+  const axnDisplayStr = (() => {
+    if (axnDisplayValue === 0) return '0';
+    const s = axnDisplayValue.toFixed(5).replace(/\.?0+$/, '');
+    return s;
+  })();
 
   const firstName: string = user?.firstName || user?.username || "User";
   const profileImageUrl: string | null =
@@ -262,21 +267,23 @@ export default function Games() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1, maxWidth: '90vw', overflow: 'hidden' }}>
               <span style={{
-                fontSize: 26, fontWeight: 600, color: 'rgba(255,255,255,0.45)',
+                fontSize: axnDisplayStr.length > 12 ? 18 : 24, fontWeight: 600, color: 'rgba(255,255,255,0.45)',
                 fontFamily: "'Space Grotesk', 'Outfit', sans-serif",
-                letterSpacing: '0px', userSelect: 'none',
+                letterSpacing: '0px', userSelect: 'none', flexShrink: 0,
               }}>$</span>
               <span style={{
-                fontSize: 48, fontWeight: 700, color: '#fff',
+                fontSize: axnDisplayStr.length > 14 ? 28 : axnDisplayStr.length > 10 ? 36 : 48,
+                fontWeight: 700, color: '#fff',
                 fontFamily: "'Oxanium', 'Space Grotesk', sans-serif",
                 letterSpacing: '-1px', fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+                wordBreak: 'break-all',
               }}>
-                {balanceHidden ? '••••' : axnUsdValue.toFixed(3)}
+                {balanceHidden ? '••••' : axnDisplayStr}
               </span>
             </div>
-            <button onClick={() => setBalanceHidden(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, marginTop: 4 }}>
+            <button onClick={() => setBalanceHidden(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, marginTop: 4, flexShrink: 0 }}>
               {balanceHidden ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
               ) : (
@@ -444,28 +451,36 @@ export default function Games() {
           </div>
         </div>
 
+        {/* FARMING label */}
+        <div style={{ marginBottom: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            Farming
+          </span>
+        </div>
+
         {/* FARMING */}
         <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden', marginBottom: 20 }}>
-          {/* Main row: coin + counting (no title, no right button) */}
+          {/* Main row: coin + counting */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
             <div style={{
               width: 44, height: 44, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: '#000',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <img src="/axn-coin.jpg" alt="AXN" style={{ width: '110%', height: '110%', objectFit: 'cover' }} />
+              <img src="/axn-coin.jpg" alt="AXN" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {(() => {
-                const val = farmAccum.toFixed(8);
+                const val = farmAccum.toFixed(3);
                 const [intPart, decPart] = val.split('.');
                 return (
                   <div style={{ fontVariantNumeric: 'tabular-nums', lineHeight: 1, display: 'flex', alignItems: 'baseline', flexWrap: 'nowrap' }}>
-                    <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 26, fontWeight: 800 }}>{intPart}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.32)', fontSize: 12, fontWeight: 700 }}>.{decPart}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.22)', fontSize: 11, fontWeight: 600, marginLeft: 5 }}>AXN</span>
+                    <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 36, fontWeight: 800 }}>{intPart}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 22, fontWeight: 700 }}>.{decPart}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 15, fontWeight: 600, marginLeft: 6 }}>AXN</span>
                   </div>
                 );
               })()}
-              <div style={{ color: 'rgba(255,255,255,0.22)', fontSize: 11, marginTop: 5 }}>0.001/s · 14.4 AXN per cycle</div>
+              <div style={{ color: 'rgba(255,255,255,0.32)', fontSize: 13, marginTop: 6 }}>0.001/s · 14.4 AXN per cycle</div>
             </div>
           </div>
 
