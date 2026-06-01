@@ -12,48 +12,41 @@
     <script src='//libtl.com/sdk.js' data-zone='10963365' data-sdk='show_10963365'></script>
     <!-- Monetag Interstitial SDK (game ads) -->
     <script src='//libtl.com/sdk.js' data-zone='10401872' data-sdk='show_10401872'></script>
-    <!-- Monetag In-App Interstitial (auto-show) -->
-    <script>
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          try {
-            if (typeof show_10963365 === 'function') {
-              show_10963365({
-                type: 'inApp',
-                inAppSettings: {
-                  frequency: 2,
-                  capping: 0.1,
-                  interval: 30,
-                  timeout: 5,
-                  everyPage: false
-                }
-              });
-            }
-          } catch(e) {}
-        }, 5000);
-      });
-    </script>
     <!-- GigaPub Ad Network -->
     <script src="https://ad.gigapub.tech/script?id=5883"></script>
     <!-- RichAds Auto Popup -->
     <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
     <script>
-      window.addEventListener('load', function() {
-        try {
-          window.TelegramAdsController = new TelegramAdsController();
-          window.TelegramAdsController.initialize({
-            pubId: "984685",
-            appId: "6547",
-          });
-          setInterval(function() {
-            try {
-              if (window.TelegramAdsController && typeof window.TelegramAdsController.show === 'function') {
-                window.TelegramAdsController.show();
-              }
-            } catch(e) {}
-          }, 10000);
-        } catch(e) {}
-      });
+      (function() {
+        var richadsReady = false;
+        function initRichads() {
+          if (richadsReady) return;
+          if (typeof TelegramAdsController === 'undefined') return;
+          try {
+            richadsReady = true;
+            window.TelegramAdsController = new TelegramAdsController();
+            window.TelegramAdsController.initialize({ pubId: "984685", appId: "6547" });
+            function showRichads() {
+              try {
+                if (window.TelegramAdsController && typeof window.TelegramAdsController.show === 'function') {
+                  window.TelegramAdsController.show();
+                }
+              } catch(e) {}
+            }
+            setTimeout(function() {
+              showRichads();
+              setInterval(showRichads, 60000);
+            }, 8000);
+          } catch(e) { richadsReady = false; }
+        }
+        var pollCount = 0;
+        var pollTimer = setInterval(function() {
+          pollCount++;
+          initRichads();
+          if (richadsReady || pollCount > 50) clearInterval(pollTimer);
+        }, 300);
+        window.addEventListener('load', function() { setTimeout(initRichads, 1000); });
+      })();
     </script>
     <!-- Adexora Ads SDK -->
     <script src="https://adexora.com/cdn/ads.js?id=1078"></script>
@@ -61,6 +54,35 @@
     <script async src="https://partner.adextra.io/jt/353c332d4f2440f448057df79cb605e5d3d64ef0.js"></script>
     <!-- Adsgram SDK -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+    <!-- AdGram Auto Popup (int-33718) -->
+    <script>
+      (function() {
+        var adgramPopupReady = false;
+        function showAdgramPopup() {
+          if (typeof window.Adsgram === 'undefined') return;
+          try {
+            var ctrl = window.Adsgram.init({ blockId: "int-33718" });
+            ctrl.show().catch(function() {});
+          } catch(e) {}
+        }
+        function initAdgramPopup() {
+          if (adgramPopupReady) return;
+          if (typeof window.Adsgram === 'undefined') return;
+          adgramPopupReady = true;
+          setTimeout(function() {
+            showAdgramPopup();
+            setInterval(showAdgramPopup, 60000);
+          }, 10000);
+        }
+        var pollCount = 0;
+        var pollTimer = setInterval(function() {
+          pollCount++;
+          initAdgramPopup();
+          if (adgramPopupReady || pollCount > 60) clearInterval(pollTimer);
+        }, 300);
+        window.addEventListener('load', function() { setTimeout(initAdgramPopup, 2000); });
+      })();
+    </script>
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Set Telegram safe-area CSS variables immediately before React renders -->
@@ -103,7 +125,7 @@
     </script>
     <!-- Preload critical assets so loading screen and home page appear instantly -->
     <link rel="preload" href="/app-bg.png" as="image" />
-    <link rel="preload" href="/axionet-logo-nobg.png" as="image" />
+    <link rel="preload" href="/axionet-logo-new.png" as="image" />
     <link rel="preload" href="/mining-machine-icon.png" as="image" />
   </head>
   <body>
