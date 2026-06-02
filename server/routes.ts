@@ -1648,12 +1648,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const botUsername = await getBotUsername();
       const referralLink = `https://t.me/${botUsername}?start=${user.referralCode}`;
       
+      const telegramUser = req.user?.telegramUser;
+      const adminFlag = telegramUser ? isAdmin(telegramUser.id.toString()) : false;
+
+      // Check if AXN name task claimed today (daily reset)
+      const { pool } = await import('./db');
+      const axnNameCheckRes = await pool.query(`SELECT axn_name_last_claimed_at FROM users WHERE id = $1`, [userId]);
+      const axnNameLastClaimed = axnNameCheckRes.rows[0]?.axn_name_last_claimed_at;
+      const todayUTC = new Date().toISOString().slice(0, 10);
+      const axnNameClaimedToday = axnNameLastClaimed
+        ? new Date(axnNameLastClaimed).toISOString().slice(0, 10) === todayUTC
+        : false;
+
       res.json({
         ...user,
         friendsInvited,
         todayReferrals,
         referralLink,
         planStatus: 'Trial',
+        isAdmin: adminFlag,
+        axnNameClaimedToday,
       });
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -8421,10 +8435,15 @@ ${walletAddress}
 
       const { pool } = await import('./db');
 
-      // Check if already claimed
-      const checkRes = await pool.query(`SELECT axn_name_reward_claimed FROM users WHERE id = $1`, [user.id]);
-      if (checkRes.rows[0]?.axn_name_reward_claimed) {
-        return res.status(400).json({ success: false, message: 'Reward already claimed' });
+      // Daily reset: check if claimed today (UTC date)
+      const checkRes = await pool.query(`SELECT axn_name_last_claimed_at FROM users WHERE id = $1`, [user.id]);
+      const lastClaimed: Date | null = checkRes.rows[0]?.axn_name_last_claimed_at;
+      if (lastClaimed) {
+        const todayUTC = new Date().toISOString().slice(0, 10);
+        const lastClaimedUTC = new Date(lastClaimed).toISOString().slice(0, 10);
+        if (todayUTC === lastClaimedUTC) {
+          return res.status(400).json({ success: false, message: 'Already claimed today. Come back tomorrow!' });
+        }
       }
 
       const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -8454,10 +8473,10 @@ ${walletAddress}
         });
       }
 
-      // Award 50 CIPHER
-      const reward = 50;
+      // Award 10 CIPHER (daily)
+      const reward = 10;
       await pool.query(
-        `UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1, axn_name_reward_claimed = TRUE, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $2`,
+        `UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1, axn_name_last_claimed_at = NOW(), axn_name_reward_claimed = TRUE, tasks_completed = COALESCE(tasks_completed, 0) + 1 WHERE id = $2`,
         [reward, user.id]
       );
 
@@ -8465,6 +8484,206 @@ ${walletAddress}
     } catch (error) {
       console.error('AXN name task error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  });
+
+  // ── User Tasks (User-created promotional tasks) ───────────────────────────
+  app.post('/api/user-tasks', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const { title, link, category, impressions } = req.body;
+      if (!title || !link || !category || !impressions) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      if (!['channel_group', 'website_bot'].includes(category)) {
+        return res.status(400).json({ message: 'Invalid category' });
+      }
+      const imp = parseInt(impressions, 10);
+      if (isNaN(imp) || imp < 10) {
+        return res.status(400).json({ message: 'Minimum 10 impressions required' });
+      }
+      const costPerImpression = 35;
+      const totalCost = imp * costPerImpression;
+
+      const { pool } = await import('./db');
+      const balRes = await pool.query(`SELECT balance FROM users WHERE id = $1`, [userId]);
+      const currentBalance = parseFloat(balRes.rows[0]?.balance || '0');
+      if (currentBalance < totalCost) {
+        return res.status(400).json({ message: `Insufficient balance. Required: ${totalCost} CIPHER, Available: ${Math.floor(currentBalance)} CIPHER` });
+      }
+
+      // Deduct balance and create task atomically
+      await pool.query('BEGIN');
+      try {
+        await pool.query(`UPDATE users SET balance = COALESCE(balance::numeric, 0) - $1 WHERE id = $2`, [totalCost, userId]);
+        const ins = await pool.query(
+          `INSERT INTO user_tasks (user_id, title, link, category, impressions, reward_per_completion, total_cost, status) VALUES ($1,$2,$3,$4,$5,10,$6,'pending') RETURNING id`,
+          [userId, title.slice(0, 100), link.slice(0, 500), category, imp, totalCost]
+        );
+        await pool.query('COMMIT');
+        return res.json({ success: true, taskId: ins.rows[0].id, message: 'Task submitted for review. It will appear after admin approval.' });
+      } catch (e) {
+        await pool.query('ROLLBACK');
+        throw e;
+      }
+    } catch (e) {
+      console.error('Create user task error:', e);
+      return res.status(500).json({ message: 'Failed to create task' });
+    }
+  });
+
+  app.get('/api/user-tasks', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const { pool } = await import('./db');
+      const tasks = await pool.query(`
+        SELECT t.*, u.username as creator_username,
+          EXISTS(SELECT 1 FROM user_task_completions c WHERE c.task_id = t.id AND c.user_id = $1) as completed_by_me
+        FROM user_tasks t
+        LEFT JOIN users u ON u.id = t.user_id
+        WHERE t.status = 'approved' AND t.completed_count < t.impressions
+        ORDER BY t.created_at DESC
+      `, [userId]);
+      return res.json(tasks.rows);
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed to fetch tasks' });
+    }
+  });
+
+  app.post('/api/user-tasks/:taskId/complete', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const taskId = parseInt(req.params.taskId, 10);
+      const { pool } = await import('./db');
+
+      const taskRes = await pool.query(`SELECT * FROM user_tasks WHERE id = $1 AND status = 'approved'`, [taskId]);
+      if (!taskRes.rows[0]) return res.status(404).json({ message: 'Task not found' });
+      const task = taskRes.rows[0];
+
+      if (task.completed_count >= task.impressions) {
+        return res.status(400).json({ message: 'Task is fully completed' });
+      }
+      if (task.user_id === userId) {
+        return res.status(400).json({ message: 'Cannot complete your own task' });
+      }
+
+      await pool.query('BEGIN');
+      try {
+        await pool.query(
+          `INSERT INTO user_task_completions (user_id, task_id) VALUES ($1, $2)`,
+          [userId, taskId]
+        );
+        await pool.query(
+          `UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1 WHERE id = $2`,
+          [task.reward_per_completion, userId]
+        );
+        await pool.query(
+          `UPDATE user_tasks SET completed_count = completed_count + 1 WHERE id = $1`,
+          [taskId]
+        );
+        await pool.query('COMMIT');
+        return res.json({ success: true, earned: task.reward_per_completion });
+      } catch (e: any) {
+        await pool.query('ROLLBACK');
+        if (e.code === '23505') return res.status(400).json({ message: 'Already completed this task' });
+        throw e;
+      }
+    } catch (e) {
+      console.error('Complete user task error:', e);
+      return res.status(500).json({ message: 'Failed to complete task' });
+    }
+  });
+
+  // ── Admin: User Task Approval ─────────────────────────────────────────────
+  app.get('/api/admin/user-tasks', authenticateTelegram, async (req: any, res) => {
+    try {
+      const telegramUser = req.user?.telegramUser;
+      if (!telegramUser || !isAdmin(telegramUser.id.toString())) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const { pool } = await import('./db');
+      const tasks = await pool.query(`
+        SELECT t.*, u.username as creator_username, u.telegram_id as creator_telegram_id
+        FROM user_tasks t
+        LEFT JOIN users u ON u.id = t.user_id
+        ORDER BY t.created_at DESC
+      `);
+      return res.json(tasks.rows);
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed' });
+    }
+  });
+
+  app.post('/api/admin/user-tasks/:taskId/approve', authenticateTelegram, async (req: any, res) => {
+    try {
+      const telegramUser = req.user?.telegramUser;
+      if (!telegramUser || !isAdmin(telegramUser.id.toString())) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const { pool } = await import('./db');
+      await pool.query(`UPDATE user_tasks SET status = 'approved' WHERE id = $1`, [req.params.taskId]);
+      return res.json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed' });
+    }
+  });
+
+  app.post('/api/admin/user-tasks/:taskId/reject', authenticateTelegram, async (req: any, res) => {
+    try {
+      const telegramUser = req.user?.telegramUser;
+      if (!telegramUser || !isAdmin(telegramUser.id.toString())) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const { pool } = await import('./db');
+      // Refund balance to task creator
+      const taskRes = await pool.query(`SELECT user_id, total_cost FROM user_tasks WHERE id = $1`, [req.params.taskId]);
+      if (taskRes.rows[0]) {
+        await pool.query(`UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1 WHERE id = $2`,
+          [taskRes.rows[0].total_cost, taskRes.rows[0].user_id]);
+      }
+      await pool.query(`UPDATE user_tasks SET status = 'rejected' WHERE id = $1`, [req.params.taskId]);
+      return res.json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed' });
+    }
+  });
+
+  // ── Admin: Partner Task Creation ──────────────────────────────────────────
+  app.post('/api/admin/partner-tasks', authenticateTelegram, async (req: any, res) => {
+    try {
+      const telegramUser = req.user?.telegramUser;
+      if (!telegramUser || !isAdmin(telegramUser.id.toString())) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const { title, description, url, rewardAxn, totalImpressions } = req.body;
+      if (!title || !rewardAxn) return res.status(400).json({ message: 'Title and reward required' });
+      const { pool } = await import('./db');
+      const imp = parseInt(totalImpressions || '0', 10);
+      const reward = parseInt(rewardAxn, 10);
+      await pool.query(
+        `INSERT INTO bounty_tasks (title, description, url, reward_axn, key_cost, total_impressions, is_active) VALUES ($1,$2,$3,$4,0,$5,TRUE)`,
+        [title.slice(0, 100), (description || '').slice(0, 300), url || '', reward, imp]
+      );
+      return res.json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed to create partner task' });
+    }
+  });
+
+  app.delete('/api/admin/partner-tasks/:taskId', authenticateTelegram, async (req: any, res) => {
+    try {
+      const telegramUser = req.user?.telegramUser;
+      if (!telegramUser || !isAdmin(telegramUser.id.toString())) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const { pool } = await import('./db');
+      await pool.query(`UPDATE bounty_tasks SET is_active = FALSE WHERE id = $1`, [req.params.taskId]);
+      return res.json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed' });
     }
   });
 

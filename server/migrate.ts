@@ -751,6 +751,47 @@ export async function ensureDatabaseSchema(): Promise<void> {
       console.log('⚠️ [MIGRATION] axn_name_reward_claimed column note:', e);
     }
 
+    // AXN Name Task daily reset column
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS axn_name_last_claimed_at TIMESTAMP`);
+
+    // User Tasks table (user-created promotional tasks)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_tasks (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR NOT NULL REFERENCES users(id),
+        title TEXT NOT NULL,
+        link TEXT NOT NULL,
+        category VARCHAR(20) NOT NULL DEFAULT 'channel_group',
+        impressions INTEGER NOT NULL DEFAULT 10,
+        reward_per_completion INTEGER NOT NULL DEFAULT 10,
+        total_cost NUMERIC(20,4) NOT NULL DEFAULT 0,
+        completed_count INTEGER NOT NULL DEFAULT 0,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_user_tasks_user ON user_tasks(user_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_user_tasks_status ON user_tasks(status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_user_tasks_category ON user_tasks(category)`);
+
+    // User Task Completions table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_task_completions (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR NOT NULL REFERENCES users(id),
+        task_id INTEGER NOT NULL,
+        completed_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, task_id)
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_utc_user ON user_task_completions(user_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_utc_task ON user_task_completions(task_id)`);
+    console.log('✅ [MIGRATION] user_tasks and user_task_completions tables ensured');
+
+    // Bounty tasks: add reward_per_user and total_impressions columns for admin control
+    await db.execute(sql`ALTER TABLE bounty_tasks ADD COLUMN IF NOT EXISTS total_impressions INTEGER DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE bounty_tasks ADD COLUMN IF NOT EXISTS completed_count INTEGER DEFAULT 0`);
+
     console.log('✅ [MIGRATION] All tables and indexes created successfully');
     
   } catch (error) {
