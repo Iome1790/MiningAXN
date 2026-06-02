@@ -8513,6 +8513,39 @@ ${walletAddress}
         return res.status(400).json({ message: `Insufficient balance. Required: ${totalCost} CIPHER, Available: ${Math.floor(currentBalance)} CIPHER` });
       }
 
+      // ── Bot admin check for channel/group tasks ──────────────────────────────
+      if (category === 'channel_group') {
+        const botToken = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
+        if (botToken && link) {
+          const match = link.match(/t\.me\/(?:joinchat\/)?([^/?+\s]+)/i);
+          if (match && !match[1].startsWith('+')) {
+            const channelUsername = '@' + match[1];
+            try {
+              const meRes = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
+              const meData = await meRes.json() as any;
+              if (meData.ok) {
+                const botId = meData.result.id;
+                const memberRes = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ chat_id: channelUsername, user_id: botId }),
+                });
+                const memberData = await memberRes.json() as any;
+                if (!memberData.ok) {
+                  return res.status(400).json({ message: `Bot is not a member of ${channelUsername}. Please add the verification bot as admin in your channel/group first.` });
+                }
+                const status = memberData.result?.status;
+                if (!['administrator', 'creator'].includes(status)) {
+                  return res.status(400).json({ message: `Bot must be an admin in ${channelUsername}. Please promote the bot to admin in your channel/group.` });
+                }
+              }
+            } catch (botCheckErr) {
+              console.warn('Bot admin check failed (non-critical):', botCheckErr);
+            }
+          }
+        }
+      }
+
       // Deduct balance and create task atomically
       await pool.query('BEGIN');
       try {
@@ -8568,6 +8601,37 @@ ${walletAddress}
       }
       if (task.user_id === userId) {
         return res.status(400).json({ message: 'Cannot complete your own task' });
+      }
+
+      // ── Channel membership verification ──────────────────────────────────────
+      if (task.category === 'channel_group' && task.link) {
+        const botToken = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
+        const telegramUserId = req.user?.telegramUser?.id;
+        if (botToken && telegramUserId) {
+          const match = task.link.match(/t\.me\/(?:joinchat\/)?([^/?+\s]+)/i);
+          if (match && !match[1].startsWith('+')) {
+            const channelUsername = '@' + match[1];
+            try {
+              const isMember = await verifyChannelMembership(parseInt(telegramUserId), channelUsername, botToken);
+              if (!isMember) {
+                return res.status(400).json({ message: 'Please join the channel/group first, then claim your reward.' });
+              }
+            } catch (verifyErr: any) {
+              const errMsg = String(verifyErr?.message || '');
+              if (
+                errMsg.includes('chat not found') ||
+                errMsg.includes('bot was kicked') ||
+                errMsg.includes('CHAT_NOT_FOUND') ||
+                errMsg.includes('Forbidden') ||
+                errMsg.includes('not enough rights')
+              ) {
+                await pool.query(`UPDATE user_tasks SET status = 'paused' WHERE id = $1`, [taskId]);
+                return res.status(400).json({ message: 'This task has been paused because the bot was removed from the channel/group.' });
+              }
+              // Unknown error — allow completion (don't block user due to API issues)
+            }
+          }
+        }
       }
 
       await pool.query('BEGIN');
