@@ -648,22 +648,6 @@ export async function ensureDatabaseSchema(): Promise<void> {
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    // Seed default bounty tasks if empty
-    await db.execute(sql`
-      INSERT INTO bounty_tasks (title, description, url, reward_axn, key_cost)
-      SELECT 'Join Axionet Channel', 'Join our official Telegram channel', 'https://t.me/axionet', 50, 5
-      WHERE NOT EXISTS (SELECT 1 FROM bounty_tasks LIMIT 1)
-    `);
-    await db.execute(sql`
-      INSERT INTO bounty_tasks (title, description, url, reward_axn, key_cost)
-      SELECT 'Follow on Twitter/X', 'Follow Axionet on Twitter/X', 'https://x.com/axionet', 50, 5
-      WHERE NOT EXISTS (SELECT 1 FROM bounty_tasks WHERE title = 'Follow on Twitter/X')
-    `);
-    await db.execute(sql`
-      INSERT INTO bounty_tasks (title, description, url, reward_axn, key_cost)
-      SELECT 'Share Axionet App', 'Share the Axionet app with your friends', NULL, 50, 5
-      WHERE NOT EXISTS (SELECT 1 FROM bounty_tasks WHERE title = 'Share Axionet App')
-    `);
     console.log('✅ [MIGRATION] bounty_tasks table ensured');
 
     // Bounty task completions table
