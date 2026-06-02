@@ -182,35 +182,14 @@ function AxnNameTaskDaily({ claimedToday }: { claimedToday: boolean }) {
   );
 }
 
-function SectionCard({ title, subtitle, children, rightEl }: { title: string; subtitle: string; children: React.ReactNode; rightEl?: React.ReactNode }) {
-  return (
-    <div style={{ background: CARD, borderRadius: 16, overflow: 'hidden', marginBottom: 18 }}>
-      <div style={{ padding: '14px 16px 12px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 900, color: TEXT }}>{title}</div>
-          <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 3 }}>{subtitle}</div>
-        </div>
-        {rightEl}
-      </div>
-      <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
-      {children}
-    </div>
-  );
-}
 
-function EmptyState() {
-  return (
-    <div style={{ padding: '28px 16px', textAlign: 'center' }}>
-      <div style={{ color: TEXT_DIM, fontSize: 13, fontWeight: 600 }}>No Task</div>
-    </div>
-  );
-}
-
-function PartnerTaskRow({ task, isLast }: { task: any; isLast: boolean }) {
+function PartnerTaskRow({ task }: { task: any }) {
   const [clicked, setClicked] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [done, setDone] = useState(task.completed);
   const queryClient = useQueryClient();
+
+  if (done) return null;
 
   const handleGo = () => {
     if (task.url) window.open(task.url, '_blank');
@@ -218,7 +197,7 @@ function PartnerTaskRow({ task, isLast }: { task: any; isLast: boolean }) {
   };
 
   const handleClaim = async () => {
-    if (claiming || done) return;
+    if (claiming) return;
     setClaiming(true);
     try {
       const res = await apiRequest('POST', `/api/bounty-tasks/${task.id}/complete`, {});
@@ -244,46 +223,40 @@ function PartnerTaskRow({ task, isLast }: { task: any; isLast: boolean }) {
   };
 
   return (
-    <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
-        {done
-          ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
-          : <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              {/* External link / partner task icon */}
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-              <polyline points="15 3 21 3 21 9"/>
-              <line x1="10" y1="14" x2="21" y2="3"/>
-            </svg>
-        }
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-            <span style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>{task.title}</span>
-            <span style={{ background: 'rgba(37,99,235,0.12)', borderRadius: 5, color: BLUE, fontSize: 10, fontWeight: 800, padding: '2px 6px' }}>+{task.rewardAxn} CIPHER</span>
-          </div>
-          {task.description && <div style={{ color: TEXT_DIM, fontSize: 12, marginTop: 2 }}>{task.description}</div>}
+    <div className="task-row" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+          <span style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>{task.title}</span>
+          <span style={{ background: 'rgba(37,99,235,0.12)', borderRadius: 5, color: BLUE, fontSize: 10, fontWeight: 800, padding: '2px 6px' }}>+{task.rewardAxn} CIPHER</span>
         </div>
-        <div style={{ flexShrink: 0, display: 'flex', gap: 6 }}>
-          {!done && !clicked && (
-            <button onClick={handleGo} style={{ background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`, border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 12, fontWeight: 800, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 10px rgba(37,99,235,0.3)' }} className="active:scale-95 transition-transform">GO</button>
-          )}
-          {!done && clicked && (
-            <button onClick={handleClaim} disabled={claiming} style={{ background: claiming ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #16a34a, #22c55e)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 12, fontWeight: 800, color: claiming ? TEXT_DIM : '#fff', cursor: claiming ? 'not-allowed' : 'pointer', boxShadow: claiming ? 'none' : '0 2px 12px rgba(34,197,94,0.35)' }} className="active:scale-95 transition-transform">
-              {claiming ? '…' : 'CLAIM'}
-            </button>
-          )}
-          {done && <span style={{ color: '#4ade80', fontSize: 12, fontWeight: 800, padding: '9px 4px' }}>DONE</span>}
-        </div>
+        {task.description && <div style={{ color: TEXT_DIM, fontSize: 12, marginTop: 2 }}>{task.description}</div>}
       </div>
-      {!isLast && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />}
-    </>
+      <div style={{ flexShrink: 0, display: 'flex', gap: 6 }}>
+        {!clicked && (
+          <button onClick={handleGo} style={{ background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`, border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 12, fontWeight: 800, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 10px rgba(37,99,235,0.3)' }} className="active:scale-95 transition-transform">GO</button>
+        )}
+        {clicked && (
+          <button onClick={handleClaim} disabled={claiming} style={{ background: claiming ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #16a34a, #22c55e)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 12, fontWeight: 800, color: claiming ? TEXT_DIM : '#fff', cursor: claiming ? 'not-allowed' : 'pointer', boxShadow: claiming ? 'none' : '0 2px 12px rgba(34,197,94,0.35)' }} className="active:scale-95 transition-transform">
+            {claiming ? '…' : 'CLAIM'}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
-function UserTaskRow({ task, isLast }: { task: any; isLast: boolean }) {
+function UserTaskRow({ task }: { task: any }) {
   const [clicked, setClicked] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [done, setDone] = useState(!!task.completed_by_me);
   const queryClient = useQueryClient();
+
+  if (done) return null;
 
   const handleGo = () => {
     if (task.link) window.open(task.link, '_blank');
@@ -291,7 +264,7 @@ function UserTaskRow({ task, isLast }: { task: any; isLast: boolean }) {
   };
 
   const handleClaim = async () => {
-    if (claiming || done) return;
+    if (claiming) return;
     setClaiming(true);
     try {
       const res = await apiRequest('POST', `/api/user-tasks/${task.id}/complete`, {});
@@ -317,68 +290,72 @@ function UserTaskRow({ task, isLast }: { task: any; isLast: boolean }) {
   };
 
   const remaining = (task.impressions || 0) - (task.completed_count || 0);
-
   const isChannel = task.category === 'channel_group';
 
   return (
-    <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
-        {done
-          ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
-          : isChannel
-            ? /* Channel / Group icon — two people */
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
-            : /* Bot / Website icon — terminal prompt */
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <polyline points="4 17 10 11 4 5"/>
-                <line x1="12" y1="19" x2="20" y2="19"/>
-              </svg>
-        }
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-            <span style={{ color: TEXT, fontSize: 14, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 150 }}>{task.title}</span>
-            <span style={{ background: 'rgba(168,85,247,0.12)', borderRadius: 5, color: '#a855f7', fontSize: 10, fontWeight: 800, padding: '2px 6px' }}>+{task.reward_per_completion} CIPHER</span>
-          </div>
-          <div style={{ color: TEXT_DIM, fontSize: 12, marginTop: 2 }}>{remaining} slots left</div>
+    <div className="task-row" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
+      {isChannel
+        ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        : <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+          </svg>
+      }
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+          <span style={{ color: TEXT, fontSize: 14, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 150 }}>{task.title}</span>
+          <span style={{ background: 'rgba(168,85,247,0.12)', borderRadius: 5, color: '#a855f7', fontSize: 10, fontWeight: 800, padding: '2px 6px' }}>+{task.reward_per_completion} CIPHER</span>
         </div>
-        <div style={{ flexShrink: 0, display: 'flex', gap: 6 }}>
-          {!done && !clicked && (
-            <button onClick={handleGo} style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)', border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 12, fontWeight: 800, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 10px rgba(168,85,247,0.3)' }} className="active:scale-95 transition-transform">GO</button>
-          )}
-          {!done && clicked && (
-            <button onClick={handleClaim} disabled={claiming} style={{ background: claiming ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #16a34a, #22c55e)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 12, fontWeight: 800, color: claiming ? TEXT_DIM : '#fff', cursor: claiming ? 'not-allowed' : 'pointer', boxShadow: claiming ? 'none' : '0 2px 12px rgba(34,197,94,0.35)' }} className="active:scale-95 transition-transform">
-              {claiming ? '…' : 'CLAIM'}
-            </button>
-          )}
-          {done && <span style={{ color: '#4ade80', fontSize: 12, fontWeight: 800, padding: '9px 4px' }}>DONE</span>}
-        </div>
+        <div style={{ color: TEXT_DIM, fontSize: 12, marginTop: 2 }}>{remaining} slots left</div>
       </div>
-      {!isLast && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />}
-    </>
+      <div style={{ flexShrink: 0, display: 'flex', gap: 6 }}>
+        {!clicked && (
+          <button onClick={handleGo} style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)', border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 12, fontWeight: 800, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 10px rgba(168,85,247,0.3)' }} className="active:scale-95 transition-transform">GO</button>
+        )}
+        {clicked && (
+          <button onClick={handleClaim} disabled={claiming} style={{ background: claiming ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #16a34a, #22c55e)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 12, fontWeight: 800, color: claiming ? TEXT_DIM : '#fff', cursor: claiming ? 'not-allowed' : 'pointer', boxShadow: claiming ? 'none' : '0 2px 12px rgba(34,197,94,0.35)' }} className="active:scale-95 transition-transform">
+            {claiming ? '…' : 'CLAIM'}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
-function AddMissionPopup({ onClose, userBalance }: { onClose: () => void; userBalance: number }) {
+function AddMissionPopup({ onClose, userBalance, isAdmin }: { onClose: () => void; userBalance: number; isAdmin: boolean }) {
+  const [tab, setTab] = useState<'user' | 'partner'>('user');
+
   const [title, setTitle] = useState('');
   const [link, setLink] = useState('');
   const [category, setCategory] = useState<'channel_group' | 'website_bot'>('channel_group');
   const [impressions, setImpressions] = useState('10');
   const [loading, setLoading] = useState(false);
+
+  const [pTitle, setPTitle] = useState('');
+  const [pDesc, setPDesc] = useState('');
+  const [pUrl, setPUrl] = useState('');
+  const [pReward, setPReward] = useState('50');
+  const [pImpressions, setPImpressions] = useState('0');
+  const [pLoading, setPLoading] = useState(false);
+
   const queryClient = useQueryClient();
 
-  const imp = parseInt(impressions, 10) || 0;
+  const imp = Math.max(10, parseInt(impressions, 10) || 10);
   const totalCost = imp * 35;
   const canAfford = userBalance >= totalCost;
+  const titlePlaceholder = category === 'channel_group' ? 'Join My Channel' : 'Visit My Website / Bot';
+
+  const inputStyle: Record<string, any> = {
+    width: '100%', background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
+    padding: '11px 13px', color: TEXT, fontSize: 14, outline: 'none', boxSizing: 'border-box',
+  };
 
   const handleCreate = async () => {
     if (!title.trim()) { showNotification('Enter a task name', 'error'); return; }
     if (!link.trim()) { showNotification('Enter a task link', 'error'); return; }
-    if (imp < 10) { showNotification('Minimum 10 impressions required', 'error'); return; }
     if (!canAfford) { showNotification(`Insufficient balance. Need ${totalCost} CIPHER`, 'error'); return; }
     setLoading(true);
     try {
@@ -400,132 +377,11 @@ function AddMissionPopup({ onClose, userBalance }: { onClose: () => void; userBa
     setLoading(false);
   };
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }} onClick={onClose} />
-      <div style={{
-        position: 'relative', width: '100%',
-        background: 'linear-gradient(160deg, #0d0d0f, #111118)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: '20px 20px 0 0',
-        padding: '16px 16px',
-        paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
-        maxHeight: '75vh', overflowY: 'auto',
-      }}>
-        <div style={{ width: 32, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 14px' }} />
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: TEXT }}>Add Mission</div>
-            <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 2 }}>Promote your channel or bot.</div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', marginBottom: 4, display: 'block' }}>Task Name</label>
-              <input
-                value={title} onChange={e => setTitle(e.target.value)}
-                placeholder="Join My Channel"
-                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '9px 11px', color: TEXT, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', marginBottom: 4, display: 'block' }}>Task Link</label>
-              <input
-                value={link} onChange={e => setLink(e.target.value)}
-                placeholder="https://t.me/..."
-                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '9px 11px', color: TEXT, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', marginBottom: 6, display: 'block' }}>Category</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
-              {([['channel_group', 'Channel / Group'], ['website_bot', 'Website / Bot']] as const).map(([val, label]) => (
-                <button key={val} onClick={() => setCategory(val)} style={{
-                  padding: '8px 0', borderRadius: 10, border: `1.5px solid ${category === val ? BLUE : 'rgba(255,255,255,0.1)'}`,
-                  background: category === val ? 'rgba(37,99,235,0.15)' : 'rgba(255,255,255,0.04)',
-                  color: category === val ? BLUE : TEXT_DIM, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignItems: 'flex-end' }}>
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', marginBottom: 4, display: 'block' }}>Impressions <span style={{ color: TEXT_DIM }}>(min 10)</span></label>
-              <input
-                type="number" value={impressions} onChange={e => setImpressions(e.target.value)}
-                min={10} placeholder="10"
-                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '9px 11px', color: TEXT, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 10, padding: '9px 11px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ color: TEXT_DIM, fontSize: 11 }}>Per impression</span>
-                <span style={{ color: BLUE, fontSize: 11, fontWeight: 700 }}>35</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: TEXT, fontSize: 12, fontWeight: 800 }}>Total</span>
-                <span style={{ color: canAfford ? TEXT : '#f87171', fontSize: 12, fontWeight: 900 }}>{totalCost}</span>
-              </div>
-              {!canAfford && imp >= 10 && (
-                <div style={{ color: '#f87171', fontSize: 10, marginTop: 3 }}>Need {totalCost}, have {Math.floor(userBalance)}</div>
-              )}
-            </div>
-          </div>
-
-          <div style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.18)', borderRadius: 10, padding: '8px 11px', display: 'flex', gap: 8 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, lineHeight: 1.4 }}>
-              Add the verification bot as admin in your Channel/Group for task verification.
-            </span>
-          </div>
-
-          <button
-            onClick={handleCreate}
-            disabled={loading || !canAfford || imp < 10}
-            style={{
-              width: '100%', padding: '12px 0',
-              background: loading || !canAfford || imp < 10 ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-              border: 'none', borderRadius: 12, color: loading || !canAfford || imp < 10 ? TEXT_DIM : '#fff',
-              fontSize: 14, fontWeight: 800, cursor: loading || !canAfford || imp < 10 ? 'not-allowed' : 'pointer',
-              boxShadow: loading || !canAfford || imp < 10 ? 'none' : '0 4px 16px rgba(37,99,235,0.4)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            }}
-            className={loading || !canAfford || imp < 10 ? '' : 'active:scale-95 transition-transform'}
-          >
-            {loading && <span style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />}
-            {loading ? 'Publishing…' : `Publish · ${totalCost} CIPHER`}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AdminPartnerTaskPopup({ onClose }: { onClose: () => void }) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [url, setUrl] = useState('');
-  const [rewardAxn, setRewardAxn] = useState('50');
-  const [totalImpressions, setTotalImpressions] = useState('0');
-  const [loading, setLoading] = useState(false);
-  const queryClient = useQueryClient();
-
-  const handleCreate = async () => {
-    if (!title.trim()) { showNotification('Enter a title', 'error'); return; }
-    setLoading(true);
+  const handleCreatePartner = async () => {
+    if (!pTitle.trim()) { showNotification('Enter a title', 'error'); return; }
+    setPLoading(true);
     try {
-      const res = await apiRequest('POST', '/api/admin/partner-tasks', { title: title.trim(), description: description.trim(), url: url.trim(), rewardAxn: parseInt(rewardAxn, 10), totalImpressions: parseInt(totalImpressions, 10) });
+      const res = await apiRequest('POST', '/api/admin/partner-tasks', { title: pTitle.trim(), description: pDesc.trim(), url: pUrl.trim(), rewardAxn: parseInt(pReward, 10), totalImpressions: parseInt(pImpressions, 10) });
       const data = await res.json();
       if (data.success) {
         showNotification('Partner task created!', 'success');
@@ -537,60 +393,171 @@ function AdminPartnerTaskPopup({ onClose }: { onClose: () => void }) {
     } catch {
       showNotification('Failed to create', 'error');
     }
-    setLoading(false);
+    setPLoading(false);
   };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }} onClick={onClose} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={onClose} />
       <div style={{
         position: 'relative', width: '100%',
         background: 'linear-gradient(160deg, #0d0d0f, #111118)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: '24px 24px 0 0',
-        padding: '24px 20px',
-        paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px))',
-        maxHeight: '90vh', overflowY: 'auto',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: '28px 28px 0 0',
+        maxHeight: '82vh',
+        display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 22px' }} />
-        <div style={{ fontSize: 18, fontWeight: 900, color: TEXT, marginBottom: 18 }}>Add Partner Task</div>
+        {/* Top blue light bar */}
+        <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)', flexShrink: 0 }} />
+        {/* Scrollable content */}
+        <div style={{ overflowY: 'auto', padding: '20px 20px', paddingBottom: 'max(40px, calc(env(safe-area-inset-bottom, 0px) + 24px))' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 20px' }} />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {[
-            { label: 'Title', value: title, set: setTitle, placeholder: 'Task title' },
-            { label: 'Description', value: description, set: setDescription, placeholder: 'Short description (optional)' },
-            { label: 'Link URL', value: url, set: setUrl, placeholder: 'https://...' },
-          ].map(({ label, value, set, placeholder }) => (
-            <div key={label}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>{label}</label>
-              <input value={value} onChange={e => set(e.target.value)} placeholder={placeholder}
-                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 14px', color: TEXT, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+          {/* Admin tab selector */}
+          {isAdmin && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
+              <button onClick={() => setTab('user')} style={{
+                padding: '9px 0', borderRadius: 12,
+                border: `1.5px solid ${tab === 'user' ? BLUE : 'rgba(255,255,255,0.1)'}`,
+                background: tab === 'user' ? 'rgba(37,99,235,0.15)' : 'rgba(255,255,255,0.04)',
+                color: tab === 'user' ? BLUE : TEXT_DIM, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              }}>User Mission</button>
+              <button onClick={() => setTab('partner')} style={{
+                padding: '9px 0', borderRadius: 12,
+                border: `1.5px solid ${tab === 'partner' ? '#a855f7' : 'rgba(255,255,255,0.1)'}`,
+                background: tab === 'partner' ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.04)',
+                color: tab === 'partner' ? '#a855f7' : TEXT_DIM, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              }}>Partner Task</button>
             </div>
-          ))}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>Reward (CIPHER)</label>
-              <input type="number" value={rewardAxn} onChange={e => setRewardAxn(e.target.value)} min={1}
-                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 14px', color: TEXT, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+          )}
+
+          {/* ── User Mission Form ── */}
+          {tab === 'user' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 900, color: TEXT }}>Add Mission</div>
+                <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 3 }}>Promote your channel or bot.</div>
+              </div>
+
+              {/* Category */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {([['channel_group', 'Channel / Group'], ['website_bot', 'Website / Bot']] as const).map(([val, label]) => (
+                  <button key={val} onClick={() => setCategory(val)} style={{
+                    padding: '9px 0', borderRadius: 11,
+                    border: `1.5px solid ${category === val ? BLUE : 'rgba(255,255,255,0.1)'}`,
+                    background: category === val ? 'rgba(37,99,235,0.15)' : 'rgba(255,255,255,0.04)',
+                    color: category === val ? BLUE : TEXT_DIM, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  }}>{label}</button>
+                ))}
+              </div>
+
+              {/* Task Name — placeholder changes by category */}
+              <input
+                value={title} onChange={e => setTitle(e.target.value)}
+                placeholder={titlePlaceholder}
+                style={inputStyle}
+              />
+
+              {/* Task Link */}
+              <input
+                value={link} onChange={e => setLink(e.target.value)}
+                placeholder="https://t.me/yourchannel"
+                style={inputStyle}
+              />
+
+              {/* Impressions — only input, no right grid */}
+              <input
+                type="number" value={impressions}
+                onChange={e => {
+                  const v = parseInt(e.target.value, 10);
+                  setImpressions(isNaN(v) ? '' : String(v));
+                }}
+                onBlur={() => {
+                  const v = parseInt(impressions, 10);
+                  if (isNaN(v) || v < 10) setImpressions('10');
+                }}
+                min={10} placeholder="10"
+                style={inputStyle}
+              />
+
+              {/* Cost summary inline — no "Total" label */}
+              <div style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(59,130,246,0.12)', borderRadius: 11, padding: '9px 13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: TEXT_DIM, fontSize: 12 }}>{imp} impressions × 35 CIPHER</span>
+                <span style={{ color: canAfford ? BLUE : '#f87171', fontSize: 13, fontWeight: 900 }}>{totalCost} CIPHER</span>
+              </div>
+
+              {/* Warning — indigo color */}
+              <div style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 11, padding: '9px 12px', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span style={{ color: 'rgba(199,210,254,0.7)', fontSize: 11, lineHeight: 1.5 }}>
+                  Add the verification bot as admin in your channel/group for task verification.
+                </span>
+              </div>
+
+              <button
+                onClick={handleCreate}
+                disabled={loading || !canAfford}
+                style={{
+                  width: '100%', padding: '13px 0',
+                  background: loading || !canAfford ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
+                  border: 'none', borderRadius: 13, color: loading || !canAfford ? TEXT_DIM : '#fff',
+                  fontSize: 14, fontWeight: 800, cursor: loading || !canAfford ? 'not-allowed' : 'pointer',
+                  boxShadow: loading || !canAfford ? 'none' : '0 4px 16px rgba(37,99,235,0.4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+                className={loading || !canAfford ? '' : 'active:scale-95 transition-transform'}
+              >
+                {loading && <span style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />}
+                {loading ? 'Publishing…' : `Publish · ${totalCost} CIPHER`}
+              </button>
             </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>Total Impressions</label>
-              <input type="number" value={totalImpressions} onChange={e => setTotalImpressions(e.target.value)} min={0}
-                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 14px', color: TEXT, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+          )}
+
+          {/* ── Admin Partner Task Form ── */}
+          {tab === 'partner' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 900, color: TEXT }}>Add Partner Task</div>
+                <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 3 }}>Admin-created task visible to all users.</div>
+              </div>
+              <input value={pTitle} onChange={e => setPTitle(e.target.value)} placeholder="Task title" style={inputStyle} />
+              <input value={pDesc} onChange={e => setPDesc(e.target.value)} placeholder="Short description (optional)" style={inputStyle} />
+              <input value={pUrl} onChange={e => setPUrl(e.target.value)} placeholder="https://..." style={inputStyle} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <input type="number" value={pReward} onChange={e => setPReward(e.target.value)} placeholder="Reward (CIPHER)" min={1} style={inputStyle} />
+                <input type="number" value={pImpressions} onChange={e => setPImpressions(e.target.value)} placeholder="Impressions" min={0} style={inputStyle} />
+              </div>
+              <button
+                onClick={handleCreatePartner} disabled={pLoading}
+                style={{
+                  width: '100%', padding: '13px 0',
+                  background: pLoading ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                  border: 'none', borderRadius: 13, color: pLoading ? TEXT_DIM : '#fff',
+                  fontSize: 14, fontWeight: 800, cursor: pLoading ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+                className={pLoading ? '' : 'active:scale-95 transition-transform'}
+              >
+                {pLoading && <span style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />}
+                {pLoading ? 'Creating…' : 'Create Partner Task'}
+              </button>
             </div>
-          </div>
-          <button onClick={handleCreate} disabled={loading} style={{
-            width: '100%', padding: '15px 0',
-            background: loading ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-            border: 'none', borderRadius: 14, color: loading ? TEXT_DIM : '#fff',
-            fontSize: 15, fontWeight: 800, cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }} className={loading ? '' : 'active:scale-95 transition-transform'}>
-            {loading && <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />}
-            {loading ? 'Creating…' : 'Create Task'}
-          </button>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function SectionLabel({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{title}</span>
+      {subtitle && <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 2 }}>{subtitle}</div>}
     </div>
   );
 }
@@ -598,7 +565,6 @@ function AdminPartnerTaskPopup({ onClose }: { onClose: () => void }) {
 export default function Earn() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAddMission, setShowAddMission] = useState(false);
-  const [showAdminPartner, setShowAdminPartner] = useState(false);
 
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
   const { data: bountyTasksRaw } = useQuery<any>({ queryKey: ['/api/bounty-tasks'], staleTime: 30000 });
@@ -609,13 +575,16 @@ export default function Earn() {
   const userBalance = Math.floor(parseFloat(user?.balance || '0'));
   const isAdmin = !!user?.isAdmin;
 
-  const activeBountyTasks = bountyTasks.filter((t: any) => t.isActive !== false);
-  const botTasks = userTasks.filter((t: any) => t.category === 'website_bot');
-  const socialTasks = userTasks.filter((t: any) => t.category === 'channel_group');
+  const partnerTasks = bountyTasks.filter((t: any) => t.isActive !== false && !t.completed);
+  const botTasks = (userTasks as any[]).filter((t: any) => t.category === 'website_bot' && !t.completed_by_me);
+  const socialTasks = (userTasks as any[]).filter((t: any) => t.category === 'channel_group' && !t.completed_by_me);
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', overflowX: 'hidden', width: '100%' }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .task-row + .task-row { border-top: 1px solid rgba(255,255,255,0.05); }
+      `}</style>
       <Header onMenuOpen={() => setMenuOpen(true)} />
 
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 'max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px))', paddingTop: 'calc(var(--header-height, 62px) + 12px)', width: '100%' }}>
@@ -637,50 +606,48 @@ export default function Earn() {
           )}
 
           {/* Earn with Ads */}
-          <div style={{ marginBottom: 10 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Earn with Ads</span>
-          </div>
+          <SectionLabel title="Earn with Ads" />
           <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
             {AD_TASKS.map((t, i) => (
               <AdRow key={t.id} slotId={t.id} provider={t.provider} desc={t.desc} reward={t.reward} dailyLimit={t.dailyLimit} isLast={i === AD_TASKS.length - 1} />
             ))}
           </div>
 
-          {/* Partner Tasks */}
-          <SectionCard
-            title="Partner Tasks"
-            subtitle="Complete tasks with increased rewards."
-            rightEl={isAdmin ? (
-              <button onClick={() => setShowAdminPartner(true)} style={{ background: 'rgba(37,99,235,0.15)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 10, padding: '6px 12px', color: BLUE, fontSize: 12, fontWeight: 800, cursor: 'pointer' }} className="active:scale-95 transition-transform">+ Add</button>
-            ) : undefined}
-          >
-            {activeBountyTasks.length === 0
-              ? <EmptyState />
-              : activeBountyTasks.map((t: any, i: number) => (
-                  <PartnerTaskRow key={t.id} task={t} isLast={i === activeBountyTasks.length - 1} />
-                ))
-            }
-          </SectionCard>
+          {/* Partner Tasks — only show when there are incomplete tasks */}
+          {partnerTasks.length > 0 && (
+            <>
+              <SectionLabel title="Partner Tasks" subtitle="Complete tasks with increased rewards." />
+              <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+                {partnerTasks.map((t: any) => (
+                  <PartnerTaskRow key={t.id} task={t} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Social Tasks (Channel/Group) */}
+          {socialTasks.length > 0 && (
+            <>
+              <SectionLabel title="Social Tasks" subtitle="Join channels and groups for rewards." />
+              <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+                {socialTasks.map((t: any) => (
+                  <UserTaskRow key={t.id} task={t} />
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Bot Tasks */}
-          <SectionCard title="Bot Tasks" subtitle="Launch BOT and get rewards.">
-            {botTasks.length === 0
-              ? <EmptyState />
-              : botTasks.map((t: any, i: number) => (
-                  <UserTaskRow key={t.id} task={t} isLast={i === botTasks.length - 1} />
-                ))
-            }
-          </SectionCard>
-
-          {/* Social Tasks */}
-          <SectionCard title="Social Tasks" subtitle="Complete social tasks and get rewards.">
-            {socialTasks.length === 0
-              ? <EmptyState />
-              : socialTasks.map((t: any, i: number) => (
-                  <UserTaskRow key={t.id} task={t} isLast={i === socialTasks.length - 1} />
-                ))
-            }
-          </SectionCard>
+          {botTasks.length > 0 && (
+            <>
+              <SectionLabel title="Bot Tasks" subtitle="Launch a bot and get rewards." />
+              <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+                {botTasks.map((t: any) => (
+                  <UserTaskRow key={t.id} task={t} />
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Info note */}
           <div style={{ background: 'rgba(37,99,235,0.06)', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
@@ -715,8 +682,7 @@ export default function Earn() {
         </button>
       </div>
 
-      {showAddMission && <AddMissionPopup onClose={() => setShowAddMission(false)} userBalance={userBalance} />}
-      {showAdminPartner && <AdminPartnerTaskPopup onClose={() => setShowAdminPartner(false)} />}
+      {showAddMission && <AddMissionPopup onClose={() => setShowAddMission(false)} userBalance={userBalance} isAdmin={isAdmin} />}
       {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}
     </div>
   );
