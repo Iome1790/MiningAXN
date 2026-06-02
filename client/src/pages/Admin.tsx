@@ -49,7 +49,7 @@ interface AdminStats {
   totalWithdrawals: string;
 }
 
-type AdminTab = "summary" | "users" | "withdrawals" | "bans" | "countries" | "settings" | "promo";
+type AdminTab = "summary" | "users" | "withdrawals" | "bans" | "countries" | "settings" | "promo" | "missions";
 
 function MiniToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -114,6 +114,14 @@ export default function AdminPage() {
     enabled: isAdmin && activeTab === "withdrawals",
   });
 
+  const { data: missionsData, refetch: refetchMissions } = useQuery({
+    queryKey: ["/api/admin/user-tasks"],
+    queryFn: () => apiRequest("GET", "/api/admin/user-tasks").then(r => r.json()),
+    refetchInterval: 30000,
+    enabled: isAdmin,
+  });
+  const pendingMissionsCount = Array.isArray(missionsData) ? missionsData.filter((t: any) => t.status === 'pending').length : 0;
+
   if (adminLoading) {
     return (
       <Layout>
@@ -140,6 +148,7 @@ export default function AdminPage() {
     { id: "summary", label: "Summary", icon: TrendingUp },
     { id: "users", label: "Users", icon: Users },
     { id: "withdrawals", label: "Withdrawals", icon: DollarSign },
+    { id: "missions", label: "Missions", icon: CheckCircle },
     { id: "bans", label: "Bans", icon: Shield },
     { id: "countries", label: "Countries", icon: Globe },
     { id: "settings", label: "Settings", icon: Settings },
@@ -196,6 +205,11 @@ export default function AdminPage() {
                   {stats!.pendingWithdrawals}
                 </span>
               )}
+              {tab.id === "missions" && pendingMissionsCount > 0 && (
+                <span className="ml-1 bg-orange-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+                  {pendingMissionsCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -204,6 +218,7 @@ export default function AdminPage() {
           {activeTab === "summary" && <SummarySection stats={stats} isLoading={statsLoading} />}
           {activeTab === "users" && <UserSection usersData={usersData} isLoading={usersLoading} />}
           {activeTab === "withdrawals" && <WithdrawSection payoutData={payoutData} pendingData={pendingPayouts} />}
+          {activeTab === "missions" && <MissionsSection tasks={missionsData ?? []} onRefresh={refetchMissions} />}
           {activeTab === "bans" && <BanSection />}
           {activeTab === "countries" && <CountrySection />}
           {activeTab === "settings" && <SettingsSection />}
@@ -1374,6 +1389,128 @@ function PromoSection() {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── MISSIONS ────────────────────────────────────────────────────────────── */
+
+function MissionsSection({ tasks, onRefresh }: { tasks: any[]; onRefresh: () => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [loading, setLoading] = useState<Record<number, string>>({});
+
+  const filtered = Array.isArray(tasks)
+    ? (filter === 'all' ? tasks : tasks.filter((t: any) => t.status === filter))
+    : [];
+
+  const counts = {
+    pending: Array.isArray(tasks) ? tasks.filter((t: any) => t.status === 'pending').length : 0,
+    approved: Array.isArray(tasks) ? tasks.filter((t: any) => t.status === 'approved').length : 0,
+    rejected: Array.isArray(tasks) ? tasks.filter((t: any) => t.status === 'rejected').length : 0,
+    all: Array.isArray(tasks) ? tasks.length : 0,
+  };
+
+  const handleAction = async (taskId: number, action: 'approve' | 'reject') => {
+    setLoading(prev => ({ ...prev, [taskId]: action }));
+    try {
+      const res = await apiRequest('POST', `/api/admin/user-tasks/${taskId}/${action}`, {});
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: action === 'approve' ? '✅ Mission Approved' : '❌ Mission Rejected', description: action === 'reject' ? 'Balance refunded to user.' : 'Mission is now live.' });
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/user-tasks'] });
+        onRefresh();
+      } else {
+        toast({ title: 'Failed', description: data.message || 'Something went wrong', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Request failed', variant: 'destructive' });
+    }
+    setLoading(prev => { const n = { ...prev }; delete n[taskId]; return n; });
+  };
+
+  const statusColor = (s: string) => s === 'approved' ? 'text-green-400 bg-green-900/30' : s === 'rejected' ? 'text-red-400 bg-red-900/30' : 'text-orange-400 bg-orange-900/30';
+  const catLabel = (c: string) => c === 'channel_group' ? 'Channel/Group' : 'Website/Bot';
+
+  return (
+    <div className="space-y-4 pb-10">
+      {/* Filter Bar */}
+      <div className="flex gap-2 flex-wrap">
+        {(['pending', 'approved', 'rejected', 'all'] as const).map(f => (
+          <button key={f} onClick={() => setFilter(f)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${filter === f ? 'bg-blue-600 text-white' : 'bg-white/5 text-gray-400 hover:text-white'}`}>
+            {f}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${filter === f ? 'bg-white/20 text-white' : 'bg-white/10 text-gray-400'}`}>{counts[f]}</span>
+          </button>
+        ))}
+        <button onClick={onRefresh} className="ml-auto flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-blue-400 hover:text-blue-300 bg-white/5">
+          <RefreshCw className="w-3 h-3" /> Refresh
+        </button>
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="bg-[#0f0f0f] border border-white/8 rounded-xl p-8 text-center">
+          <p className="text-gray-500 text-sm">No {filter === 'all' ? '' : filter} missions</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {filtered.map((task: any) => (
+          <div key={task.id} className="bg-[#0f0f0f] border border-white/8 rounded-xl p-4 space-y-3">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-bold text-white truncate">{task.title}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${statusColor(task.status)}`}>{task.status}</span>
+                </div>
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                  <span className="text-[11px] text-gray-500">{catLabel(task.category)}</span>
+                  <span className="text-[11px] text-blue-400 font-semibold">{task.impressions} impressions</span>
+                  <span className="text-[11px] text-purple-400 font-semibold">+{task.reward_per_completion} CIPHER each</span>
+                  <span className="text-[11px] text-yellow-500 font-semibold">{task.total_cost} CIPHER paid</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Link */}
+            {task.link && (
+              <a href={task.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[11px] text-blue-400 hover:text-blue-300 bg-blue-950/30 rounded-lg px-3 py-2 truncate">
+                <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">{task.link}</span>
+              </a>
+            )}
+
+            {/* Creator & Progress */}
+            <div className="flex items-center justify-between text-[11px] text-gray-500">
+              <span>By: <span className="text-gray-300">@{task.creator_username || task.creator_telegram_id || task.user_id}</span></span>
+              <span>{task.completed_count || 0} / {task.impressions} completed</span>
+            </div>
+
+            {/* Actions */}
+            {task.status === 'pending' && (
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => handleAction(task.id, 'approve')}
+                  disabled={!!loading[task.id]}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-green-600 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loading[task.id] === 'approve' ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                  Approve
+                </button>
+                <button
+                  onClick={() => handleAction(task.id, 'reject')}
+                  disabled={!!loading[task.id]}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-red-600/80 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loading[task.id] === 'reject' ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+                  Reject & Refund
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

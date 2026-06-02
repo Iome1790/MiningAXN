@@ -402,50 +402,53 @@ function AddMissionPopup({ onClose, userBalance }: { onClose: () => void; userBa
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }} onClick={onClose} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }} onClick={onClose} />
       <div style={{
         position: 'relative', width: '100%',
         background: 'linear-gradient(160deg, #0d0d0f, #111118)',
         border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: '24px 24px 0 0',
-        padding: '24px 20px',
-        paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px))',
-        maxHeight: '90vh', overflowY: 'auto',
+        borderRadius: '20px 20px 0 0',
+        padding: '16px 16px',
+        paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
+        maxHeight: '75vh', overflowY: 'auto',
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 22px' }} />
+        <div style={{ width: 32, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 14px' }} />
 
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 20, fontWeight: 900, color: TEXT, marginBottom: 4 }}>Add Mision</div>
-          <div style={{ fontSize: 13, color: TEXT_DIM, lineHeight: 1.5 }}>Promote your channel or bot and get real users.</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: TEXT }}>Add Mission</div>
+            <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 2 }}>Promote your channel or bot.</div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>Task Name</label>
-            <input
-              value={title} onChange={e => setTitle(e.target.value)}
-              placeholder="Join My Channel"
-              style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 14px', color: TEXT, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-            />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', marginBottom: 4, display: 'block' }}>Task Name</label>
+              <input
+                value={title} onChange={e => setTitle(e.target.value)}
+                placeholder="Join My Channel"
+                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '9px 11px', color: TEXT, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', marginBottom: 4, display: 'block' }}>Task Link</label>
+              <input
+                value={link} onChange={e => setLink(e.target.value)}
+                placeholder="https://t.me/..."
+                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '9px 11px', color: TEXT, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
           </div>
 
           <div>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>Task Link</label>
-            <input
-              value={link} onChange={e => setLink(e.target.value)}
-              placeholder="https://t.me/..."
-              style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 14px', color: TEXT, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
-
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 8, display: 'block' }}>Category</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', marginBottom: 6, display: 'block' }}>Category</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
               {([['channel_group', 'Channel / Group'], ['website_bot', 'Website / Bot']] as const).map(([val, label]) => (
                 <button key={val} onClick={() => setCategory(val)} style={{
-                  padding: '11px 0', borderRadius: 12, border: `1.5px solid ${category === val ? BLUE : 'rgba(255,255,255,0.1)'}`,
+                  padding: '8px 0', borderRadius: 10, border: `1.5px solid ${category === val ? BLUE : 'rgba(255,255,255,0.1)'}`,
                   background: category === val ? 'rgba(37,99,235,0.15)' : 'rgba(255,255,255,0.04)',
-                  color: category === val ? BLUE : TEXT_DIM, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  color: category === val ? BLUE : TEXT_DIM, fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 }}>
                   {label}
                 </button>
@@ -453,59 +456,55 @@ function AddMissionPopup({ onClose, userBalance }: { onClose: () => void; userBa
             </div>
           </div>
 
-          <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '12px 14px', display: 'flex', gap: 10 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignItems: 'flex-end' }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', marginBottom: 4, display: 'block' }}>Impressions <span style={{ color: TEXT_DIM }}>(min 10)</span></label>
+              <input
+                type="number" value={impressions} onChange={e => setImpressions(e.target.value)}
+                min={10} placeholder="10"
+                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '9px 11px', color: TEXT, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 10, padding: '9px 11px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ color: TEXT_DIM, fontSize: 11 }}>Per impression</span>
+                <span style={{ color: BLUE, fontSize: 11, fontWeight: 700 }}>35</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: TEXT, fontSize: 12, fontWeight: 800 }}>Total</span>
+                <span style={{ color: canAfford ? TEXT : '#f87171', fontSize: 12, fontWeight: 900 }}>{totalCost}</span>
+              </div>
+              {!canAfford && imp >= 10 && (
+                <div style={{ color: '#f87171', fontSize: 10, marginTop: 3 }}>Need {totalCost}, have {Math.floor(userBalance)}</div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.18)', borderRadius: 10, padding: '8px 11px', display: 'flex', gap: 8 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
               <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
-            <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, lineHeight: 1.5 }}>
-              Important: You must add the verification bot as an admin in your Channel/Group for task verification.
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, lineHeight: 1.4 }}>
+              Add the verification bot as admin in your Channel/Group for task verification.
             </span>
-          </div>
-
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>Number of Impressions <span style={{ color: TEXT_DIM }}>(min 10)</span></label>
-            <input
-              type="number" value={impressions} onChange={e => setImpressions(e.target.value)}
-              min={10} placeholder="10"
-              style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 14px', color: TEXT, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
-
-          <div style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ color: TEXT_DIM, fontSize: 13 }}>Price per impression</span>
-              <span style={{ color: BLUE, fontSize: 13, fontWeight: 700 }}>35 CIPHER</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ color: TEXT_DIM, fontSize: 13 }}>User reward per completion</span>
-              <span style={{ color: '#4ade80', fontSize: 13, fontWeight: 700 }}>+10 CIPHER</span>
-            </div>
-            <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '10px 0' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>Total Cost</span>
-              <span style={{ color: canAfford ? TEXT : '#f87171', fontSize: 14, fontWeight: 900 }}>{totalCost} CIPHER</span>
-            </div>
-            {!canAfford && imp >= 10 && (
-              <div style={{ color: '#f87171', fontSize: 11, marginTop: 6 }}>Insufficient balance. You have {Math.floor(userBalance)} CIPHER.</div>
-            )}
           </div>
 
           <button
             onClick={handleCreate}
             disabled={loading || !canAfford || imp < 10}
             style={{
-              width: '100%', padding: '15px 0',
+              width: '100%', padding: '12px 0',
               background: loading || !canAfford || imp < 10 ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-              border: 'none', borderRadius: 14, color: loading || !canAfford || imp < 10 ? TEXT_DIM : '#fff',
-              fontSize: 15, fontWeight: 800, cursor: loading || !canAfford || imp < 10 ? 'not-allowed' : 'pointer',
-              boxShadow: loading || !canAfford || imp < 10 ? 'none' : '0 4px 20px rgba(37,99,235,0.4)',
+              border: 'none', borderRadius: 12, color: loading || !canAfford || imp < 10 ? TEXT_DIM : '#fff',
+              fontSize: 14, fontWeight: 800, cursor: loading || !canAfford || imp < 10 ? 'not-allowed' : 'pointer',
+              boxShadow: loading || !canAfford || imp < 10 ? 'none' : '0 4px 16px rgba(37,99,235,0.4)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}
             className={loading || !canAfford || imp < 10 ? '' : 'active:scale-95 transition-transform'}
           >
-            {loading && <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />}
-            {loading ? 'Publishing…' : `Publish Task · ${totalCost} CIPHER`}
+            {loading && <span style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />}
+            {loading ? 'Publishing…' : `Publish · ${totalCost} CIPHER`}
           </button>
         </div>
       </div>
@@ -622,24 +621,10 @@ export default function Earn() {
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 'max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px))', paddingTop: 'calc(var(--header-height, 62px) + 12px)', width: '100%' }}>
 
         <div style={{ padding: '0 16px', marginBottom: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: TEXT, letterSpacing: '-0.5px' }}>
-                Earn in the <span style={{ color: BLUE }}>Axionet</span>
-              </div>
-              <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 3 }}>Watch ads · Complete tasks · Earn CIPHER</div>
-            </div>
-            <button onClick={() => setShowAddMission(true)} style={{
-              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
-              background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-              border: 'none', borderRadius: 12, padding: '9px 14px',
-              color: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer',
-              boxShadow: '0 2px 12px rgba(37,99,235,0.4)', marginTop: 2,
-            }} className="active:scale-95 transition-transform">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Add Mision
-            </button>
+          <div style={{ fontSize: 22, fontWeight: 900, color: TEXT, letterSpacing: '-0.5px' }}>
+            Earn in the <span style={{ color: BLUE }}>Axionet</span>
           </div>
+          <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 3 }}>Watch ads · Complete tasks · Earn CIPHER</div>
         </div>
 
         <div style={{ padding: '0 16px' }}>
@@ -710,6 +695,24 @@ export default function Earn() {
           </div>
 
         </div>
+      </div>
+
+      {/* Floating Add Mission Button */}
+      <div style={{
+        position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)',
+        left: '50%', transform: 'translateX(-50%)', zIndex: 900,
+      }}>
+        <button onClick={() => setShowAddMission(true)} style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
+          border: 'none', borderRadius: 50, padding: '12px 22px',
+          color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer',
+          boxShadow: '0 4px 20px rgba(37,99,235,0.5)',
+          whiteSpace: 'nowrap',
+        }} className="active:scale-95 transition-transform">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Mission
+        </button>
       </div>
 
       {showAddMission && <AddMissionPopup onClose={() => setShowAddMission(false)} userBalance={userBalance} />}
