@@ -403,6 +403,7 @@ export default function Games() {
           <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Daily Rewards
           </span>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', marginTop: 3 }}>Complete daily tasks and get rewards.</div>
         </div>
 
         <div style={{
@@ -479,6 +480,7 @@ export default function Games() {
           <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Farming
           </span>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', marginTop: 3 }}>Earn additional rewards.</div>
         </div>
 
         {/* FARMING */}
