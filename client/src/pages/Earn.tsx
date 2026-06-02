@@ -88,17 +88,11 @@ function AdRow({ slotId, provider, desc, reward, dailyLimit, isLast }: {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px' }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-          background: atLimit ? 'rgba(74,222,128,0.1)' : 'transparent',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-          border: atLimit ? '1.5px solid rgba(74,222,128,0.25)' : 'none',
-        }}>
-          {atLimit
-            ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            : <ProviderIcon provider={provider} />}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
+        {atLimit
+          ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
+          : <img src={PROVIDER_LOGOS[provider]} alt={provider} style={{ width: 26, height: 26, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+        }
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
             <span style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>{provider}</span>
@@ -163,13 +157,11 @@ function AxnNameTaskDaily({ claimedToday }: { claimedToday: boolean }) {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px' }}>
-      <div style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0, background: 'rgba(59,130,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-        </svg>
-      </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
           <span style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>Add $AXN to your name</span>
@@ -253,17 +245,16 @@ function PartnerTaskRow({ task, isLast }: { task: any; isLast: boolean }) {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px' }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-          background: done ? 'rgba(74,222,128,0.1)' : 'rgba(37,99,235,0.1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: done ? '1.5px solid rgba(74,222,128,0.25)' : '1.5px solid rgba(59,130,246,0.2)',
-        }}>
-          {done
-            ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
+        {done
+          ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
+          : <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              {/* External link / partner task icon */}
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+        }
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
             <span style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>{task.title}</span>
@@ -327,19 +318,27 @@ function UserTaskRow({ task, isLast }: { task: any; isLast: boolean }) {
 
   const remaining = (task.impressions || 0) - (task.completed_count || 0);
 
+  const isChannel = task.category === 'channel_group';
+
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px' }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-          background: done ? 'rgba(74,222,128,0.1)' : 'rgba(168,85,247,0.1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: done ? '1.5px solid rgba(74,222,128,0.25)' : '1.5px solid rgba(168,85,247,0.2)',
-        }}>
-          {done
-            ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.68h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l1.27-.85a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.92 17.1z"/></svg>}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
+        {done
+          ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
+          : isChannel
+            ? /* Channel / Group icon — two people */
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            : /* Bot / Website icon — terminal prompt */
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <polyline points="4 17 10 11 4 5"/>
+                <line x1="12" y1="19" x2="20" y2="19"/>
+              </svg>
+        }
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
             <span style={{ color: TEXT, fontSize: 14, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 150 }}>{task.title}</span>
@@ -603,7 +602,8 @@ export default function Earn() {
   const [showAdminPartner, setShowAdminPartner] = useState(false);
 
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
-  const { data: bountyTasks = [] } = useQuery<any[]>({ queryKey: ['/api/bounty-tasks'], staleTime: 30000 });
+  const { data: bountyTasksRaw } = useQuery<any>({ queryKey: ['/api/bounty-tasks'], staleTime: 30000 });
+  const bountyTasks: any[] = Array.isArray(bountyTasksRaw) ? bountyTasksRaw : (bountyTasksRaw?.tasks ?? []);
   const { data: userTasks = [] } = useQuery<any[]>({ queryKey: ['/api/user-tasks'], staleTime: 30000 });
 
   const axnNameClaimedToday = !!user?.axnNameClaimedToday;
