@@ -49,7 +49,7 @@ interface AdminStats {
   totalWithdrawals: string;
 }
 
-type AdminTab = "summary" | "users" | "withdrawals" | "bans" | "countries" | "settings" | "promo" | "missions";
+type AdminTab = "summary" | "users" | "withdrawals" | "bans" | "countries" | "settings" | "promo" | "missions" | "partner-tasks";
 
 function MiniToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -122,6 +122,13 @@ export default function AdminPage() {
   });
   const pendingMissionsCount = Array.isArray(missionsData) ? missionsData.filter((t: any) => t.status === 'pending').length : 0;
 
+  const { data: partnerTasksData, refetch: refetchPartnerTasks } = useQuery({
+    queryKey: ["/api/admin/partner-tasks"],
+    queryFn: () => apiRequest("GET", "/api/admin/partner-tasks").then(r => r.json()),
+    refetchInterval: 30000,
+    enabled: isAdmin && activeTab === "partner-tasks",
+  });
+
   if (adminLoading) {
     return (
       <Layout>
@@ -149,6 +156,7 @@ export default function AdminPage() {
     { id: "users", label: "Users", icon: Users },
     { id: "withdrawals", label: "Withdrawals", icon: DollarSign },
     { id: "missions", label: "Missions", icon: CheckCircle },
+    { id: "partner-tasks", label: "Partner Tasks", icon: GitBranch },
     { id: "bans", label: "Bans", icon: Shield },
     { id: "countries", label: "Countries", icon: Globe },
     { id: "settings", label: "Settings", icon: Settings },
@@ -219,6 +227,7 @@ export default function AdminPage() {
           {activeTab === "users" && <UserSection usersData={usersData} isLoading={usersLoading} />}
           {activeTab === "withdrawals" && <WithdrawSection payoutData={payoutData} pendingData={pendingPayouts} />}
           {activeTab === "missions" && <MissionsSection tasks={missionsData ?? []} onRefresh={refetchMissions} />}
+          {activeTab === "partner-tasks" && <PartnerTasksSection tasks={partnerTasksData ?? []} onRefresh={refetchPartnerTasks} />}
           {activeTab === "bans" && <BanSection />}
           {activeTab === "countries" && <CountrySection />}
           {activeTab === "settings" && <SettingsSection />}
@@ -1430,6 +1439,253 @@ function PromoSection() {
 }
 
 /* ─── MISSIONS ────────────────────────────────────────────────────────────── */
+
+function PartnerTasksSection({ tasks, onRefresh }: { tasks: any[]; onRefresh: () => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [loading, setLoading] = useState<Record<number, string>>({});
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ title: '', description: '', url: '', rewardAxn: '50', totalImpressions: '0' });
+  const [creating, setCreating] = useState(false);
+
+  const taskList = Array.isArray(tasks) ? tasks : [];
+
+  const handleTogglePause = async (taskId: number) => {
+    setLoading(prev => ({ ...prev, [taskId]: 'pause' }));
+    try {
+      const res = await apiRequest('POST', `/api/admin/partner-tasks/${taskId}/toggle-pause`, {});
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: data.is_paused ? '⏸ Task Paused' : '▶ Task Resumed' });
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/bounty-tasks'] });
+        onRefresh();
+      } else {
+        toast({ title: 'Failed', description: data.message, variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Request failed', variant: 'destructive' });
+    }
+    setLoading(prev => { const n = { ...prev }; delete n[taskId]; return n; });
+  };
+
+  const handleDelete = async (taskId: number) => {
+    if (!window.confirm('Permanently delete this partner task? This cannot be undone.')) return;
+    setLoading(prev => ({ ...prev, [taskId]: 'delete' }));
+    try {
+      const res = await apiRequest('DELETE', `/api/admin/partner-tasks/${taskId}`, {});
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: '🗑 Partner Task Deleted' });
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/bounty-tasks'] });
+        onRefresh();
+      } else {
+        toast({ title: 'Failed', description: data.message, variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Request failed', variant: 'destructive' });
+    }
+    setLoading(prev => { const n = { ...prev }; delete n[taskId]; return n; });
+  };
+
+  const handleCreate = async () => {
+    if (!form.title.trim() || !parseInt(form.rewardAxn)) {
+      toast({ title: 'Title and reward required', variant: 'destructive' });
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await apiRequest('POST', '/api/admin/partner-tasks', {
+        title: form.title.trim(),
+        description: form.description.trim(),
+        url: form.url.trim(),
+        rewardAxn: parseInt(form.rewardAxn),
+        totalImpressions: parseInt(form.totalImpressions) || 0,
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: '✅ Partner Task Created' });
+        setForm({ title: '', description: '', url: '', rewardAxn: '50', totalImpressions: '0' });
+        setShowCreate(false);
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/bounty-tasks'] });
+        onRefresh();
+      } else {
+        toast({ title: 'Failed', description: data.message, variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Request failed', variant: 'destructive' });
+    }
+    setCreating(false);
+  };
+
+  return (
+    <div className="space-y-4 pb-10">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-bold text-white">Partner Tasks</p>
+          <p className="text-xs text-gray-500 mt-0.5">{taskList.length} total tasks</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onRefresh} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-blue-400 hover:text-blue-300 bg-white/5">
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
+          <button
+            onClick={() => setShowCreate(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-colors"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Task
+          </button>
+        </div>
+      </div>
+
+      {/* Create Form */}
+      {showCreate && (
+        <div className="bg-[#0f0f0f] border border-purple-500/30 rounded-xl p-4 space-y-3">
+          <p className="text-xs font-bold text-purple-400">Create New Partner Task</p>
+          <input
+            value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+            placeholder="Task title *"
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500/50 placeholder-gray-600"
+          />
+          <input
+            value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            placeholder="Short description (optional)"
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500/50 placeholder-gray-600"
+          />
+          <input
+            value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+            placeholder="https://... (URL)"
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500/50 placeholder-gray-600"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[10px] text-gray-500 mb-1">Reward (CIPHER) *</p>
+              <input
+                type="number" value={form.rewardAxn} onChange={e => setForm(f => ({ ...f, rewardAxn: e.target.value }))}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500/50"
+              />
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-500 mb-1">Max Impressions (0=∞)</p>
+              <input
+                type="number" value={form.totalImpressions} onChange={e => setForm(f => ({ ...f, totalImpressions: e.target.value }))}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500/50"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCreate} disabled={creating}
+              className="flex-1 py-2 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-50 transition-colors"
+            >
+              {creating ? 'Creating…' : 'Create Task'}
+            </button>
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-lg text-xs text-gray-400 bg-white/5 hover:bg-white/8 transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Task List */}
+      {taskList.length === 0 ? (
+        <div className="bg-[#0f0f0f] border border-white/8 rounded-xl p-8 text-center">
+          <p className="text-gray-500 text-sm">No partner tasks yet</p>
+          <p className="text-gray-600 text-xs mt-1">Click "New Task" to create one</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {taskList.map((task: any) => {
+            const isPaused = task.is_paused;
+            const isInactive = !task.is_active;
+            const completedPct = task.total_impressions > 0
+              ? Math.min(100, Math.round(((task.completed_count || 0) / task.total_impressions) * 100))
+              : 0;
+
+            return (
+              <div key={task.id} className={`bg-[#0f0f0f] border rounded-xl p-4 space-y-3 transition-all ${isPaused ? 'border-yellow-500/20 opacity-70' : isInactive ? 'border-red-500/20 opacity-50' : 'border-white/8'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-white truncate">{task.title}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isInactive ? 'text-red-400 bg-red-900/30' :
+                        isPaused ? 'text-yellow-400 bg-yellow-900/30' :
+                        'text-green-400 bg-green-900/30'
+                      }`}>
+                        {isInactive ? 'Deleted' : isPaused ? 'Paused' : 'Active'}
+                      </span>
+                    </div>
+                    {task.description && (
+                      <p className="text-[11px] text-gray-500 mt-0.5 truncate">{task.description}</p>
+                    )}
+                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      <span className="text-[11px] text-purple-400 font-semibold">+{task.reward_axn} CIPHER</span>
+                      <span className="text-[11px] text-gray-500">{task.completed_count || 0}/{task.total_impressions || '∞'} completions</span>
+                    </div>
+                  </div>
+                </div>
+
+                {task.total_impressions > 0 && (
+                  <div>
+                    <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                      <span>Progress</span>
+                      <span>{completedPct}%</span>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full bg-purple-500 rounded-full" style={{ width: `${completedPct}%` }} />
+                    </div>
+                  </div>
+                )}
+
+                {task.url && (
+                  <a href={task.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[11px] text-blue-400 hover:text-blue-300 bg-blue-950/30 rounded-lg px-3 py-2 truncate">
+                    <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{task.url}</span>
+                  </a>
+                )}
+
+                {/* Actions */}
+                {!isInactive && (
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => handleTogglePause(task.id)}
+                      disabled={!!loading[task.id]}
+                      className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${isPaused ? 'bg-green-700/60 hover:bg-green-600/80 text-green-200' : 'bg-yellow-700/50 hover:bg-yellow-600/70 text-yellow-200'}`}
+                    >
+                      {loading[task.id] === 'pause'
+                        ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        : isPaused
+                          ? <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                          : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                      }
+                      {isPaused ? 'Resume' : 'Pause'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(task.id)}
+                      disabled={!!loading[task.id]}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-red-900/40 hover:bg-red-800/60 text-red-300 disabled:opacity-50 transition-colors"
+                    >
+                      {loading[task.id] === 'delete'
+                        ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                      }
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function MissionsSection({ tasks, onRefresh }: { tasks: any[]; onRefresh: () => void }) {
   const { toast } = useToast();

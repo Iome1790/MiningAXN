@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import Header from "@/components/Header";
 import MenuPopup from "@/components/MenuPopup";
 import { showNotification } from "@/components/AppNotification";
@@ -324,7 +325,7 @@ function UserTaskRow({ task }: { task: any }) {
   );
 }
 
-function AddMissionPopup({ onClose, userBalance, isAdmin }: { onClose: () => void; userBalance: number; isAdmin: boolean }) {
+function _RemovedAddMissionPopup({ onClose, userBalance, isAdmin }: { onClose: () => void; userBalance: number; isAdmin: boolean }) {
   const [tab, setTab] = useState<'user' | 'partner'>('user');
 
   const [title, setTitle] = useState('');
@@ -684,21 +685,50 @@ function EmptyTaskState({ label }: { label: string }) {
 
 export default function Earn() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showAddMission, setShowAddMission] = useState(false);
+  const [, setLocation] = useLocation();
 
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
   const { data: bountyTasksRaw } = useQuery<any>({ queryKey: ['/api/bounty-tasks'], staleTime: 30000 });
   const bountyTasks: any[] = Array.isArray(bountyTasksRaw) ? bountyTasksRaw : (bountyTasksRaw?.tasks ?? []);
   const { data: userTasks = [] } = useQuery<any[]>({ queryKey: ['/api/user-tasks'], staleTime: 30000 });
-  const { data: myTasks = [] } = useQuery<any[]>({ queryKey: ['/api/my-tasks'], staleTime: 15000 });
 
   const axnNameClaimedToday = !!user?.axnNameClaimedToday;
-  const userBalance = Math.floor(parseFloat(user?.balance || '0'));
-  const isAdmin = !!user?.isAdmin;
 
   const partnerTasks = bountyTasks.filter((t: any) => t.isActive !== false && !t.completed);
   const botTasks = (userTasks as any[]).filter((t: any) => t.category === 'website_bot' && !t.completed_by_me);
   const socialTasks = (userTasks as any[]).filter((t: any) => t.category === 'channel_group' && !t.completed_by_me);
+
+  // Task sections sorted so sections with tasks come first, empty sections go to the bottom
+  const taskSections = [
+    {
+      key: 'partner',
+      title: 'Partner Tasks',
+      subtitle: 'Complete tasks with increased rewards.',
+      tasks: partnerTasks,
+      emptyLabel: 'No partner tasks available right now.',
+      renderRow: (t: any) => <PartnerTaskRow key={t.id} task={t} />,
+    },
+    {
+      key: 'social',
+      title: 'Social Tasks',
+      subtitle: 'Join channels and groups for rewards.',
+      tasks: socialTasks,
+      emptyLabel: 'No channel/group tasks available right now.',
+      renderRow: (t: any) => <UserTaskRow key={t.id} task={t} />,
+    },
+    {
+      key: 'bot',
+      title: 'Bot Tasks',
+      subtitle: 'Launch a bot or visit a website for rewards.',
+      tasks: botTasks,
+      emptyLabel: 'No bot/website tasks available right now.',
+      renderRow: (t: any) => <UserTaskRow key={t.id} task={t} />,
+    },
+  ].sort((a, b) => {
+    if (a.tasks.length > 0 && b.tasks.length === 0) return -1;
+    if (a.tasks.length === 0 && b.tasks.length > 0) return 1;
+    return 0;
+  });
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', overflowX: 'hidden', width: '100%' }}>
@@ -726,7 +756,7 @@ export default function Earn() {
             </div>
           )}
 
-          {/* Earn with Ads */}
+          {/* Earn with Ads — always at top */}
           <SectionLabel title="Earn with Ads" />
           <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
             {AD_TASKS.map((t, i) => (
@@ -734,44 +764,18 @@ export default function Earn() {
             ))}
           </div>
 
-          {/* Partner Tasks */}
-          <SectionLabel title="Partner Tasks" subtitle="Complete tasks with increased rewards." />
-          <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
-            {partnerTasks.length > 0
-              ? partnerTasks.map((t: any) => <PartnerTaskRow key={t.id} task={t} />)
-              : <EmptyTaskState label="No partner tasks available right now." />
-            }
-          </div>
-
-          {/* Social Tasks (Channel/Group) */}
-          <SectionLabel title="Social Tasks" subtitle="Join channels and groups for rewards." />
-          <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
-            {socialTasks.length > 0
-              ? socialTasks.map((t: any) => <UserTaskRow key={t.id} task={t} />)
-              : <EmptyTaskState label="No channel/group tasks available right now." />
-            }
-          </div>
-
-          {/* Bot / Website Tasks */}
-          <SectionLabel title="Bot Tasks" subtitle="Launch a bot or visit a website for rewards." />
-          <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
-            {botTasks.length > 0
-              ? botTasks.map((t: any) => <UserTaskRow key={t.id} task={t} />)
-              : <EmptyTaskState label="No bot/website tasks available right now." />
-            }
-          </div>
-
-          {/* My Missions */}
-          {(myTasks as any[]).length > 0 && (
-            <>
-              <SectionLabel title="My Missions" subtitle="Missions you created — track status & progress." />
+          {/* Dynamic sections: tasks-first ordering */}
+          {taskSections.map(section => (
+            <div key={section.key}>
+              <SectionLabel title={section.title} subtitle={section.subtitle} />
               <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
-                {(myTasks as any[]).map((t: any, i: number) => (
-                  <MyMissionRow key={t.id} task={t} isLast={i === (myTasks as any[]).length - 1} onDeleted={() => {}} />
-                ))}
+                {section.tasks.length > 0
+                  ? section.tasks.map(section.renderRow)
+                  : <EmptyTaskState label={section.emptyLabel} />
+                }
               </div>
-            </>
-          )}
+            </div>
+          ))}
 
           {/* Info note */}
           <div style={{ background: 'rgba(37,99,235,0.06)', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
@@ -793,7 +797,7 @@ export default function Earn() {
         position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)',
         left: '50%', transform: 'translateX(-50%)', zIndex: 900,
       }}>
-        <button onClick={() => setShowAddMission(true)} style={{
+        <button onClick={() => setLocation('/add-mission')} style={{
           display: 'flex', alignItems: 'center', gap: 8,
           background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
           border: 'none', borderRadius: 50, padding: '12px 22px',
@@ -806,7 +810,6 @@ export default function Earn() {
         </button>
       </div>
 
-      {showAddMission && <AddMissionPopup onClose={() => setShowAddMission(false)} userBalance={userBalance} isAdmin={isAdmin} />}
       {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}
     </div>
   );
