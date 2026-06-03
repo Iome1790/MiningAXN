@@ -6855,7 +6855,7 @@ ${walletAddress}
       const { code } = req.body;
       
       if (!code || !code.trim()) {
-        return res.status(400).json({ 
+        return res.status(200).json({ 
           success: false,
           message: 'Please enter a promo code' 
         });
@@ -6864,9 +6864,9 @@ ${walletAddress}
       // Use promo code (validates all conditions including existence, limits, expiry)
       const result = await storage.usePromoCode(code.trim().toUpperCase(), userId);
       
-      // Handle errors with proper user-friendly messages
+      // Handle errors — always 200 so frontend can read the message
       if (!result.success) {
-        return res.status(400).json({ 
+        return res.status(200).json({ 
           success: false, 
           message: result.message
         });
@@ -6876,7 +6876,7 @@ ${walletAddress}
       const promoCode = await storage.getPromoCode(code.trim().toUpperCase());
       
       if (!promoCode) {
-        return res.status(400).json({ 
+        return res.status(200).json({ 
           success: false, 
           message: 'Invalid promo code'
         });
@@ -6888,20 +6888,47 @@ ${walletAddress}
       if (rewardType === 'PDZ') rewardType = '';
       const rewardAmount = result.reward;
       
-      if (rewardType === 'AXN') {
-        // Add AXN balance - addEarning handles BOTH earnings tracking AND balance update
-        const rewardPad = parseInt(rewardAmount || '0');
-        
-        await storage.addEarning({
+      if (rewardType === 'CIPHER') {
+        // Add CIPHER balance (balance field, not wallet_balance) — exact integer amount
+        const rewardNum = parseFloat(rewardAmount || '0');
+        const { pool } = await import('./db');
+        await pool.query(
+          `UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1 WHERE id = $2`,
+          [rewardNum, userId]
+        );
+        await storage.logTransaction({
           userId,
           amount: rewardAmount || '0',
+          type: 'credit',
           source: 'promo_code',
           description: `Redeemed promo code: ${code}`,
+          metadata: { code, rewardType: 'CIPHER' }
         });
-        
+        res.json({
+          success: true,
+          message: `+${rewardNum} CIPHER added to your balance!`,
+          reward: rewardAmount,
+          rewardType: 'CIPHER'
+        });
+      } else if (rewardType === 'AXN') {
+        // Add AXN wallet_balance — direct SQL update (addEarning only touches CIPHER balance field)
+        const rewardNum = parseFloat(rewardAmount || '0');
+        const { pool } = await import('./db');
+        await pool.query(
+          `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric, 0) + $1 WHERE id = $2`,
+          [rewardNum, userId]
+        );
+        await storage.logTransaction({
+          userId,
+          amount: rewardAmount || '0',
+          type: 'credit',
+          source: 'promo_code',
+          description: `Redeemed promo code: ${code}`,
+          metadata: { code, rewardType: 'AXN' }
+        });
         res.json({ 
           success: true, 
-          message: `${rewardPad} AXN added to your balance!`,
+          message: `+${rewardNum} AXN added to your wallet!`,
           reward: rewardAmount,
           rewardType: 'AXN'
         });
@@ -8548,18 +8575,47 @@ ${walletAddress}
 
       // Deduct balance and create task atomically
       await pool.query('BEGIN');
+      let newTaskId: number | null = null;
       try {
         await pool.query(`UPDATE users SET balance = COALESCE(balance::numeric, 0) - $1 WHERE id = $2`, [totalCost, userId]);
         const ins = await pool.query(
           `INSERT INTO user_tasks (user_id, title, link, category, impressions, reward_per_completion, total_cost, status) VALUES ($1,$2,$3,$4,$5,10,$6,'pending') RETURNING id`,
           [userId, title.slice(0, 100), link.slice(0, 500), category, imp, totalCost]
         );
+        newTaskId = ins.rows[0].id;
         await pool.query('COMMIT');
-        return res.json({ success: true, taskId: ins.rows[0].id, message: 'Task submitted for review. It will appear after admin approval.' });
       } catch (e) {
         await pool.query('ROLLBACK');
         throw e;
       }
+
+      // Notify admin via Telegram
+      try {
+        const adminTgId = process.env.TELEGRAM_ADMIN_ID;
+        if (adminTgId && newTaskId) {
+          const userRes = await pool.query(`SELECT username, telegram_id FROM users WHERE id = $1`, [userId]);
+          const u = userRes.rows[0];
+          const uLabel = u?.username ? `@${u.username}` : `TG ${u?.telegram_id || userId}`;
+          const catLabel = category === 'channel_group' ? 'Channel/Group' : 'Website/Bot';
+          const { sendTelegramMessage } = await import('./telegram');
+          await sendTelegramMessage({
+            chat_id: adminTgId,
+            text: `🆕 <b>New Mission Submitted</b>\n\n` +
+              `👤 User: ${uLabel}\n` +
+              `📋 Title: ${title.slice(0, 60)}\n` +
+              `🏷 Type: ${catLabel}\n` +
+              `👁 Impressions: ${imp}\n` +
+              `💰 Cost paid: ${totalCost} CIPHER\n` +
+              `🔗 Link: ${link.slice(0, 80)}\n\n` +
+              `Approve or reject in Admin Panel → Missions tab.`,
+            parse_mode: 'HTML',
+          });
+        }
+      } catch (notifyErr) {
+        console.warn('Admin notification failed (non-critical):', notifyErr);
+      }
+
+      return res.json({ success: true, taskId: newTaskId, message: 'Task submitted for review. It will appear after admin approval.' });
     } catch (e) {
       console.error('Create user task error:', e);
       return res.status(500).json({ message: 'Failed to create task' });
@@ -8661,6 +8717,71 @@ ${walletAddress}
     }
   });
 
+  // ── My Tasks (missions created by current user) ───────────────────────────
+  app.get('/api/my-tasks', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const { pool } = await import('./db');
+      const tasks = await pool.query(`
+        SELECT id, title, link, category, impressions, completed_count, reward_per_completion, total_cost, status, created_at
+        FROM user_tasks WHERE user_id = $1
+        ORDER BY created_at DESC
+      `, [userId]);
+      return res.json(tasks.rows);
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed to fetch your tasks' });
+    }
+  });
+
+  // ── User: Delete own task with correct refund ────────────────────────────
+  app.delete('/api/my-tasks/:taskId', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const taskId = parseInt(req.params.taskId, 10);
+      const { pool } = await import('./db');
+
+      const taskRes = await pool.query(
+        `SELECT id, user_id, impressions, completed_count, status FROM user_tasks WHERE id = $1`,
+        [taskId]
+      );
+      if (!taskRes.rows[0]) return res.status(404).json({ message: 'Task not found' });
+      const task = taskRes.rows[0];
+
+      if (task.user_id !== userId) return res.status(403).json({ message: 'Not your task' });
+      if (task.status === 'rejected') return res.status(400).json({ message: 'Rejected tasks cannot be deleted — balance was already refunded on rejection.' });
+
+      const COST_PER_IMPRESSION = 35;
+      const remaining = Math.max(0, (task.impressions || 0) - (task.completed_count || 0));
+      const refund = remaining * COST_PER_IMPRESSION;
+
+      await pool.query('BEGIN');
+      try {
+        await pool.query(`DELETE FROM user_task_completions WHERE task_id = $1`, [taskId]);
+        await pool.query(`DELETE FROM user_tasks WHERE id = $1`, [taskId]);
+        if (refund > 0) {
+          await pool.query(
+            `UPDATE users SET balance = COALESCE(balance::numeric, 0) + $1 WHERE id = $2`,
+            [refund, userId]
+          );
+        }
+        await pool.query('COMMIT');
+      } catch (e) {
+        await pool.query('ROLLBACK');
+        throw e;
+      }
+
+      const msg = refund > 0
+        ? `Mission deleted. +${refund} CIPHER refunded (${remaining} unused impressions × 35).`
+        : 'Mission deleted. No refund — all impressions were already used.';
+      return res.json({ success: true, refund, message: msg });
+    } catch (e) {
+      console.error('Delete my-task error:', e);
+      return res.status(500).json({ message: 'Failed to delete task' });
+    }
+  });
+
   // ── Admin: User Task Approval ─────────────────────────────────────────────
   app.get('/api/admin/user-tasks', authenticateTelegram, async (req: any, res) => {
     try {
@@ -8709,6 +8830,39 @@ ${walletAddress}
           [taskRes.rows[0].total_cost, taskRes.rows[0].user_id]);
       }
       await pool.query(`UPDATE user_tasks SET status = 'rejected' WHERE id = $1`, [req.params.taskId]);
+      return res.json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed' });
+    }
+  });
+
+  app.post('/api/admin/user-tasks/:taskId/pause', authenticateTelegram, async (req: any, res) => {
+    try {
+      const telegramUser = req.user?.telegramUser;
+      if (!telegramUser || !isAdmin(telegramUser.id.toString())) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const { pool } = await import('./db');
+      const taskRes = await pool.query(`SELECT status FROM user_tasks WHERE id = $1`, [req.params.taskId]);
+      if (!taskRes.rows[0]) return res.status(404).json({ message: 'Not found' });
+      const currentStatus = taskRes.rows[0].status;
+      const newStatus = currentStatus === 'paused' ? 'approved' : 'paused';
+      await pool.query(`UPDATE user_tasks SET status = $1 WHERE id = $2`, [newStatus, req.params.taskId]);
+      return res.json({ success: true, status: newStatus });
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed' });
+    }
+  });
+
+  app.delete('/api/admin/user-tasks/:taskId', authenticateTelegram, async (req: any, res) => {
+    try {
+      const telegramUser = req.user?.telegramUser;
+      if (!telegramUser || !isAdmin(telegramUser.id.toString())) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const { pool } = await import('./db');
+      await pool.query(`DELETE FROM user_task_completions WHERE task_id = $1`, [req.params.taskId]);
+      await pool.query(`DELETE FROM user_tasks WHERE id = $1`, [req.params.taskId]);
       return res.json({ success: true });
     } catch (e) {
       return res.status(500).json({ message: 'Failed' });

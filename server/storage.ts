@@ -1188,22 +1188,21 @@ export class DatabaseStorage implements IStorage {
 
   async usePromoCode(code: string, userId: string): Promise<{ success: boolean; message: string; reward?: string; errorType?: string }> {
     try {
-      const [promo] = await db.execute(sql`SELECT * FROM promo_codes WHERE code = ${code} LIMIT 1`) as any;
-      const row = (promo as any)?.rows?.[0];
+      const { pool } = await import('./db');
+      const promoRes = await pool.query(`SELECT * FROM promo_codes WHERE code = $1 LIMIT 1`, [code]);
+      const row = promoRes.rows[0];
       if (!row) return { success: false, message: 'Invalid promo code', errorType: 'not_found' };
       if (!row.is_active) return { success: false, message: 'This promo code is inactive', errorType: 'not_active' };
       if (row.expires_at && new Date(row.expires_at) < new Date()) return { success: false, message: 'This promo code has expired', errorType: 'expired' };
       if (row.usage_limit && row.use_count >= row.usage_limit) return { success: false, message: 'This promo code has reached its usage limit', errorType: 'limit_reached' };
 
-      // Check per-user usage
-      const [usageRes] = await db.execute(sql`SELECT COUNT(*) as cnt FROM promo_code_usage WHERE code = ${code} AND user_id = ${userId}`) as any;
-      const usageCount = parseInt((usageRes as any)?.rows?.[0]?.cnt || '0');
+      const usageRes = await pool.query(`SELECT COUNT(*) as cnt FROM promo_code_usage WHERE code = $1 AND user_id = $2`, [code, userId]);
+      const usageCount = parseInt(usageRes.rows[0]?.cnt || '0');
       const perUserLimit = row.per_user_limit || 1;
       if (usageCount >= perUserLimit) return { success: false, message: 'You have already claimed this promo code', errorType: 'already_used' };
 
-      // Record usage and increment count atomically
-      await db.execute(sql`INSERT INTO promo_code_usage (id, code, user_id) VALUES (gen_random_uuid(), ${code}, ${userId})`);
-      await db.execute(sql`UPDATE promo_codes SET use_count = use_count + 1 WHERE code = ${code}`);
+      await pool.query(`INSERT INTO promo_code_usage (id, code, user_id) VALUES (gen_random_uuid(), $1, $2)`, [code, userId]);
+      await pool.query(`UPDATE promo_codes SET use_count = use_count + 1 WHERE code = $1`, [code]);
 
       return { success: true, message: 'Promo code redeemed!', reward: row.reward_amount?.toString() };
     } catch (e) {
@@ -1228,15 +1227,17 @@ export class DatabaseStorage implements IStorage {
 
   async getAllPromoCodes(): Promise<any[]> {
     try {
-      const [res] = await db.execute(sql`SELECT * FROM promo_codes ORDER BY created_at DESC`) as any;
-      return (res as any)?.rows || [];
+      const { pool } = await import('./db');
+      const res = await pool.query(`SELECT * FROM promo_codes ORDER BY created_at DESC`);
+      return res.rows || [];
     } catch { return []; }
   }
 
   async getPromoCode(code: string): Promise<any> {
     try {
-      const [res] = await db.execute(sql`SELECT * FROM promo_codes WHERE code = ${code} LIMIT 1`) as any;
-      const row = (res as any)?.rows?.[0];
+      const { pool } = await import('./db');
+      const res = await pool.query(`SELECT * FROM promo_codes WHERE code = $1 LIMIT 1`, [code]);
+      const row = res.rows[0];
       if (!row) return undefined;
       return { ...row, rewardAmount: row.reward_amount, rewardType: row.reward_type, usageLimit: row.usage_limit, usageCount: row.use_count, perUserLimit: row.per_user_limit, isActive: row.is_active, expiresAt: row.expires_at };
     } catch { return undefined; }
@@ -1244,7 +1245,8 @@ export class DatabaseStorage implements IStorage {
 
   async updatePromoCodeStatus(id: string, isActive: boolean): Promise<any> {
     try {
-      await db.execute(sql`UPDATE promo_codes SET is_active = ${isActive} WHERE id = ${id}`);
+      const { pool } = await import('./db');
+      await pool.query(`UPDATE promo_codes SET is_active = $1 WHERE id = $2`, [isActive, id]);
       return { success: true };
     } catch { return { success: false }; }
   }
