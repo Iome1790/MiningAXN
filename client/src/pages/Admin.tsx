@@ -1270,6 +1270,7 @@ function PromoSection() {
   const [code, setCode] = useState('');
   const [amount, setAmount] = useState('');
   const [maxUses, setMaxUses] = useState('');
+  const [currency, setCurrency] = useState<'CIPHER' | 'AXN'>('CIPHER');
   const [creating, setCreating] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
@@ -1280,20 +1281,23 @@ function PromoSection() {
   const promoCodes: any[] = data?.promoCodes || [];
 
   const handleCreate = async () => {
-    if (!amount || parseFloat(amount) <= 0) { toast({ title: 'Enter a valid AXN amount', variant: 'destructive' }); return; }
+    if (!amount || parseFloat(amount) <= 0) {
+      toast({ title: `Enter a valid ${currency} amount`, variant: 'destructive' });
+      return;
+    }
     setCreating(true);
-    const finalCode = code.trim().toUpperCase() || ('AXNPROMO' + Math.random().toString(36).slice(2, 7).toUpperCase());
+    const finalCode = code.trim().toUpperCase() || ((currency === 'CIPHER' ? 'CIPHER' : 'AXN') + Math.random().toString(36).slice(2, 7).toUpperCase());
     try {
       const res = await apiRequest('POST', '/api/admin/promo-codes', {
         code: finalCode,
         rewardAmount: amount,
-        rewardType: 'AXN',
+        rewardType: currency,
         usageLimit: maxUses ? parseInt(maxUses) : null,
         perUserLimit: 1,
       });
       const d = await res.json();
       if (d.success) {
-        toast({ title: `✅ Promo code "${finalCode}" created!` });
+        toast({ title: `✅ Promo code "${finalCode}" created! (${currency})` });
         setCode(''); setAmount(''); setMaxUses('');
         refetch();
       } else {
@@ -1314,6 +1318,10 @@ function PromoSection() {
     } catch { toast({ title: 'Error updating code', variant: 'destructive' }); }
   };
 
+  const currencyColor = (type: string) =>
+    type === 'CIPHER' ? 'text-purple-400' : type === 'AXN' ? 'text-blue-400' : 'text-gray-400';
+  const currencyLabel = (type: string) => type || 'AXN';
+
   return (
     <div className="space-y-5 pb-10">
       <div className="bg-[#0f0f0f] border border-white/8 rounded-xl p-4 space-y-4">
@@ -1321,10 +1329,35 @@ function PromoSection() {
           <CheckCircle className="w-3.5 h-3.5" /> Create Promo Code
         </p>
 
+        {/* Currency selector */}
+        <div className="space-y-1">
+          <Label className="text-xs text-white font-medium">Reward Currency</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {(['CIPHER', 'AXN'] as const).map(c => (
+              <button
+                key={c}
+                onClick={() => setCurrency(c)}
+                className={`py-2 rounded-lg text-xs font-bold transition-all border ${
+                  currency === c
+                    ? c === 'CIPHER'
+                      ? 'bg-purple-600/20 border-purple-500 text-purple-300'
+                      : 'bg-blue-600/20 border-blue-500 text-blue-300'
+                    : 'bg-white/5 border-white/10 text-gray-400'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-500 mt-1">
+            {currency === 'CIPHER' ? '🟣 CIPHER — earning balance (ads, tasks)' : '🔵 AXN — wallet balance (withdrawable)'}
+          </p>
+        </div>
+
         <div className="space-y-1">
           <Label className="text-xs text-white font-medium">Code (leave blank to auto-generate)</Label>
           <Input
-            placeholder="e.g. AXNLAUNCH2026"
+            placeholder="e.g. LAUNCH2026"
             value={code}
             onChange={e => setCode(e.target.value.toUpperCase())}
             className="h-8 text-xs bg-[#0a0a0a] border-white/10 font-mono tracking-widest"
@@ -1332,10 +1365,10 @@ function PromoSection() {
         </div>
 
         <div className="space-y-1">
-          <Label className="text-xs text-white font-medium">AXN Reward Amount</Label>
+          <Label className="text-xs text-white font-medium">{currency} Reward Amount</Label>
           <Input
             type="number"
-            placeholder="e.g. 100"
+            placeholder={currency === 'CIPHER' ? 'e.g. 500' : 'e.g. 100'}
             value={amount}
             onChange={e => setAmount(e.target.value)}
             className="h-8 text-xs bg-[#0a0a0a] border-white/10"
@@ -1353,8 +1386,8 @@ function PromoSection() {
           />
         </div>
 
-        <Button size="sm" onClick={handleCreate} disabled={creating} className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700">
-          {creating ? 'Creating...' : '✅ Create Promo Code'}
+        <Button size="sm" onClick={handleCreate} disabled={creating} className={`w-full h-8 text-xs ${currency === 'CIPHER' ? 'bg-purple-700 hover:bg-purple-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
+          {creating ? 'Creating...' : `✅ Create ${currency} Promo Code`}
         </Button>
       </div>
 
@@ -1382,7 +1415,9 @@ function PromoSection() {
                 </div>
               </div>
               <div className="flex items-center gap-3 text-[11px] text-gray-400">
-                <span className="text-blue-400 font-bold">{fmt(p.reward_amount)} AXN</span>
+                <span className={`font-bold ${currencyColor(p.reward_type)}`}>
+                  {fmt(p.reward_amount)} {currencyLabel(p.reward_type)}
+                </span>
                 <span>Uses: {p.use_count || 0}{p.usage_limit ? ` / ${p.usage_limit}` : ' / ∞'}</span>
                 {p.expires_at && <span>Exp: {new Date(p.expires_at).toLocaleDateString()}</span>}
               </div>
@@ -1399,7 +1434,7 @@ function PromoSection() {
 function MissionsSection({ tasks, onRefresh }: { tasks: any[]; onRefresh: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [filter, setFilter] = useState<'pending' | 'approved' | 'paused' | 'rejected' | 'all'>('pending');
   const [loading, setLoading] = useState<Record<number, string>>({});
 
   const filtered = Array.isArray(tasks)
@@ -1407,19 +1442,37 @@ function MissionsSection({ tasks, onRefresh }: { tasks: any[]; onRefresh: () => 
     : [];
 
   const counts = {
-    pending: Array.isArray(tasks) ? tasks.filter((t: any) => t.status === 'pending').length : 0,
+    pending:  Array.isArray(tasks) ? tasks.filter((t: any) => t.status === 'pending').length : 0,
     approved: Array.isArray(tasks) ? tasks.filter((t: any) => t.status === 'approved').length : 0,
+    paused:   Array.isArray(tasks) ? tasks.filter((t: any) => t.status === 'paused').length : 0,
     rejected: Array.isArray(tasks) ? tasks.filter((t: any) => t.status === 'rejected').length : 0,
-    all: Array.isArray(tasks) ? tasks.length : 0,
+    all:      Array.isArray(tasks) ? tasks.length : 0,
   };
 
-  const handleAction = async (taskId: number, action: 'approve' | 'reject') => {
+  const totalCompleted = Array.isArray(tasks) ? tasks.reduce((s: number, t: any) => s + (t.completed_count || 0), 0) : 0;
+  const totalImpressions = Array.isArray(tasks) ? tasks.reduce((s: number, t: any) => s + (t.impressions || 0), 0) : 0;
+
+  const handleAction = async (taskId: number, action: 'approve' | 'reject' | 'pause' | 'delete') => {
+    if (action === 'delete' && !window.confirm('Delete this mission permanently? This cannot be undone.')) return;
     setLoading(prev => ({ ...prev, [taskId]: action }));
     try {
-      const res = await apiRequest('POST', `/api/admin/user-tasks/${taskId}/${action}`, {});
+      let res: Response;
+      if (action === 'delete') {
+        res = await apiRequest('DELETE', `/api/admin/user-tasks/${taskId}`, {});
+      } else if (action === 'pause') {
+        res = await apiRequest('POST', `/api/admin/user-tasks/${taskId}/pause`, {});
+      } else {
+        res = await apiRequest('POST', `/api/admin/user-tasks/${taskId}/${action}`, {});
+      }
       const data = await res.json();
       if (data.success) {
-        toast({ title: action === 'approve' ? '✅ Mission Approved' : '❌ Mission Rejected', description: action === 'reject' ? 'Balance refunded to user.' : 'Mission is now live.' });
+        const msgs: Record<string, string> = {
+          approve: '✅ Mission Approved — now live',
+          reject:  '❌ Mission Rejected — balance refunded',
+          pause:   `⏸ Mission ${data.status === 'paused' ? 'Paused' : 'Resumed'}`,
+          delete:  '🗑 Mission Deleted',
+        };
+        toast({ title: msgs[action] || 'Done' });
         queryClient.invalidateQueries({ queryKey: ['/api/admin/user-tasks'] });
         onRefresh();
       } else {
@@ -1431,14 +1484,36 @@ function MissionsSection({ tasks, onRefresh }: { tasks: any[]; onRefresh: () => 
     setLoading(prev => { const n = { ...prev }; delete n[taskId]; return n; });
   };
 
-  const statusColor = (s: string) => s === 'approved' ? 'text-green-400 bg-green-900/30' : s === 'rejected' ? 'text-red-400 bg-red-900/30' : 'text-orange-400 bg-orange-900/30';
+  const statusColor = (s: string) =>
+    s === 'approved' ? 'text-green-400 bg-green-900/30' :
+    s === 'rejected' ? 'text-red-400 bg-red-900/30' :
+    s === 'paused'   ? 'text-gray-400 bg-gray-800/50' :
+    'text-orange-400 bg-orange-900/30';
   const catLabel = (c: string) => c === 'channel_group' ? 'Channel/Group' : 'Website/Bot';
 
   return (
     <div className="space-y-4 pb-10">
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Total', value: counts.all, color: 'text-blue-400' },
+          { label: 'Active', value: counts.approved, color: 'text-green-400' },
+          { label: 'Pending', value: counts.pending, color: 'text-orange-400' },
+          { label: 'Paused', value: counts.paused, color: 'text-gray-400' },
+          { label: 'Completed', value: `${totalCompleted}/${totalImpressions}`, color: 'text-purple-400' },
+          { label: 'Rejected', value: counts.rejected, color: 'text-red-400' },
+        ].map(s => (
+          <div key={s.label} className="bg-[#0f0f0f] border border-white/8 rounded-xl p-3 text-center">
+            <p className={`text-base font-bold ${s.color}`}>{s.value}</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
       {/* Filter Bar */}
       <div className="flex gap-2 flex-wrap">
-        {(['pending', 'approved', 'rejected', 'all'] as const).map(f => (
+        {(['pending', 'approved', 'paused', 'rejected', 'all'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${filter === f ? 'bg-blue-600 text-white' : 'bg-white/5 text-gray-400 hover:text-white'}`}>
             {f}
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${filter === f ? 'bg-white/20 text-white' : 'bg-white/10 text-gray-400'}`}>{counts[f]}</span>
@@ -1456,7 +1531,9 @@ function MissionsSection({ tasks, onRefresh }: { tasks: any[]; onRefresh: () => 
       )}
 
       <div className="space-y-3">
-        {filtered.map((task: any) => (
+        {filtered.map((task: any) => {
+          const pct = task.impressions > 0 ? Math.min(100, Math.round(((task.completed_count || 0) / task.impressions) * 100)) : 0;
+          return (
           <div key={task.id} className="bg-[#0f0f0f] border border-white/8 rounded-xl p-4 space-y-3">
             {/* Header */}
             <div className="flex items-start justify-between gap-2">
@@ -1474,6 +1551,17 @@ function MissionsSection({ tasks, onRefresh }: { tasks: any[]; onRefresh: () => 
               </div>
             </div>
 
+            {/* Progress bar */}
+            <div>
+              <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                <span>{task.completed_count || 0} / {task.impressions} completed</span>
+                <span>{pct}%</span>
+              </div>
+              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+
             {/* Link */}
             {task.link && (
               <a href={task.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[11px] text-blue-400 hover:text-blue-300 bg-blue-950/30 rounded-lg px-3 py-2 truncate">
@@ -1482,15 +1570,14 @@ function MissionsSection({ tasks, onRefresh }: { tasks: any[]; onRefresh: () => 
               </a>
             )}
 
-            {/* Creator & Progress */}
-            <div className="flex items-center justify-between text-[11px] text-gray-500">
-              <span>By: <span className="text-gray-300">@{task.creator_username || task.creator_telegram_id || task.user_id}</span></span>
-              <span>{task.completed_count || 0} / {task.impressions} completed</span>
+            {/* Creator */}
+            <div className="text-[11px] text-gray-500">
+              By: <span className="text-gray-300">@{task.creator_username || task.creator_telegram_id || task.user_id}</span>
             </div>
 
             {/* Actions */}
-            {task.status === 'pending' && (
-              <div className="flex gap-2 pt-1">
+            <div className="flex gap-2 pt-1 flex-wrap">
+              {task.status === 'pending' && (
                 <button
                   onClick={() => handleAction(task.id, 'approve')}
                   disabled={!!loading[task.id]}
@@ -1499,6 +1586,8 @@ function MissionsSection({ tasks, onRefresh }: { tasks: any[]; onRefresh: () => 
                   {loading[task.id] === 'approve' ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
                   Approve
                 </button>
+              )}
+              {task.status === 'pending' && (
                 <button
                   onClick={() => handleAction(task.id, 'reject')}
                   disabled={!!loading[task.id]}
@@ -1507,10 +1596,35 @@ function MissionsSection({ tasks, onRefresh }: { tasks: any[]; onRefresh: () => 
                   {loading[task.id] === 'reject' ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
                   Reject & Refund
                 </button>
-              </div>
-            )}
+              )}
+              {(task.status === 'approved' || task.status === 'paused') && (
+                <button
+                  onClick={() => handleAction(task.id, 'pause')}
+                  disabled={!!loading[task.id]}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${task.status === 'paused' ? 'bg-green-700/60 hover:bg-green-600/80 text-green-200' : 'bg-yellow-700/50 hover:bg-yellow-600/70 text-yellow-200'}`}
+                >
+                  {loading[task.id] === 'pause' ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
+                    task.status === 'paused'
+                      ? <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                  }
+                  {task.status === 'paused' ? 'Resume' : 'Pause'}
+                </button>
+              )}
+              <button
+                onClick={() => handleAction(task.id, 'delete')}
+                disabled={!!loading[task.id]}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-red-900/40 hover:bg-red-800/60 text-red-300 disabled:opacity-50 transition-colors"
+              >
+                {loading[task.id] === 'delete' ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                }
+                Delete
+              </button>
+            </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

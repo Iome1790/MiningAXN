@@ -562,6 +562,126 @@ function SectionLabel({ title, subtitle }: { title: string; subtitle?: string })
   );
 }
 
+function MyMissionRow({ task, isLast, onDeleted }: { task: any; isLast: boolean; onDeleted: () => void }) {
+  const [deleting, setDeleting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const queryClient = useQueryClient();
+
+  const progress = task.completed_count || 0;
+  const total = task.impressions || 0;
+  const remaining = total - progress;
+  const refundAmount = remaining * 35;
+  const pct = total > 0 ? Math.min(100, Math.round((progress / total) * 100)) : 0;
+
+  const statusColor: Record<string, string> = {
+    pending:  '#f59e0b',
+    approved: '#22c55e',
+    rejected: '#ef4444',
+    paused:   '#6b7280',
+  };
+  const statusLabel: Record<string, string> = {
+    pending:  'Pending Review',
+    approved: 'Active',
+    rejected: 'Rejected',
+    paused:   'Paused',
+  };
+  const color = statusColor[task.status] || '#6b7280';
+  const isChannel = task.category === 'channel_group';
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await apiRequest('DELETE', `/api/my-tasks/${task.id}`, {});
+      const data = await res.json();
+      if (data.success) {
+        showNotification(data.message || `Deleted! +${refundAmount} CIPHER refunded.`, 'success');
+        queryClient.invalidateQueries({ queryKey: ['/api/my-tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+        onDeleted();
+      } else {
+        showNotification(data.message || 'Delete failed', 'error');
+      }
+    } catch {
+      showNotification('Delete failed. Try again.', 'error');
+    }
+    setDeleting(false);
+    setShowConfirm(false);
+  };
+
+  const canDelete = task.status !== 'rejected';
+
+  return (
+    <>
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          {isChannel
+            ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+              </svg>
+          }
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ color: TEXT, fontSize: 13, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 }}>{task.title}</span>
+              <span style={{ background: `${color}22`, borderRadius: 5, color, fontSize: 9, fontWeight: 800, padding: '2px 6px', flexShrink: 0 }}>{statusLabel[task.status] || task.status}</span>
+            </div>
+            <div style={{ marginTop: 6 }}>
+              <div style={{ height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: task.status === 'approved' ? '#22c55e' : 'rgba(255,255,255,0.2)', borderRadius: 4, transition: 'width 0.4s ease' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                <span style={{ color: TEXT_DIM, fontSize: 10 }}>{progress}/{total} impressions done</span>
+                <span style={{ color: TEXT_DIM, fontSize: 10 }}>{pct}%</span>
+              </div>
+            </div>
+          </div>
+          {canDelete && (
+            <button
+              onClick={() => setShowConfirm(true)}
+              disabled={deleting}
+              style={{ flexShrink: 0, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          )}
+        </div>
+
+        {/* Confirm delete panel */}
+        {showConfirm && (
+          <div style={{ marginTop: 10, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ color: '#fca5a5', fontSize: 11, marginBottom: 8, lineHeight: 1.4 }}>
+              Delete this mission?{remaining > 0 ? ` You'll get back ${refundAmount} CIPHER (${remaining} unused impressions × 35).` : ' No refund — all impressions used.'}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, padding: '7px 0', background: 'rgba(239,68,68,0.6)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
+                {deleting ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+              <button onClick={() => setShowConfirm(false)} style={{ flex: 1, padding: '7px 0', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: TEXT_DIM, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+      {!isLast && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />}
+    </>
+  );
+}
+
+function EmptyTaskState({ label }: { label: string }) {
+  return (
+    <div style={{ padding: '18px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span style={{ color: 'rgba(255,255,255,0.22)', fontSize: 12 }}>{label}</span>
+    </div>
+  );
+}
+
 export default function Earn() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAddMission, setShowAddMission] = useState(false);
@@ -570,6 +690,7 @@ export default function Earn() {
   const { data: bountyTasksRaw } = useQuery<any>({ queryKey: ['/api/bounty-tasks'], staleTime: 30000 });
   const bountyTasks: any[] = Array.isArray(bountyTasksRaw) ? bountyTasksRaw : (bountyTasksRaw?.tasks ?? []);
   const { data: userTasks = [] } = useQuery<any[]>({ queryKey: ['/api/user-tasks'], staleTime: 30000 });
+  const { data: myTasks = [] } = useQuery<any[]>({ queryKey: ['/api/my-tasks'], staleTime: 15000 });
 
   const axnNameClaimedToday = !!user?.axnNameClaimedToday;
   const userBalance = Math.floor(parseFloat(user?.balance || '0'));
@@ -613,37 +734,40 @@ export default function Earn() {
             ))}
           </div>
 
-          {/* Partner Tasks — only show when there are incomplete tasks */}
-          {partnerTasks.length > 0 && (
-            <>
-              <SectionLabel title="Partner Tasks" subtitle="Complete tasks with increased rewards." />
-              <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
-                {partnerTasks.map((t: any) => (
-                  <PartnerTaskRow key={t.id} task={t} />
-                ))}
-              </div>
-            </>
-          )}
+          {/* Partner Tasks */}
+          <SectionLabel title="Partner Tasks" subtitle="Complete tasks with increased rewards." />
+          <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+            {partnerTasks.length > 0
+              ? partnerTasks.map((t: any) => <PartnerTaskRow key={t.id} task={t} />)
+              : <EmptyTaskState label="No partner tasks available right now." />
+            }
+          </div>
 
           {/* Social Tasks (Channel/Group) */}
-          {socialTasks.length > 0 && (
-            <>
-              <SectionLabel title="Social Tasks" subtitle="Join channels and groups for rewards." />
-              <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
-                {socialTasks.map((t: any) => (
-                  <UserTaskRow key={t.id} task={t} />
-                ))}
-              </div>
-            </>
-          )}
+          <SectionLabel title="Social Tasks" subtitle="Join channels and groups for rewards." />
+          <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+            {socialTasks.length > 0
+              ? socialTasks.map((t: any) => <UserTaskRow key={t.id} task={t} />)
+              : <EmptyTaskState label="No channel/group tasks available right now." />
+            }
+          </div>
 
-          {/* Bot Tasks */}
-          {botTasks.length > 0 && (
+          {/* Bot / Website Tasks */}
+          <SectionLabel title="Bot Tasks" subtitle="Launch a bot or visit a website for rewards." />
+          <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+            {botTasks.length > 0
+              ? botTasks.map((t: any) => <UserTaskRow key={t.id} task={t} />)
+              : <EmptyTaskState label="No bot/website tasks available right now." />
+            }
+          </div>
+
+          {/* My Missions */}
+          {(myTasks as any[]).length > 0 && (
             <>
-              <SectionLabel title="Bot Tasks" subtitle="Launch a bot and get rewards." />
+              <SectionLabel title="My Missions" subtitle="Missions you created — track status & progress." />
               <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
-                {botTasks.map((t: any) => (
-                  <UserTaskRow key={t.id} task={t} />
+                {(myTasks as any[]).map((t: any, i: number) => (
+                  <MyMissionRow key={t.id} task={t} isLast={i === (myTasks as any[]).length - 1} onDeleted={() => {}} />
                 ))}
               </div>
             </>

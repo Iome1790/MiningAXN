@@ -526,14 +526,15 @@ export default function Games() {
                 </button>
               );
               if (isActive && farmCountdown <= 0) return (
-                <button onClick={() => farmClaimMutation.mutate()} style={{ flex: 3, padding: '11px 0', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.65)', fontSize: 12, fontWeight: 800, letterSpacing: '0.05em' }} className="active:scale-95 transition-transform">
+                <button onClick={() => farmClaimMutation.mutate()} style={{ flex: 3, padding: '11px 0', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e', fontSize: 12, fontWeight: 800, letterSpacing: '0.05em' }} className="active:scale-95 transition-transform">
                   CLAIM
                 </button>
               );
               if (isActive) return (
-                <button onClick={() => farmClaimMutation.mutate()} style={{ flex: 3, padding: '11px 0', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: 700 }} className="active:scale-95 transition-transform">
+                <div style={{ flex: 3, padding: '11px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'rgba(255,255,255,0.35)', fontSize: 12, fontWeight: 700 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtCountdown(farmCountdown)}</span>
-                </button>
+                </div>
               );
               return (
                 <button onClick={() => farmStartMutation.mutate()} style={{ flex: 3, padding: '11px 0', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.65)', fontSize: 12, fontWeight: 800, letterSpacing: '0.05em' }} className="active:scale-95 transition-transform">
@@ -985,12 +986,26 @@ function _ReceivePopupRemoved({ user, onClose }: { user: any; onClose: () => voi
 function PromoPopup({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [adStep, setAdStep] = useState<'idle' | 'watching-ad' | 'redeeming'>('idle');
 
   const handleRedeem = async () => {
     if (!code.trim()) { showNotification('Enter a promo code', 'error'); return; }
+    if (loading) return;
     setLoading(true);
+
     try {
-      const res = await apiRequest('POST', '/api/promo/redeem', { code: code.trim() });
+      // Step 1: Show Monetag ad
+      setAdStep('watching-ad');
+      showNotification('Watch the ad to unlock your reward...', 'info');
+      try {
+        await showRewardedInterstitial();
+      } catch {
+        // Ad unavailable in dev/some environments — allow continuing
+      }
+
+      // Step 2: Redeem the promo code
+      setAdStep('redeeming');
+      const res = await apiRequest('POST', '/api/promo-codes/redeem', { code: code.trim() });
       const data = await res.json();
       if (data.success) {
         showNotification(data.message || 'Promo code redeemed!', 'success');
@@ -1002,12 +1017,15 @@ function PromoPopup({ onClose, onSuccess }: { onClose: () => void; onSuccess: ()
       showNotification('Failed to redeem. Try again.', 'error');
     } finally {
       setLoading(false);
+      setAdStep('idle');
     }
   };
 
+  const buttonLabel = adStep === 'watching-ad' ? 'Watching Ad...' : adStep === 'redeeming' ? 'Redeeming...' : 'Watch Ad & Redeem';
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 900, display: 'flex', alignItems: 'flex-end' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={onClose} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={!loading ? onClose : undefined} />
       <div style={{
         position: 'relative', width: '100%',
         background: 'linear-gradient(160deg, #0d0d0f 0%, #111118 100%)',
@@ -1021,25 +1039,28 @@ function PromoPopup({ onClose, onSuccess }: { onClose: () => void; onSuccess: ()
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <span style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>Promo Code</span>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={!loading ? onClose : undefined} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', cursor: loading ? 'default' : 'pointer', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 8 }}>
           <input
             value={code}
             onChange={e => setCode(e.target.value.toUpperCase())}
             placeholder="Enter promo code..."
+            disabled={loading}
             style={{
               width: '100%', padding: '14px', borderRadius: 14,
               border: '1.5px solid rgba(37,99,235,0.2)',
               fontSize: 15, color: '#fff', letterSpacing: '0.08em', fontWeight: 700,
               background: 'rgba(255,255,255,0.04)', outline: 'none',
               boxSizing: 'border-box', textAlign: 'center',
+              opacity: loading ? 0.5 : 1,
             }}
           />
         </div>
+        <p style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>A short ad plays before your reward is unlocked</p>
         <button
           onClick={handleRedeem}
           disabled={loading}
@@ -1052,7 +1073,7 @@ function PromoPopup({ onClose, onSuccess }: { onClose: () => void; onSuccess: ()
           }}
           className="active:scale-95 transition-transform"
         >
-          {loading ? 'Redeeming...' : 'Redeem'}
+          {buttonLabel}
         </button>
       </div>
     </div>
