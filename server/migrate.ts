@@ -776,6 +776,35 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`ALTER TABLE bounty_tasks ADD COLUMN IF NOT EXISTS total_impressions INTEGER DEFAULT 0`);
     await db.execute(sql`ALTER TABLE bounty_tasks ADD COLUMN IF NOT EXISTS completed_count INTEGER DEFAULT 0`);
 
+    // Bounty tasks: add is_paused column for pause/resume support
+    await db.execute(sql`ALTER TABLE bounty_tasks ADD COLUMN IF NOT EXISTS is_paused BOOLEAN DEFAULT FALSE`);
+
+    // Delete specific outdated partner tasks by title
+    try {
+      await db.execute(sql`
+        DELETE FROM bounty_task_completions
+        WHERE task_id IN (
+          SELECT id FROM bounty_tasks
+          WHERE LOWER(title) LIKE '%join axionet channel%'
+             OR LOWER(title) LIKE '%follow on twitter%'
+             OR LOWER(title) LIKE '%twitter%'
+             OR LOWER(title) LIKE '%hourly stars%'
+             OR LOWER(title) LIKE '%share axionet%'
+        )
+      `);
+      await db.execute(sql`
+        DELETE FROM bounty_tasks
+        WHERE LOWER(title) LIKE '%join axionet channel%'
+           OR LOWER(title) LIKE '%follow on twitter%'
+           OR LOWER(title) LIKE '%twitter%'
+           OR LOWER(title) LIKE '%hourly stars%'
+           OR LOWER(title) LIKE '%share axionet%'
+      `);
+      console.log('✅ [MIGRATION] Removed outdated partner tasks');
+    } catch (e) {
+      console.log('ℹ️ [MIGRATION] Partner task cleanup skipped:', e);
+    }
+
     console.log('✅ [MIGRATION] All tables and indexes created successfully');
     
   } catch (error) {

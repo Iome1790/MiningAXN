@@ -1291,7 +1291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "Not authenticated" });
       const { pool } = await import("./db");
       const [tasksRes, completedRes] = await Promise.all([
-        pool.query(`SELECT id, title, description, reward_axn, key_cost, url FROM bounty_tasks WHERE is_active = TRUE ORDER BY id ASC`),
+        pool.query(`SELECT id, title, description, reward_axn, key_cost, url FROM bounty_tasks WHERE is_active = TRUE AND (is_paused IS NULL OR is_paused = FALSE) ORDER BY id ASC`),
         pool.query(`SELECT task_id FROM bounty_task_completions WHERE user_id = $1`, [user.id]),
       ]);
       const completedIds = new Set(completedRes.rows.map((r: any) => r.task_id));
@@ -8597,19 +8597,18 @@ ${walletAddress}
           const u = userRes.rows[0];
           const uLabel = u?.username ? `@${u.username}` : `TG ${u?.telegram_id || userId}`;
           const catLabel = category === 'channel_group' ? 'Channel/Group' : 'Website/Bot';
-          const { sendTelegramMessage } = await import('./telegram');
-          await sendTelegramMessage({
-            chat_id: adminTgId,
-            text: `🆕 <b>New Mission Submitted</b>\n\n` +
+          const { sendUserTelegramNotification } = await import('./telegram');
+          await sendUserTelegramNotification(
+            adminTgId,
+            `🆕 <b>New Mission Submitted</b>\n\n` +
               `👤 User: ${uLabel}\n` +
               `📋 Title: ${title.slice(0, 60)}\n` +
               `🏷 Type: ${catLabel}\n` +
               `👁 Impressions: ${imp}\n` +
               `💰 Cost paid: ${totalCost} CIPHER\n` +
               `🔗 Link: ${link.slice(0, 80)}\n\n` +
-              `Approve or reject in Admin Panel → Missions tab.`,
-            parse_mode: 'HTML',
-          });
+              `Approve or reject in Admin Panel → Missions tab.`
+          );
         }
       } catch (notifyErr) {
         console.warn('Admin notification failed (non-critical):', notifyErr);
@@ -8898,8 +8897,46 @@ ${walletAddress}
         return res.status(403).json({ message: 'Forbidden' });
       }
       const { pool } = await import('./db');
-      await pool.query(`UPDATE bounty_tasks SET is_active = FALSE WHERE id = $1`, [req.params.taskId]);
+      await pool.query(`DELETE FROM bounty_task_completions WHERE task_id = $1`, [req.params.taskId]);
+      await pool.query(`DELETE FROM bounty_tasks WHERE id = $1`, [req.params.taskId]);
       return res.json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed' });
+    }
+  });
+
+  // ── Admin: List Partner Tasks ──────────────────────────────────────────────
+  app.get('/api/admin/partner-tasks', authenticateTelegram, async (req: any, res) => {
+    try {
+      const telegramUser = req.user?.telegramUser;
+      if (!telegramUser || !isAdmin(telegramUser.id.toString())) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const { pool } = await import('./db');
+      const result = await pool.query(
+        `SELECT id, title, description, url, reward_axn, total_impressions, completed_count, is_active, is_paused, created_at
+         FROM bounty_tasks
+         ORDER BY id DESC`
+      );
+      return res.json(result.rows);
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed to fetch partner tasks' });
+    }
+  });
+
+  // ── Admin: Pause/Resume Partner Task ──────────────────────────────────────
+  app.post('/api/admin/partner-tasks/:taskId/toggle-pause', authenticateTelegram, async (req: any, res) => {
+    try {
+      const telegramUser = req.user?.telegramUser;
+      if (!telegramUser || !isAdmin(telegramUser.id.toString())) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const { pool } = await import('./db');
+      const current = await pool.query(`SELECT is_paused FROM bounty_tasks WHERE id = $1`, [req.params.taskId]);
+      if (current.rows.length === 0) return res.status(404).json({ message: 'Task not found' });
+      const newPaused = !current.rows[0].is_paused;
+      await pool.query(`UPDATE bounty_tasks SET is_paused = $1 WHERE id = $2`, [newPaused, req.params.taskId]);
+      return res.json({ success: true, is_paused: newPaused });
     } catch (e) {
       return res.status(500).json({ message: 'Failed' });
     }
