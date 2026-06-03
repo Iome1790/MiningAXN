@@ -165,7 +165,7 @@ export default function AdminPage() {
 
   return (
     <Layout>
-      <main className="min-h-screen bg-[#0a0a0a] text-white pb-20">
+      <main className="h-full bg-[#0a0a0a] text-white overflow-y-auto pb-20">
         {/* Header */}
         <div className="sticky top-0 z-30 bg-[#0a0a0a]/95 backdrop-blur border-b border-white/5 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">

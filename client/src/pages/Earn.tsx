@@ -192,12 +192,16 @@ function PartnerTaskRow({ task }: { task: any }) {
 
   if (done) return null;
 
-  const handleGo = () => {
-    if (task.url) window.open(task.url, '_blank');
-    setClicked(true);
+  const handleRowClick = () => {
+    if (claiming) return;
+    if (!clicked) {
+      if (task.url) window.open(task.url, '_blank');
+      setClicked(true);
+    }
   };
 
-  const handleClaim = async () => {
+  const handleClaim = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (claiming) return;
     setClaiming(true);
     try {
@@ -224,7 +228,7 @@ function PartnerTaskRow({ task }: { task: any }) {
   };
 
   return (
-    <div className="task-row" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
+    <div className="task-row" onClick={handleRowClick} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px', cursor: clicked ? 'default' : 'pointer', WebkitTapHighlightColor: 'transparent' }}>
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
         <polyline points="15 3 21 3 21 9"/>
@@ -233,15 +237,13 @@ function PartnerTaskRow({ task }: { task: any }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
           <span style={{ color: TEXT, fontSize: 14, fontWeight: 800 }}>{task.title}</span>
-          <span style={{ background: 'rgba(37,99,235,0.12)', borderRadius: 5, color: BLUE, fontSize: 10, fontWeight: 800, padding: '2px 6px' }}>+{task.rewardAxn} CIPHER</span>
         </div>
         {task.description && <div style={{ color: TEXT_DIM, fontSize: 12, marginTop: 2 }}>{task.description}</div>}
       </div>
-      <div style={{ flexShrink: 0, display: 'flex', gap: 6 }}>
-        {!clicked && (
-          <button onClick={handleGo} style={{ background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`, border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 12, fontWeight: 800, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 10px rgba(37,99,235,0.3)' }} className="active:scale-95 transition-transform">GO</button>
-        )}
-        {clicked && (
+      <div style={{ flexShrink: 0 }}>
+        {!clicked ? (
+          <span style={{ background: 'rgba(37,99,235,0.15)', borderRadius: 8, color: BLUE, fontSize: 11, fontWeight: 800, padding: '5px 9px', display: 'inline-block' }}>+{task.rewardAxn} CIPHER</span>
+        ) : (
           <button onClick={handleClaim} disabled={claiming} style={{ background: claiming ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #16a34a, #22c55e)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 12, fontWeight: 800, color: claiming ? TEXT_DIM : '#fff', cursor: claiming ? 'not-allowed' : 'pointer', boxShadow: claiming ? 'none' : '0 2px 12px rgba(34,197,94,0.35)' }} className="active:scale-95 transition-transform">
             {claiming ? '…' : 'CLAIM'}
           </button>
@@ -259,12 +261,18 @@ function UserTaskRow({ task }: { task: any }) {
 
   if (done) return null;
 
-  const handleGo = () => {
-    if (task.link) window.open(task.link, '_blank');
-    setClicked(true);
+  const isChannel = task.category === 'channel_group';
+
+  const handleRowClick = () => {
+    if (claiming) return;
+    if (!clicked) {
+      if (task.link) window.open(task.link, '_blank');
+      setClicked(true);
+    }
   };
 
-  const handleClaim = async () => {
+  const handleClaim = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (claiming) return;
     setClaiming(true);
     try {
@@ -290,11 +298,8 @@ function UserTaskRow({ task }: { task: any }) {
     setClaiming(false);
   };
 
-  const remaining = (task.impressions || 0) - (task.completed_count || 0);
-  const isChannel = task.category === 'channel_group';
-
   return (
-    <div className="task-row" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px' }}>
+    <div className="task-row" onClick={handleRowClick} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 16px', cursor: clicked ? 'default' : 'pointer', WebkitTapHighlightColor: 'transparent' }}>
       {isChannel
         ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -305,17 +310,12 @@ function UserTaskRow({ task }: { task: any }) {
           </svg>
       }
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          <span style={{ color: TEXT, fontSize: 14, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 150 }}>{task.title}</span>
-          <span style={{ background: 'rgba(168,85,247,0.12)', borderRadius: 5, color: '#a855f7', fontSize: 10, fontWeight: 800, padding: '2px 6px' }}>+{task.reward_per_completion} CIPHER</span>
-        </div>
-        <div style={{ color: TEXT_DIM, fontSize: 12, marginTop: 2 }}>{remaining} slots left</div>
+        <span style={{ color: TEXT, fontSize: 14, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{task.title}</span>
       </div>
-      <div style={{ flexShrink: 0, display: 'flex', gap: 6 }}>
-        {!clicked && (
-          <button onClick={handleGo} style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)', border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 12, fontWeight: 800, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 10px rgba(168,85,247,0.3)' }} className="active:scale-95 transition-transform">GO</button>
-        )}
-        {clicked && (
+      <div style={{ flexShrink: 0 }}>
+        {!clicked ? (
+          <span style={{ background: 'rgba(168,85,247,0.15)', borderRadius: 8, color: '#a855f7', fontSize: 11, fontWeight: 800, padding: '5px 9px', display: 'inline-block' }}>+{task.reward_per_completion} CIPHER</span>
+        ) : (
           <button onClick={handleClaim} disabled={claiming} style={{ background: claiming ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #16a34a, #22c55e)', border: 'none', borderRadius: 10, padding: '9px 12px', fontSize: 12, fontWeight: 800, color: claiming ? TEXT_DIM : '#fff', cursor: claiming ? 'not-allowed' : 'pointer', boxShadow: claiming ? 'none' : '0 2px 12px rgba(34,197,94,0.35)' }} className="active:scale-95 transition-transform">
             {claiming ? '…' : 'CLAIM'}
           </button>
@@ -703,7 +703,6 @@ export default function Earn() {
     {
       key: 'partner',
       title: 'Partner Tasks',
-      subtitle: 'Complete tasks with increased rewards.',
       tasks: partnerTasks,
       emptyLabel: 'No partner tasks available right now.',
       renderRow: (t: any) => <PartnerTaskRow key={t.id} task={t} />,
@@ -711,7 +710,6 @@ export default function Earn() {
     {
       key: 'social',
       title: 'Social Tasks',
-      subtitle: 'Join channels and groups for rewards.',
       tasks: socialTasks,
       emptyLabel: 'No channel/group tasks available right now.',
       renderRow: (t: any) => <UserTaskRow key={t.id} task={t} />,
@@ -719,7 +717,6 @@ export default function Earn() {
     {
       key: 'bot',
       title: 'Bot Tasks',
-      subtitle: 'Launch a bot or visit a website for rewards.',
       tasks: botTasks,
       emptyLabel: 'No bot/website tasks available right now.',
       renderRow: (t: any) => <UserTaskRow key={t.id} task={t} />,
@@ -740,11 +737,42 @@ export default function Earn() {
 
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 'max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px))', paddingTop: 'calc(var(--header-height, 62px) + 12px)', width: '100%' }}>
 
-        <div style={{ padding: '0 16px', marginBottom: 18 }}>
-          <div style={{ fontSize: 22, fontWeight: 900, color: TEXT, letterSpacing: '-0.5px' }}>
-            Earn in the <span style={{ color: BLUE }}>Axionet</span>
+        {/* Banner — "I want my task here" */}
+        <div
+          onClick={() => setLocation('/add-mission')}
+          style={{ margin: '0 16px 18px', borderRadius: 18, overflow: 'hidden', cursor: 'pointer', position: 'relative', height: 130 }}
+          className="active:scale-[0.98] transition-transform"
+        >
+          <img src="/earn-banner.jpg" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 25%', filter: 'brightness(0.38)' }} />
+          {/* gradient: dark on right, lighter on left */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(260deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.15) 100%)' }} />
+          {/* Content pinned to right */}
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', padding: '14px 18px 16px' }}>
+            <div style={{
+              color: '#fff',
+              fontSize: 22,
+              fontWeight: 900,
+              letterSpacing: '-0.5px',
+              textAlign: 'right',
+              fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+              textShadow: '0 2px 16px rgba(0,0,0,0.9)',
+              lineHeight: 1.15,
+              marginBottom: 8,
+            }}>
+              I want my<br />task here
+            </div>
+            <div style={{
+              color: BLUE,
+              fontSize: 11,
+              fontWeight: 800,
+              textDecoration: 'underline',
+              textUnderlineOffset: 3,
+              letterSpacing: '0.02em',
+              textShadow: '0 1px 8px rgba(0,0,0,0.8)',
+            }}>
+              Create your own task →
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 3 }}>Watch ads · Complete tasks · Earn CIPHER</div>
         </div>
 
         <div style={{ padding: '0 16px' }}>
@@ -767,7 +795,7 @@ export default function Earn() {
           {/* Dynamic sections: tasks-first ordering */}
           {taskSections.map(section => (
             <div key={section.key}>
-              <SectionLabel title={section.title} subtitle={section.subtitle} />
+              <SectionLabel title={section.title} />
               <div style={{ background: CARD, borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
                 {section.tasks.length > 0
                   ? section.tasks.map(section.renderRow)
@@ -790,24 +818,6 @@ export default function Earn() {
           </div>
 
         </div>
-      </div>
-
-      {/* Floating Add Mission Button */}
-      <div style={{
-        position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)',
-        left: '50%', transform: 'translateX(-50%)', zIndex: 900,
-      }}>
-        <button onClick={() => setLocation('/add-mission')} style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          background: `linear-gradient(135deg, ${BLUE_D}, ${BLUE})`,
-          border: 'none', borderRadius: 50, padding: '12px 22px',
-          color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer',
-          boxShadow: '0 4px 20px rgba(37,99,235,0.5)',
-          whiteSpace: 'nowrap',
-        }} className="active:scale-95 transition-transform">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Add Mission
-        </button>
       </div>
 
       {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}
