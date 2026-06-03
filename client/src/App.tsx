@@ -22,6 +22,7 @@ declare global {
   }
 }
 
+const AddMissionPage = lazy(() => import("@/pages/AddMission"));
 const Landing = lazy(() => import("@/pages/Landing"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const CountryControls = lazy(() => import("@/pages/CountryControls"));
@@ -149,6 +150,7 @@ function Router() {
         <Switch>
           <Route path="/" component={() => { const [, setLocation] = useLocation(); setLocation("/game"); return null; }} />
           <Route path="/earn" component={EarnPage} />
+          <Route path="/add-mission" component={AddMissionPage} />
           <Route path="/watch" component={WatchPage} />
           <Route path="/friend" component={FriendPage} />
           <Route path="/landing" component={Landing} />
