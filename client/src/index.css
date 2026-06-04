@@ -418,3 +418,11 @@ a, button, [role="button"] {
   -webkit-touch-callout: none;
   outline: none;
 }
+
+/* TonConnect modal must always appear above app popups (z-index 901) */
+[class*="tc-root"],
+[class*="ton-connect"],
+#tc-widget-root,
+div[data-tc-wallets-modal-container] {
+  z-index: 99999 !important;
+}
