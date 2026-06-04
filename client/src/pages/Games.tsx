@@ -329,13 +329,7 @@ export default function Games() {
             {/* Withdraw */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
               <button
-                onClick={() => {
-                  if (isAdmin) {
-                    setShowWithdrawPopup(true);
-                  } else {
-                    showNotification('Withdraw coming soon', 'error');
-                  }
-                }}
+                onClick={() => setShowWithdrawPopup(true)}
                 style={{
                   width: 52, height: 52, borderRadius: '50%',
                   background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
