@@ -1012,12 +1012,13 @@ function SwapPopup({ onClose, cipherBalance, swapRate, swapMin, onSuccess }: { o
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
-  const RATE = swapRate; // configurable: N CIPHER = 1 AXN
+  const RATE = swapRate;
   const MIN_CIPHER = swapMin;
   const parsed = parseInt(amount) || 0;
   const rounded = Math.floor(parsed / RATE) * RATE;
   const axnOut = rounded / RATE;
   const canSwap = rounded >= MIN_CIPHER && rounded <= cipherBalance;
+  const maxAmount = Math.floor(cipherBalance / RATE) * RATE;
 
   const handleSwap = async () => {
     if (!canSwap || loading) return;
@@ -1041,86 +1042,75 @@ function SwapPopup({ onClose, cipherBalance, swapRate, swapMin, onSuccess }: { o
     setLoading(false);
   };
 
-  const BLUE = '#3b82f6';
-  const TEXT_DIM = 'rgba(255,255,255,0.38)';
-
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={onClose} />
-      <div style={{ position: 'relative', width: '100%', background: 'linear-gradient(160deg, #0d0d0f, #111118)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '28px 28px 0 0', overflow: 'hidden' }}>
-        <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)' }} />
-        <div style={{ padding: '24px 20px', paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 20px))' }}>
-          {/* Drag handle */}
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 20px' }} />
+      <div style={{ position: 'relative', width: '100%', background: 'linear-gradient(160deg, #0d0d0f, #111118)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '28px 28px 0 0', padding: '28px 20px', paddingBottom: 'max(48px, calc(env(safe-area-inset-bottom, 0px) + 24px))', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)' }} />
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 24px' }} />
 
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>Swap CIPHER → AXN</div>
-            <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 4 }}>Rate: {RATE} CIPHER = 1 AXN · Min: {MIN_CIPHER.toLocaleString()} CIPHER · Balance: {cipherBalance.toLocaleString()} CIPHER</div>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
+          <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: '#000', flexShrink: 0 }}>
+            <img src="/axn-coin.jpg" alt="AXN" style={{ width: '110%', height: '110%', objectFit: 'cover' }} />
           </div>
-
-          {/* Quick amount buttons */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-            {[MIN_CIPHER, MIN_CIPHER * 3, MIN_CIPHER * 6, MIN_CIPHER * 15].map(v => (
-              <button key={v} onClick={() => setAmount(String(v))} style={{
-                padding: '6px 14px', borderRadius: 20,
-                background: parsed === v ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${parsed === v ? BLUE : 'rgba(255,255,255,0.08)'}`,
-                color: parsed === v ? BLUE : TEXT_DIM,
-                fontSize: 12, fontWeight: 700, cursor: 'pointer',
-              }}>{v}</button>
-            ))}
-            <button onClick={() => setAmount(String(Math.floor(cipherBalance / RATE) * RATE))} style={{
-              padding: '6px 14px', borderRadius: 20,
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
-              color: TEXT_DIM, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            }}>MAX</button>
+          <div>
+            <div style={{ color: '#fff', fontSize: 17, fontWeight: 900 }}>Swap CIPHER → AXN</div>
+            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>{RATE.toLocaleString()} CIPHER = 1 AXN</div>
           </div>
+        </div>
 
-          {/* Input */}
-          <div style={{ position: 'relative', marginBottom: 12 }}>
+        {/* Info rows */}
+        <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '4px 0', marginBottom: 16 }}>
+          {[
+            { label: 'Your CIPHER', val: cipherBalance.toLocaleString() },
+            { label: 'Minimum', val: `${MIN_CIPHER.toLocaleString()} CIPHER` },
+            { label: 'You receive', val: axnOut > 0 ? `${axnOut.toLocaleString()} AXN` : '—' },
+          ].map((r, i, arr) => (
+            <div key={r.label}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
+                <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>{r.label}</span>
+                <span style={{ color: i === 2 && axnOut > 0 ? '#4ade80' : '#fff', fontSize: 13, fontWeight: 700 }}>{r.val}</span>
+              </div>
+              {i < arr.length - 1 && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />}
+            </div>
+          ))}
+        </div>
+
+        {/* Amount input row */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Amount</div>
+            <button onClick={() => setAmount(String(maxAmount))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', fontSize: 11, fontWeight: 700, padding: 0 }}>MAX</button>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, display: 'flex', alignItems: 'center', padding: '0 16px' }}>
             <input
               type="number"
               value={amount}
               onChange={e => setAmount(e.target.value)}
-              placeholder="Enter CIPHER amount (min 1000)"
-              style={{
-                width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 12, padding: '12px 14px', color: '#fff', fontSize: 15, fontWeight: 700,
-                outline: 'none', boxSizing: 'border-box',
-              }}
+              placeholder={`Min ${MIN_CIPHER.toLocaleString()}`}
+              style={{ flex: 1, padding: '14px 0', background: 'none', border: 'none', outline: 'none', color: '#fff', fontSize: 16, fontWeight: 700 }}
             />
+            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, fontWeight: 700 }}>CIPHER</span>
           </div>
-
-          {/* Preview */}
-          <div style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: '12px 14px', marginBottom: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: 11, color: TEXT_DIM, marginBottom: 2 }}>You pay</div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: '#fff' }}>{rounded > 0 ? rounded.toLocaleString() : '—'} CIPHER</div>
-            </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={BLUE} strokeWidth="2.2" strokeLinecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: TEXT_DIM, marginBottom: 2 }}>You receive</div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: axnOut > 0 ? '#22c55e' : '#fff' }}>{axnOut > 0 ? axnOut.toLocaleString() : '—'} AXN</div>
-            </div>
-          </div>
-
-          <button
-            onClick={handleSwap}
-            disabled={!canSwap || loading}
-            style={{
-              width: '100%', padding: '13px 0', border: 'none', borderRadius: 13,
-              background: !canSwap || loading ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #1d4ed8, #3b82f6)',
-              color: !canSwap || loading ? TEXT_DIM : '#fff',
-              fontSize: 15, fontWeight: 800, cursor: !canSwap || loading ? 'not-allowed' : 'pointer',
-              boxShadow: canSwap && !loading ? '0 4px 16px rgba(37,99,235,0.4)' : 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            }}
-            className={canSwap && !loading ? 'active:scale-95 transition-transform' : ''}
-          >
-            {loading && <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />}
-            {loading ? 'Swapping…' : canSwap ? `Swap ${rounded} CIPHER → ${axnOut} AXN` : 'Enter amount'}
-          </button>
         </div>
+
+        {/* Swap button */}
+        <button
+          onClick={handleSwap}
+          disabled={!canSwap || loading}
+          style={{
+            width: '100%', padding: '14px 0', border: 'none', borderRadius: 14,
+            background: canSwap && !loading ? 'linear-gradient(135deg, #1d4ed8, #3b82f6)' : 'rgba(255,255,255,0.06)',
+            color: canSwap && !loading ? '#fff' : 'rgba(255,255,255,0.25)',
+            fontSize: 14, fontWeight: 800, cursor: canSwap && !loading ? 'pointer' : 'not-allowed',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+          className={canSwap && !loading ? 'active:scale-95 transition-transform' : ''}
+        >
+          {loading && <span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />}
+          {loading ? 'Swapping…' : canSwap ? `Swap ${rounded.toLocaleString()} CIPHER → ${axnOut.toLocaleString()} AXN` : 'Enter an amount'}
+        </button>
       </div>
     </div>
   );

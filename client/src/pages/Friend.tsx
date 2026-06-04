@@ -184,7 +184,7 @@ function LeaderboardTable<T extends { rank: number; username: string | null; fir
 export default function Friend() {
   const [isSharing, setIsSharing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [lbTab, setLbTab] = useState<LbTab>('inviters');
+  const [lbTab, setLbTab] = useState<LbTab>('cipher');
 
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 60000 });
   const { data: wellData } = useQuery<WellData>({ queryKey: ['/api/referrals/well'], staleTime: 30000 });
