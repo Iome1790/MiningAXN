@@ -9050,13 +9050,29 @@ ${walletAddress}
       if (balance < 1000) return res.status(400).json({ message: 'Minimum 1,000 AXN required to withdraw' });
       if (balance < axnAmount) return res.status(400).json({ message: `Insufficient balance. You have ${Math.floor(balance)} AXN` });
 
-      // Block duplicate active claims
-      const existing = await pool.query(
-        `SELECT id FROM ton_withdrawals WHERE user_id = $1 AND status IN ('pending_payment','payment_confirmed','axn_sent') AND expires_at > NOW()`,
+      // Block if payment is already confirmed or being sent (truly in-progress, cannot cancel)
+      const inProgress = await pool.query(
+        `SELECT id FROM ton_withdrawals WHERE user_id = $1 AND status IN ('payment_confirmed','axn_sent') AND expires_at > NOW()`,
         [user.id]
       );
-      if (existing.rows.length > 0) {
-        return res.status(400).json({ message: 'You already have an active withdrawal. Wait for it to complete or expire.' });
+      if (inProgress.rows.length > 0) {
+        return res.status(400).json({ message: 'A withdrawal is already being processed. Please wait for it to complete.' });
+      }
+
+      // Auto-cancel any stale pending_payment records and refund their balance
+      const stalePending = await pool.query(
+        `UPDATE ton_withdrawals SET status = 'cancelled', updated_at = NOW()
+         WHERE user_id = $1 AND status = 'pending_payment'
+         RETURNING axn_amount`,
+        [user.id]
+      );
+      if (stalePending.rows.length > 0) {
+        const refundTotal = stalePending.rows.reduce((sum: number, r: any) => sum + parseFloat(r.axn_amount), 0);
+        await pool.query(
+          `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric,0) + $1 WHERE id = $2`,
+          [refundTotal, user.id]
+        );
+        console.log(`[TON-WITHDRAW] Auto-cancelled ${stalePending.rows.length} pending record(s), refunded ${refundTotal} AXN to user ${user.id}`);
       }
 
       // Deduct balance immediately to prevent double-spend
@@ -9105,6 +9121,38 @@ ${walletAddress}
       return res.json({ claim: row.rows[0] });
     } catch (e) {
       return res.status(500).json({ message: 'Failed to get status' });
+    }
+  });
+
+  // POST /api/ton-withdraw/cancel/:id — user cancels a pending_payment withdrawal and gets refund
+  app.post('/api/ton-withdraw/cancel/:id', authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: 'Not authenticated' });
+      const { pool } = await import('./db');
+
+      const result = await pool.query(
+        `UPDATE ton_withdrawals SET status = 'cancelled', updated_at = NOW()
+         WHERE id = $1 AND user_id = $2 AND status = 'pending_payment'
+         RETURNING axn_amount`,
+        [req.params.id, user.id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'No cancellable withdrawal found. It may have already been processed.' });
+      }
+
+      const refundAmount = parseFloat(result.rows[0].axn_amount);
+      await pool.query(
+        `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric,0) + $1 WHERE id = $2`,
+        [refundAmount, user.id]
+      );
+
+      console.log(`[TON-WITHDRAW] User ${user.id} cancelled claim ${req.params.id}, refunded ${refundAmount} AXN`);
+      return res.json({ success: true, refundedAmount: refundAmount });
+    } catch (e) {
+      console.error('[TON-WITHDRAW] cancel error:', e);
+      return res.status(500).json({ message: 'Failed to cancel withdrawal' });
     }
   });
 
