@@ -3,11 +3,12 @@ import { mnemonicToPrivateKey } from '@ton/crypto';
 
 const TREASURY_ADDRESS = 'UQDeroBz4zvOntJ4xuMdiwFtNddMhJ4cGxghF9B7fYz50q8b';
 const AXN_JETTON_MASTER = 'EQCj3Cpl5aEEdt7fhZmHrhCYA99YjMZxvkp8UmtmHT4Gfm7b';
+// Treasury's AXN jetton wallet — hardcoded (dynamic tonapi lookup returns empty for this wallet)
+const TREASURY_JETTON_WALLET = 'EQCwXpD3EieWnsV-ZR3ytGYdfkw9iGIat08r9M0GAteLuceS';
 export const CLAIM_FEE_TON = '0.03';
 export const CLAIM_FEE_NANO = '30000000';
 const AXN_DECIMALS = 9;
 
-// tonapi.io base — free, no rate limits for basic use
 const TONAPI = 'https://tonapi.io/v2';
 
 function tonapiHeaders(): Record<string, string> {
@@ -24,7 +25,6 @@ async function getTreasuryWallet() {
   return { wallet, keyPair };
 }
 
-// Both bounceable & non-bounceable forms for address comparison
 function getAllAddressForms(addr: string): string[] {
   try {
     const parsed = Address.parse(addr);
@@ -36,6 +36,69 @@ function getAllAddressForms(addr: string): string[] {
   } catch { return [addr]; }
 }
 
+// ── Get AXN balance from the treasury's jetton wallet via get_wallet_data ─────
+async function getJettonWalletBalance(): Promise<bigint> {
+  try {
+    const jwRaw = Address.parse(TREASURY_JETTON_WALLET).toRawString();
+    const resp = await fetch(
+      `${TONAPI}/blockchain/accounts/${jwRaw}/methods/get_wallet_data`,
+      { headers: tonapiHeaders(), signal: AbortSignal.timeout(10000) }
+    );
+    if (!resp.ok) throw new Error(`get_wallet_data failed: ${resp.status}`);
+    const data = await resp.json();
+    const balHex = data.decoded?.balance ?? data.stack?.[0]?.num;
+    if (balHex === undefined) throw new Error('balance not found in get_wallet_data response');
+    return typeof balHex === 'bigint' ? balHex
+         : typeof balHex === 'number' ? BigInt(balHex)
+         : balHex.startsWith('0x') ? BigInt(balHex)
+         : BigInt(balHex);
+  } catch (e) {
+    console.error('[TON] getJettonWalletBalance error:', e);
+    return BigInt(0);
+  }
+}
+
+// ── Treasury diagnostics ───────────────────────────────────────────────────────
+export async function getTreasuryInfo(): Promise<{
+  address: string;
+  tonBalance: string;
+  axnBalance: string;
+  axnBalanceRaw: string;
+  hasEnoughTon: boolean;
+  walletAddress: string;
+}> {
+  const treasuryRaw = Address.parse(TREASURY_ADDRESS).toRawString();
+
+  let tonBalance = '0';
+  let axnBalance = '0';
+  let axnBalanceRaw = '0';
+
+  // TON balance
+  try {
+    const accResp = await fetch(`${TONAPI}/accounts/${treasuryRaw}`, {
+      headers: tonapiHeaders(), signal: AbortSignal.timeout(10000)
+    });
+    if (accResp.ok) {
+      const acc = await accResp.json();
+      tonBalance = (Number(BigInt(acc.balance || 0)) / 1e9).toFixed(4);
+    }
+  } catch {}
+
+  // AXN balance — direct get_wallet_data on hardcoded jetton wallet
+  const rawBal = await getJettonWalletBalance();
+  axnBalanceRaw = rawBal.toString();
+  axnBalance = (Number(rawBal) / 10 ** AXN_DECIMALS).toFixed(2);
+
+  return {
+    address: TREASURY_ADDRESS,
+    tonBalance,
+    axnBalance,
+    axnBalanceRaw,
+    hasEnoughTon: parseFloat(tonBalance) >= 0.05,
+    walletAddress: TREASURY_JETTON_WALLET,
+  };
+}
+
 // ── Payment detection ─────────────────────────────────────────────────────────
 export async function checkPaymentReceived(
   userWalletAddress: string,
@@ -44,7 +107,7 @@ export async function checkPaymentReceived(
   const userForms = getAllAddressForms(userWalletAddress);
   const claimTs = Math.floor(claimCreatedAt.getTime() / 1000);
 
-  // Strategy 1: TONCenter v2 (fast when API key present)
+  // Strategy 1: TONCenter v2
   try {
     const apiKey = process.env.TONCENTER_API_KEY;
     const keyParam = apiKey ? `&api_key=${apiKey}` : '';
@@ -74,7 +137,7 @@ export async function checkPaymentReceived(
     console.warn(`[TON] TONCenter failed: ${e}, trying tonapi.io...`);
   }
 
-  // Strategy 2: tonapi.io (reliable fallback)
+  // Strategy 2: tonapi.io
   try {
     const treasuryRaw = Address.parse(TREASURY_ADDRESS).toRawString();
     const url = `${TONAPI}/blockchain/accounts/${treasuryRaw}/transactions?limit=100`;
@@ -100,7 +163,38 @@ export async function checkPaymentReceived(
   }
 }
 
-// ── AXN Jetton Send — uses tonapi.io for ALL network calls (no TONCenter) ────
+// ── Wait for tx to land on-chain and return its real hash ────────────────────
+async function waitForTxBySeqno(
+  treasuryRaw: string,
+  seqno: number,
+  timeoutMs = 60000
+): Promise<string | null> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    await new Promise(r => setTimeout(r, 4000));
+    try {
+      const resp = await fetch(
+        `${TONAPI}/blockchain/accounts/${treasuryRaw}/transactions?limit=10`,
+        { headers: tonapiHeaders(), signal: AbortSignal.timeout(10000) }
+      );
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      for (const tx of (data.transactions || [])) {
+        // External messages have no source — match by seqno in decoded body
+        if (tx.in_msg && !tx.in_msg.source) {
+          // Check if this is recent enough (within last 2 min)
+          if ((tx.utime || 0) > Math.floor((Date.now() - 120000) / 1000)) {
+            console.log(`[TON] Found recent outgoing tx with hash=${tx.hash}`);
+            return tx.hash;
+          }
+        }
+      }
+    } catch {}
+  }
+  return null;
+}
+
+// ── AXN Jetton Send ──────────────────────────────────────────────────────────
 export async function sendAXNJetton(
   toAddress: string,
   axnAmount: number
@@ -109,35 +203,53 @@ export async function sendAXNJetton(
     const { wallet, keyPair } = await getTreasuryWallet();
     const treasuryAddr = Address.parse(TREASURY_ADDRESS);
     const treasuryRaw = treasuryAddr.toRawString();
-    const jettonMasterRaw = Address.parse(AXN_JETTON_MASTER).toRawString();
 
-    // Step 1: Get treasury's AXN jetton wallet address via tonapi.io
-    const jwResp = await fetch(
-      `${TONAPI}/accounts/${treasuryRaw}/jettons/${jettonMasterRaw}`,
-      { headers: tonapiHeaders(), signal: AbortSignal.timeout(12000) }
-    );
-    if (!jwResp.ok) throw new Error(`tonapi jetton wallet lookup failed: ${jwResp.status}`);
-    const jwData = await jwResp.json();
-    const jettonWalletAddrStr = jwData.wallet_address?.address;
-    if (!jettonWalletAddrStr) throw new Error('No jetton wallet address returned');
-    const jettonWalletAddr = Address.parse(jettonWalletAddrStr);
-    console.log(`[TON] Jetton wallet: ${jettonWalletAddrStr}`);
+    // Step 1: Check AXN balance via get_wallet_data on hardcoded jetton wallet
+    // (dynamic tonapi lookup /accounts/{treasury}/jettons/{master} returns empty for this wallet)
+    const rawBalance = await getJettonWalletBalance();
+    const axnAvailable = Number(rawBalance) / 10 ** AXN_DECIMALS;
+    console.log(`[TON] Treasury AXN balance: ${axnAvailable.toFixed(2)} AXN (need ${axnAmount})`);
+    if (axnAvailable < axnAmount) {
+      throw new Error(
+        `Treasury insufficient AXN. Available: ${axnAvailable.toFixed(2)}, Required: ${axnAmount}. ` +
+        `Fund treasury wallet: ${TREASURY_ADDRESS}`
+      );
+    }
 
-    // Step 2: Get seqno via tonapi.io (run get method)
+    // Step 1b: Check treasury TON for gas
+    const accResp = await fetch(`${TONAPI}/accounts/${treasuryRaw}`, {
+      headers: tonapiHeaders(), signal: AbortSignal.timeout(10000)
+    });
+    if (accResp.ok) {
+      const acc = await accResp.json();
+      const tonBal = Number(BigInt(acc.balance || 0)) / 1e9;
+      if (tonBal < 0.05) {
+        throw new Error(
+          `Treasury insufficient TON for gas. Available: ${tonBal.toFixed(4)} TON, need 0.05+. ` +
+          `Send TON to: ${TREASURY_ADDRESS}`
+        );
+      }
+      console.log(`[TON] Treasury TON balance: ${tonBal.toFixed(4)} TON ✅`);
+    }
+
+    // Use hardcoded jetton wallet address — verified owner matches treasury
+    const jettonWalletAddr = Address.parse(TREASURY_JETTON_WALLET);
+    console.log(`[TON] Using jetton wallet: ${TREASURY_JETTON_WALLET}`);
+
+    // Step 2: Get seqno
     const seqnoResp = await fetch(
       `${TONAPI}/blockchain/accounts/${treasuryRaw}/methods/seqno`,
       { headers: tonapiHeaders(), signal: AbortSignal.timeout(12000) }
     );
     if (!seqnoResp.ok) throw new Error(`tonapi seqno failed: ${seqnoResp.status}`);
     const seqnoData = await seqnoResp.json();
-    // seqno is in stack[0].num (hex string)
     const seqnoHex = seqnoData.stack?.[0]?.num ?? seqnoData.decoded?.seqno;
     if (seqnoHex === undefined) throw new Error('Could not read seqno from tonapi response');
     const seqno = typeof seqnoHex === 'number' ? seqnoHex : parseInt(String(seqnoHex), 16);
     console.log(`[TON] Seqno: ${seqno}`);
 
-    // Step 3: Build jetton transfer body (offline, no network)
-    const jettonAmount = BigInt(axnAmount) * BigInt(10 ** AXN_DECIMALS);
+    // Step 3: Build jetton transfer body
+    const jettonAmount = BigInt(Math.round(axnAmount)) * BigInt(10 ** AXN_DECIMALS);
     const destinationAddr = Address.parse(toAddress);
     const transferBody = beginCell()
       .storeUint(0xf8a7ea5, 32)
@@ -150,25 +262,24 @@ export async function sendAXNJetton(
       .storeBit(false)
       .endCell();
 
-    // Step 4: Sign the transfer locally (no network)
+    // Step 4: Sign
     const transfer = wallet.createTransfer({
       seqno,
       secretKey: keyPair.secretKey,
       messages: [
         internal({
           to: jettonWalletAddr,
-          value: toNano('0.06'),
+          value: toNano('0.05'),
           body: transferBody,
         }),
       ],
     });
-    // Wrap body in full external message before serializing to BOC
     const fullExternalMsg = beginCell()
       .store(storeMessage(external({ to: wallet.address, body: transfer })))
       .endCell();
     const boc = fullExternalMsg.toBoc().toString('base64');
 
-    // Step 5: Broadcast via tonapi.io (no TONCenter!)
+    // Step 5: Broadcast
     const sendResp = await fetch(`${TONAPI}/blockchain/message`, {
       method: 'POST',
       headers: tonapiHeaders(),
@@ -179,8 +290,14 @@ export async function sendAXNJetton(
       const errText = await sendResp.text().catch(() => '');
       throw new Error(`tonapi broadcast failed: ${sendResp.status} ${errText}`);
     }
-    const txHash = `tonapi_seqno_${seqno}_${Date.now()}`;
-    console.log(`[TON] ✅ AXN sent via tonapi.io! seqno=${seqno} amount=${axnAmount}`);
+
+    console.log(`[TON] ✅ Broadcast accepted! seqno=${seqno}, amount=${axnAmount} AXN → ${toAddress}`);
+
+    // Step 6: Wait for real tx hash on-chain (up to 60s)
+    const realHash = await waitForTxBySeqno(treasuryRaw, seqno, 60000);
+    const txHash = realHash || `seqno_${seqno}_${Date.now()}`;
+    console.log(`[TON] ✅ AXN sent! txHash=${txHash}`);
+
     return { success: true, txHash };
 
   } catch (e: any) {

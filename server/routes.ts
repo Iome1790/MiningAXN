@@ -6559,49 +6559,99 @@ ${walletAddress}
       const { withdrawalId } = req.params;
       const { adminNotes } = req.body;
       
-      // Approve the withdrawal using existing storage method (no transaction hash required)
+      // Approve the withdrawal — deducts balance and marks as Approved in DB
       const result = await storage.approveWithdrawal(withdrawalId, adminNotes, 'N/A');
       
-      if (result.success) {
-        console.log(`✅ Withdrawal ${withdrawalId} approved by admin ${req.user.telegramUser.id}`);
-        
-        // Send real-time update to user + Telegram notification
-        if (result.withdrawal) {
-          sendRealtimeUpdate(result.withdrawal.userId, {
-            type: 'withdrawal_approved',
-            amount: result.withdrawal.amount,
-            method: result.withdrawal.method,
-            message: `Your withdrawal of ${result.withdrawal.amount} AXN has been approved and processed`
-          });
-          
-          // Broadcast to all admins for instant UI update
-          broadcastUpdate({
-            type: 'withdrawal_approved',
-            withdrawalId: result.withdrawal.id,
-            amount: result.withdrawal.amount,
-            userId: result.withdrawal.userId
-          });
-
-          // Send Telegram notification to group (admin panel approval, no tx hash)
-          try {
-            const { sendWithdrawalApprovedNotification } = await import('./telegram');
-            await sendWithdrawalApprovedNotification(result.withdrawal, 'N/A');
-          } catch (notifyErr) {
-            console.error('⚠️ Failed to send withdrawal approval notification:', notifyErr);
-          }
-        }
-        
-        res.json({
-          success: true,
-          message: '✅ Withdrawal approved and processed',
-          withdrawal: result.withdrawal
-        });
-      } else {
-        res.status(400).json({
-          success: false,
-          message: result.message
-        });
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.message });
       }
+
+      console.log(`✅ Withdrawal ${withdrawalId} approved by admin ${req.user.telegramUser.id}`);
+
+      // ── Auto-send AXN jetton on-chain ────────────────────────────────────────
+      let txHash = 'N/A';
+      let sendError: string | null = null;
+
+      if (result.withdrawal) {
+        const details = result.withdrawal.details as any;
+        const walletAddress: string | undefined = details?.paymentDetails;
+        const netAmount: number = parseFloat(details?.netAmount || result.withdrawal.amount);
+
+        if (walletAddress && netAmount > 0) {
+          try {
+            console.log(`[AXN-SEND] Sending ${netAmount} AXN → ${walletAddress} for withdrawal ${withdrawalId}`);
+            const { sendAXNJetton } = await import('./ton-service');
+            const sendResult = await sendAXNJetton(walletAddress, netAmount);
+
+            if (sendResult.success && sendResult.txHash) {
+              txHash = sendResult.txHash;
+              // Persist the transaction hash
+              await storage.updateWithdrawalStatus(withdrawalId, 'Approved', txHash, adminNotes);
+              console.log(`[AXN-SEND] ✅ AXN sent! txHash=${txHash}`);
+            } else {
+              sendError = sendResult.error || 'Unknown send error';
+              console.error(`[AXN-SEND] ❌ Failed: ${sendError}`);
+              // Notify admin via Telegram about send failure
+              try {
+                const botToken = process.env.TELEGRAM_BOT_TOKEN;
+                const adminId = process.env.TELEGRAM_ADMIN_ID;
+                if (botToken && adminId) {
+                  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      chat_id: adminId,
+                      text: `🚨 *AXN Send Failed*\nWithdrawal: ${withdrawalId}\nUser: ${result.withdrawal.userId}\nAmount: ${netAmount} AXN\nWallet: ${walletAddress}\nError: ${sendError}\n\n⚠️ DB is marked Approved but tokens were NOT sent. Use /api/admin/withdrawals/${withdrawalId}/resend to retry.`,
+                      parse_mode: 'Markdown',
+                    }),
+                  });
+                }
+              } catch {}
+            }
+          } catch (sendErr: any) {
+            sendError = sendErr?.message || String(sendErr);
+            console.error(`[AXN-SEND] ❌ Exception: ${sendError}`);
+          }
+        } else {
+          console.warn(`[AXN-SEND] ⚠️ No wallet address or zero amount — skipping on-chain send. walletAddress=${walletAddress}, netAmount=${netAmount}`);
+        }
+
+        // Real-time update to user
+        sendRealtimeUpdate(result.withdrawal.userId, {
+          type: 'withdrawal_approved',
+          amount: result.withdrawal.amount,
+          method: result.withdrawal.method,
+          txHash,
+          message: sendError
+            ? `Your withdrawal of ${result.withdrawal.amount} AXN was approved but on-chain send failed. Admin will retry.`
+            : `Your withdrawal of ${result.withdrawal.amount} AXN has been approved and sent to your wallet!`
+        });
+
+        broadcastUpdate({
+          type: 'withdrawal_approved',
+          withdrawalId: result.withdrawal.id,
+          amount: result.withdrawal.amount,
+          userId: result.withdrawal.userId,
+          txHash
+        });
+
+        try {
+          const { sendWithdrawalApprovedNotification } = await import('./telegram');
+          await sendWithdrawalApprovedNotification(result.withdrawal, txHash);
+        } catch (notifyErr) {
+          console.error('⚠️ Failed to send withdrawal approval notification:', notifyErr);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: sendError
+          ? `✅ Withdrawal approved (DB updated) but on-chain send failed: ${sendError}`
+          : `✅ Withdrawal approved and ${result.withdrawal?.details && (result.withdrawal.details as any)?.netAmount} AXN sent on-chain`,
+        txHash,
+        sendError,
+        withdrawal: result.withdrawal
+      });
       
     } catch (error) {
       console.error('❌ Error approving withdrawal:', error);
@@ -6609,6 +6659,46 @@ ${walletAddress}
         success: false, 
         message: 'Failed to approve withdrawal' 
       });
+    }
+  });
+
+  // Resend AXN for an already-approved withdrawal (admin only) — for retrying failed sends
+  app.post('/api/admin/withdrawals/:withdrawalId/resend', authenticateAdmin, async (req: any, res) => {
+    try {
+      const { withdrawalId } = req.params;
+      const { pool } = await import('./db');
+      const rows = await pool.query(`SELECT * FROM withdrawals WHERE id = $1`, [withdrawalId]);
+      if (rows.rows.length === 0) return res.status(404).json({ success: false, message: 'Withdrawal not found' });
+
+      const withdrawal = rows.rows[0];
+      const details = typeof withdrawal.details === 'string' ? JSON.parse(withdrawal.details) : withdrawal.details;
+      const walletAddress: string | undefined = details?.paymentDetails;
+      const netAmount: number = parseFloat(details?.netAmount || withdrawal.amount);
+
+      if (!walletAddress || netAmount <= 0) {
+        return res.status(400).json({ success: false, message: 'No valid wallet address or amount in withdrawal details' });
+      }
+
+      console.log(`[AXN-RESEND] Resending ${netAmount} AXN → ${walletAddress} for withdrawal ${withdrawalId}`);
+      const { sendAXNJetton } = await import('./ton-service');
+      const sendResult = await sendAXNJetton(walletAddress, netAmount);
+
+      if (sendResult.success && sendResult.txHash) {
+        await storage.updateWithdrawalStatus(withdrawalId, 'Approved', sendResult.txHash, 'Resent by admin');
+        console.log(`[AXN-RESEND] ✅ AXN resent! txHash=${sendResult.txHash}`);
+        sendRealtimeUpdate(withdrawal.user_id, {
+          type: 'withdrawal_approved',
+          amount: withdrawal.amount,
+          txHash: sendResult.txHash,
+          message: `Your ${netAmount} AXN withdrawal has been sent to your wallet!`
+        });
+        return res.json({ success: true, txHash: sendResult.txHash });
+      } else {
+        return res.status(500).json({ success: false, message: sendResult.error || 'Send failed', txHash: null });
+      }
+    } catch (error: any) {
+      console.error('❌ Error resending AXN:', error);
+      res.status(500).json({ success: false, message: error?.message || 'Failed to resend' });
     }
   });
   
@@ -9170,6 +9260,70 @@ ${walletAddress}
       return res.json({ claims: rows.rows });
     } catch (e) {
       return res.status(500).json({ message: 'Failed' });
+    }
+  });
+
+  // ── Admin: Treasury Status ─────────────────────────────────────────────────
+  app.get('/api/admin/treasury-status', authenticateAdmin, async (_req: any, res) => {
+    try {
+      const { getTreasuryInfo } = await import('./ton-service');
+      const info = await getTreasuryInfo();
+      const { pool } = await import('./db');
+      const pending = await pool.query(`SELECT COUNT(*) as c FROM ton_withdrawals WHERE status='pending_payment'`);
+      const failed  = await pool.query(`SELECT COUNT(*) as c FROM ton_withdrawals WHERE status='failed'`);
+      const needRetry = await pool.query(
+        `SELECT id, user_id, wallet_address, axn_amount, status, created_at
+         FROM ton_withdrawals WHERE status IN ('failed','payment_confirmed') ORDER BY created_at DESC LIMIT 20`
+      );
+      res.json({ success: true, treasury: info, pending: pending.rows[0]?.c, failed: failed.rows[0]?.c, needRetry: needRetry.rows });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e?.message || 'Failed' });
+    }
+  });
+
+  // ── Admin: Retry failed/stuck ton_withdrawal ───────────────────────────────
+  app.post('/api/admin/ton-withdraw/:id/retry', authenticateAdmin, async (req: any, res) => {
+    try {
+      const { pool } = await import('./db');
+      const row = await pool.query(
+        `SELECT * FROM ton_withdrawals WHERE id = $1`, [req.params.id]
+      );
+      if (!row.rows[0]) return res.status(404).json({ success: false, message: 'Not found' });
+      const claim = row.rows[0];
+      if (!['failed', 'payment_confirmed', 'completed'].includes(claim.status)) {
+        return res.status(400).json({ success: false, message: `Cannot retry status: ${claim.status}` });
+      }
+      const { sendAXNJetton } = await import('./ton-service');
+      console.log(`[ADMIN-RETRY] Sending ${claim.axn_amount} AXN → ${claim.wallet_address}`);
+      const result = await sendAXNJetton(claim.wallet_address, parseFloat(claim.axn_amount));
+      if (result.success) {
+        await pool.query(
+          `UPDATE ton_withdrawals SET status='completed', axn_tx_hash=$1, updated_at=NOW() WHERE id=$2`,
+          [result.txHash, claim.id]
+        );
+        // Notify user
+        try {
+          const userRow = await pool.query(`SELECT telegram_id FROM users WHERE id=$1`, [claim.user_id]);
+          const telegramId = userRow.rows[0]?.telegram_id;
+          const botToken = process.env.TELEGRAM_BOT_TOKEN;
+          if (telegramId && botToken) {
+            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: telegramId,
+                text: `✅ *Withdrawal Completed!*\n\n${parseFloat(claim.axn_amount).toFixed(0)} AXN has been sent to your wallet.\n\nTx: \`${result.txHash}\``,
+                parse_mode: 'Markdown'
+              })
+            });
+          }
+        } catch {}
+        return res.json({ success: true, txHash: result.txHash });
+      } else {
+        await pool.query(`UPDATE ton_withdrawals SET status='failed', updated_at=NOW() WHERE id=$1`, [claim.id]);
+        return res.status(500).json({ success: false, message: result.error });
+      }
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e?.message || 'Retry failed' });
     }
   });
 
