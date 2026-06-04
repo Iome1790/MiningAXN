@@ -4,7 +4,7 @@ import { TonConnectUIProvider } from "@tonconnect/ui-react";
 import App from "./App";
 import "./index.css";
 
-const MANIFEST_URL = "https://axionet.duckdns.org/tonconnect-manifest.json";
+const MANIFEST_URL = `${window.location.origin}/tonconnect-manifest.json`;
 
 document.addEventListener("contextmenu", (e) => e.preventDefault());
 
