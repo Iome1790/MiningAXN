@@ -613,7 +613,7 @@ export async function sendWithdrawalApprovedNotification(withdrawal: any, txHash
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [[
-              { text: `@${_botName}`, url: `https://t.me/${_botName}` }
+              { text: '💬 Share in Group', url: 'https://t.me/PaidAdzGroup' }
             ]]
           }
         })

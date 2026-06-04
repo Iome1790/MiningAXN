@@ -9325,7 +9325,7 @@ ${walletAddress}
                   chat_id: telegramId,
                   text: `✅ <b>Withdrawal Completed!</b>\n\nYour withdrawal of <b>${amountStr} AXN</b> has been sent to your TON wallet.\n🌐 Wallet: <code>${shortAddr}</code>\n🔗 Tx Hash: <code>${result.txHash}</code>`,
                   parse_mode: 'HTML',
-                  reply_markup: { inline_keyboard: [[botBtn]] }
+                  reply_markup: { inline_keyboard: [[{ text: '💬 Share in Group', url: 'https://t.me/PaidAdzGroup' }]] }
                 })
               });
             }
@@ -9430,7 +9430,7 @@ async function startTonPoller() {
                     chat_id: telegramId,
                     text: `✅ <b>Withdrawal Completed!</b>\n\nYour withdrawal of <b>${amountStr} AXN</b> has been sent to your TON wallet.\n🌐 Wallet: <code>${shortAddr}</code>\n🔗 Tx Hash: <code>${sendResult.txHash}</code>\n\nThanks for using Axionet!`,
                     parse_mode: 'HTML',
-                    reply_markup: { inline_keyboard: [[botBtn]] }
+                    reply_markup: { inline_keyboard: [[{ text: '💬 Share in Group', url: 'https://t.me/PaidAdzGroup' }]] }
                   }),
                 });
               }
