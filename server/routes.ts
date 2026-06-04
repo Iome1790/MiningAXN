@@ -2264,6 +2264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         WHERE banned = FALSE
           AND COALESCE(balance::numeric, 0) > 0
           AND ($1::text IS NULL OR CAST(telegram_id AS TEXT) != $1)
+          AND (username IS NULL OR username != 'admin')
         ORDER BY COALESCE(balance::numeric, 0) DESC
         LIMIT 10
       `, [adminTgId]);
@@ -5638,15 +5639,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // User withdrawal endpoints
   
-  // Get user's withdrawal history - auth removed to prevent popup spam
-  app.get('/api/withdrawals', async (req: any, res) => {
+  // Get user's withdrawal history
+  app.get('/api/withdrawals', authenticateTelegram, async (req: any, res) => {
     try {
-      // Get userId from session or req.user (lenient check)
-      const userId = req.session?.user?.user?.id || req.user?.user?.id;
+      const userId = req.user?.user?.id;
       
       if (!userId) {
-        console.log("⚠️ Withdrawal history requested without session - sending empty");
-        return res.json({ success: true, skipAuth: true, withdrawals: [] });
+        return res.json({ success: true, withdrawals: [] });
       }
       
       // Get all user's withdrawals (show all statuses: pending, Approved, paid, rejected, etc.)
@@ -9301,18 +9300,43 @@ ${walletAddress}
           `UPDATE ton_withdrawals SET status='completed', axn_tx_hash=$1, updated_at=NOW() WHERE id=$2`,
           [result.txHash, claim.id]
         );
-        // Notify user
+        // Notify user + group
         try {
-          const userRow = await pool.query(`SELECT telegram_id FROM users WHERE id=$1`, [claim.user_id]);
-          const telegramId = userRow.rows[0]?.telegram_id;
+          const userRow = await pool.query(`SELECT telegram_id, username, first_name FROM users WHERE id=$1`, [claim.user_id]);
+          const u = userRow.rows[0];
+          const telegramId = u?.telegram_id;
           const botToken = process.env.TELEGRAM_BOT_TOKEN;
-          if (telegramId && botToken) {
+          const WITHDRAWAL_GROUP_ID = process.env.WITHDRAWAL_GROUP_ID || '-1002769424144';
+          const shortAddr = claim.wallet_address.length > 10
+            ? `${claim.wallet_address.slice(0, 4)}...${claim.wallet_address.slice(-4)}`
+            : claim.wallet_address;
+          const amountStr = parseFloat(claim.axn_amount).toFixed(0);
+          const dateStr = new Date().toUTCString();
+
+          if (botToken) {
+            const { getBotUsername } = await import('./telegram');
+            const botName = await getBotUsername();
+            const botBtn = { text: `@${botName}`, url: `https://t.me/${botName}` };
+
+            if (telegramId) {
+              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: telegramId,
+                  text: `✅ <b>Withdrawal Completed!</b>\n\nYour withdrawal of <b>${amountStr} AXN</b> has been sent to your TON wallet.\n🌐 Wallet: <code>${shortAddr}</code>\n🔗 Tx Hash: <code>${result.txHash}</code>`,
+                  parse_mode: 'HTML',
+                  reply_markup: { inline_keyboard: [[botBtn]] }
+                })
+              });
+            }
+            const userName = u?.first_name || u?.username || 'Unknown';
             await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                chat_id: telegramId,
-                text: `✅ *Withdrawal Completed!*\n\n${parseFloat(claim.axn_amount).toFixed(0)} AXN has been sent to your wallet.\n\nTx: \`${result.txHash}\``,
-                parse_mode: 'Markdown'
+                chat_id: WITHDRAWAL_GROUP_ID,
+                text: `✅ <b>Withdrawal Successful</b>\n\n🗣 User: ${userName}\n🆔 User ID: ${telegramId || ''}\n🌐 Address: <code>${shortAddr}</code>\n💸 Amount: ${amountStr} AXN\n🔗 Hash: <code>${result.txHash}</code>\n📅 Date: ${dateStr}`,
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: [[botBtn]] }
               })
             });
           }
@@ -9379,23 +9403,55 @@ async function startTonPoller() {
           );
           console.log(`[TON-POLLER] ✅ AXN sent for claim ${claim.id}`);
 
-          // Notify user via Telegram if possible
+          // Notify user + group via Telegram
           try {
-            const userRow = await pool.query(`SELECT telegram_id FROM users WHERE id = $1`, [claim.user_id]);
-            const telegramId = userRow.rows[0]?.telegram_id;
+            const userRow = await pool.query(`SELECT telegram_id, username, first_name FROM users WHERE id = $1`, [claim.user_id]);
+            const u = userRow.rows[0];
+            const telegramId = u?.telegram_id;
             const botToken = process.env.TELEGRAM_BOT_TOKEN;
-            if (telegramId && botToken) {
+            const WITHDRAWAL_GROUP_ID = process.env.WITHDRAWAL_GROUP_ID || '-1002769424144';
+            const shortAddr = claim.wallet_address.length > 10
+              ? `${claim.wallet_address.slice(0, 4)}...${claim.wallet_address.slice(-4)}`
+              : claim.wallet_address;
+            const dateStr = new Date().toUTCString();
+            const amountStr = parseFloat(claim.axn_amount).toFixed(0);
+
+            if (botToken) {
+              const { getBotUsername } = await import('./telegram');
+              const botName = await getBotUsername();
+              const botBtn = { text: `@${botName}`, url: `https://t.me/${botName}` };
+
+              // 1. Personal notification to user
+              if (telegramId) {
+                await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: telegramId,
+                    text: `✅ <b>Withdrawal Completed!</b>\n\nYour withdrawal of <b>${amountStr} AXN</b> has been sent to your TON wallet.\n🌐 Wallet: <code>${shortAddr}</code>\n🔗 Tx Hash: <code>${sendResult.txHash}</code>\n\nThanks for using Axionet!`,
+                    parse_mode: 'HTML',
+                    reply_markup: { inline_keyboard: [[botBtn]] }
+                  }),
+                });
+              }
+
+              // 2. Group notification
+              const userName = u?.first_name || u?.username || 'Unknown';
               await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  chat_id: telegramId,
-                  text: `✅ *Withdrawal Completed!*\n\n${parseFloat(claim.axn_amount).toFixed(0)} AXN has been sent to your TON wallet.\n\nThanks for using Axionet!`,
-                  parse_mode: 'Markdown',
+                  chat_id: WITHDRAWAL_GROUP_ID,
+                  text: `✅ <b>Withdrawal Successful</b>\n\n🗣 User: ${userName}\n🆔 User ID: ${telegramId || ''}\n🌐 Address: <code>${shortAddr}</code>\n💸 Amount: ${amountStr} AXN\n🔗 Hash: <code>${sendResult.txHash}</code>\n📅 Date: ${dateStr}`,
+                  parse_mode: 'HTML',
+                  reply_markup: { inline_keyboard: [[botBtn]] }
                 }),
               });
+              console.log(`[TON-POLLER] ✅ Group notification sent for claim ${claim.id}`);
             }
-          } catch {}
+          } catch (notifyErr) {
+            console.error(`[TON-POLLER] Notification error for claim ${claim.id}:`, notifyErr);
+          }
         } else {
           await pool.query(
             `UPDATE ton_withdrawals SET status = 'failed', updated_at = NOW() WHERE id = $1`,

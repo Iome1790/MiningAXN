@@ -546,7 +546,6 @@ export async function sendWithdrawalApprovedNotification(withdrawal: any, txHash
 
     const withdrawalDetails = withdrawal.details as any;
     const netAmount = parseFloat(withdrawalDetails?.netAmount || withdrawal.amount);
-    const feeAmount = parseFloat(withdrawalDetails?.fee || '0');
     const walletAddress = withdrawalDetails?.paymentDetails || withdrawalDetails?.walletAddress || 'N/A';
 
     const shortAddress = walletAddress.length > 10
@@ -554,7 +553,8 @@ export async function sendWithdrawalApprovedNotification(withdrawal: any, txHash
       : walletAddress;
 
     const userName = user?.firstName || user?.username || 'Unknown';
-    const userTelegramId = user?.telegram_id || '';
+    // Drizzle ORM returns camelCase — support both field names
+    const userTelegramId = (user as any)?.telegramId || (user as any)?.telegram_id || '';
     const currentDate = new Date().toUTCString();
     const _botName = await getBotUsername();
 
@@ -569,20 +569,67 @@ export async function sendWithdrawalApprovedNotification(withdrawal: any, txHash
       `📅 Date: ${currentDate}\n` +
       `🤖 Bot: @${_botName}`;
 
-    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    // 1️⃣ Post to the group
+    const groupResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: WITHDRAWAL_GROUP_ID, text: groupMessage, parse_mode: 'HTML' })
+      body: JSON.stringify({
+        chat_id: WITHDRAWAL_GROUP_ID,
+        text: groupMessage,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: `@${_botName}`, url: `https://t.me/${_botName}` }
+          ]]
+        }
+      })
     });
 
-    if (response.ok) {
+    if (groupResponse.ok) {
       console.log('✅ Withdrawal success notification sent to group');
-      return true;
     } else {
-      const errorData = await response.text();
-      console.error('❌ Failed to send withdrawal success notification:', errorData);
-      return false;
+      const errorData = await groupResponse.text();
+      console.error('❌ Failed to send withdrawal success notification to group:', errorData);
     }
+
+    // 2️⃣ Send personal notification to the user via Telegram bot
+    if (userTelegramId) {
+      const txDisplay = txHash && txHash !== 'N/A'
+        ? `\n🔗 Tx Hash: <code>${txHash}</code>`
+        : '';
+
+      const userMessage =
+        `✅ <b>Withdrawal Approved!</b>\n\n` +
+        `Your withdrawal of <b>${Math.floor(netAmount)} AXN</b> has been processed.\n` +
+        `🌐 Wallet: <code>${shortAddress}</code>${txDisplay}\n\n` +
+        `Tokens will arrive in your wallet shortly.`;
+
+      const userResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: userTelegramId,
+          text: userMessage,
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: `@${_botName}`, url: `https://t.me/${_botName}` }
+            ]]
+          }
+        })
+      });
+
+      if (userResponse.ok) {
+        console.log(`✅ Personal withdrawal approval notification sent to user ${userTelegramId}`);
+      } else {
+        const errText = await userResponse.text();
+        console.error(`❌ Failed to send personal notification to user ${userTelegramId}:`, errText);
+      }
+    } else {
+      console.warn('⚠️ No telegram_id found for user — skipping personal notification');
+    }
+
+    return true;
   } catch (error) {
     console.error('❌ Error sending withdrawal success notification:', error);
     return false;
