@@ -56,7 +56,7 @@ export default function Games() {
 
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
   const { data: botInfo } = useQuery<{ username: string }>({ queryKey: ['/api/bot-info'], staleTime: 3600000 });
-  const { data: swapSettings } = useQuery<{ swapRate: number; swapMinCipher: number }>({ queryKey: ['/api/admin/settings'], staleTime: 60000, select: (d: any) => ({ swapRate: d.swapRate ?? 3, swapMinCipher: d.swapMinCipher ?? 1000 }) });
+  const { data: swapSettings } = useQuery<{ swapRate: number; swapMinCipher: number }>({ queryKey: ['/api/swap-config'], staleTime: 60000 });
 
   const axnRaw = parseFloat(user?.walletBalance || '0');
   const axnBalance = Math.floor(axnRaw);
