@@ -224,7 +224,13 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
                 </div>
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <TonConnectButton />
+                  <div style={{ position: 'relative', display: 'inline-flex' }}>
+                    <TonConnectButton />
+                    <div
+                      style={{ position: 'absolute', inset: 0, cursor: 'pointer', zIndex: 10 }}
+                      onClick={() => tonConnectUI.openModal()}
+                    />
+                  </div>
                 </div>
               )}
             </div>
