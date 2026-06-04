@@ -1335,6 +1335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         [task.reward_axn, user.id]
       );
       await pool.query(`INSERT INTO bounty_task_completions (user_id, task_id) VALUES ($1, $2)`, [user.id, taskId]);
+      await pool.query(`UPDATE bounty_tasks SET completed_count = COALESCE(completed_count, 0) + 1 WHERE id = $1`, [taskId]);
 
       return res.json({ success: true, axnEarned: task.reward_axn, message: `+${task.reward_axn} CIPHER earned!` });
     } catch (error) {
@@ -3688,6 +3689,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section2_reward: getSetting('ad_section2_reward', '0.0001'),
         ad_section2_limit: getSetting('ad_section2_limit', '250'),
         withdrawalPackages: JSON.parse(getSetting('withdrawal_packages', '[{"usd":0.2,"bug":2000},{"usd":0.4,"bug":4000},{"usd":0.8,"bug":8000}]')),
+        swapRate: parseInt(getSetting('swap_rate', '3')),
+        swapMinCipher: parseInt(getSetting('swap_min_cipher', '1000')),
       });
     } catch (error) {
       console.error("Error fetching admin settings:", error);
@@ -3757,6 +3760,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section2_limit: 'ad_section2_limit',
         withdraw_ads_required: 'withdraw_ads_required',
         minTradeAmount: 'min_trade_amount',
+        swapRate: 'swap_rate',
+        swapMinCipher: 'swap_min_cipher',
       };
 
       for (const [feKey, dbKey] of Object.entries(settingMap)) {
@@ -8906,6 +8911,42 @@ ${walletAddress}
   });
 
   // ── Admin: List Partner Tasks ──────────────────────────────────────────────
+  // ── Swap: CIPHER → AXN (3 CIPHER = 1 AXN) ────────────────────────────────
+  app.post('/api/swap', authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: 'Not authenticated' });
+      const { pool } = await import('./db');
+      // Read configurable swap settings from DB
+      const swapRateSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'swap_rate')).limit(1);
+      const swapMinSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'swap_min_cipher')).limit(1);
+      const swapRate = parseInt(swapRateSetting[0]?.settingValue || '3');
+      const swapMin = parseInt(swapMinSetting[0]?.settingValue || '1000');
+
+      const cipherAmount = parseInt(req.body.cipherAmount);
+      if (isNaN(cipherAmount) || cipherAmount < swapMin) {
+        return res.status(400).json({ message: `Minimum swap is ${swapMin} CIPHER` });
+      }
+      if (cipherAmount % swapRate !== 0) {
+        return res.status(400).json({ message: `Amount must be a multiple of ${swapRate} CIPHER` });
+      }
+      const axnAmount = cipherAmount / swapRate;
+      const freshUser = await pool.query(`SELECT balance FROM users WHERE id = $1`, [user.id]);
+      const currentBalance = parseFloat(freshUser.rows[0]?.balance || '0');
+      if (currentBalance < cipherAmount) {
+        return res.status(400).json({ message: `Insufficient CIPHER. You have ${Math.floor(currentBalance)} CIPHER` });
+      }
+      await pool.query(
+        `UPDATE users SET balance = COALESCE(balance::numeric,0) - $1, wallet_balance = COALESCE(wallet_balance::numeric,0) + $2 WHERE id = $3`,
+        [cipherAmount, axnAmount, user.id]
+      );
+      return res.json({ success: true, cipherSpent: cipherAmount, axnReceived: axnAmount, message: `Swapped ${cipherAmount} CIPHER → ${axnAmount} AXN` });
+    } catch (e) {
+      console.error('Swap error:', e);
+      return res.status(500).json({ message: 'Swap failed' });
+    }
+  });
+
   app.get('/api/admin/partner-tasks', authenticateTelegram, async (req: any, res) => {
     try {
       const telegramUser = req.user?.telegramUser;
