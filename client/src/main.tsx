@@ -1,7 +1,10 @@
 import { Component, ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { TonConnectUIProvider } from "@tonconnect/ui-react";
 import App from "./App";
 import "./index.css";
+
+const MANIFEST_URL = "https://axionet.duckdns.org/tonconnect-manifest.json";
 
 document.addEventListener("contextmenu", (e) => e.preventDefault());
 
@@ -48,7 +51,9 @@ class RootErrorBoundary extends Component<
 }
 
 createRoot(document.getElementById("root")!).render(
-  <RootErrorBoundary>
-    <App />
-  </RootErrorBoundary>
+  <TonConnectUIProvider manifestUrl={MANIFEST_URL}>
+    <RootErrorBoundary>
+      <App />
+    </RootErrorBoundary>
+  </TonConnectUIProvider>
 );
