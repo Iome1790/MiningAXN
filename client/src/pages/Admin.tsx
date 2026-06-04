@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Crown, ArrowLeft, Users, Pickaxe, Eye, TrendingUp, DollarSign,
   UserCheck, GitBranch, Search, ChevronLeft, ChevronRight,
-  RefreshCw, Settings, Shield, LogOut, Globe, Ban, CheckCircle, ExternalLink,
+  RefreshCw, Settings, Shield, LogOut, Globe, Ban, CheckCircle, ExternalLink, Copy,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -1050,6 +1050,8 @@ function SettingsSection() {
     channelJoinRequired: true,
     withdraw_ads_required: false,
     minTradeAmount: "1000",
+    swapRate: "3",
+    swapMinCipher: "1000",
   });
 
   useEffect(() => {
@@ -1069,6 +1071,8 @@ function SettingsSection() {
         channelJoinRequired: settingsData.channelJoinRequired !== false,
         withdraw_ads_required: Boolean(settingsData.withdraw_ads_required),
         minTradeAmount: settingsData.minTradeAmount?.toString() || "1000",
+        swapRate: settingsData.swapRate?.toString() || "3",
+        swapMinCipher: settingsData.swapMinCipher?.toString() || "1000",
       });
     }
   }, [settingsData]);
@@ -1091,6 +1095,8 @@ function SettingsSection() {
         channelJoinRequired: Boolean(s.channelJoinRequired),
         withdraw_ads_required: Boolean(s.withdraw_ads_required),
         minTradeAmount: parseInt(s.minTradeAmount),
+        swapRate: parseInt(s.swapRate),
+        swapMinCipher: parseInt(s.swapMinCipher),
       };
       const r = await apiRequest("PUT", "/api/admin/settings", payload);
       const d = await r.json();
@@ -1173,6 +1179,12 @@ function SettingsSection() {
         <SettCard title="Withdrawal Settings" icon={<DollarSign className="w-3.5 h-3.5" />} color="text-green-400">
           <SettField label="Minimum Trade Amount (AXN)" hint="Minimum AXN required to trade in the withdrawal popup">
             <Input type="number" value={s.minTradeAmount} onChange={e => setS({ ...s, minTradeAmount: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+          </SettField>
+          <SettField label="Swap Rate (CIPHER per AXN)" hint="How many CIPHER = 1 AXN (e.g. 3 means 3 CIPHER → 1 AXN)">
+            <Input type="number" min="1" value={s.swapRate} onChange={e => setS({ ...s, swapRate: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+          </SettField>
+          <SettField label="Minimum Swap (CIPHER)" hint="Minimum CIPHER a user must swap at once">
+            <Input type="number" min="1" value={s.swapMinCipher} onChange={e => setS({ ...s, swapMinCipher: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
           </SettField>
           <SettField label="Minimum Withdrawal (AXN)" hint="Minimum AXN required to withdraw">
             <Input type="number" value={s.minimum_withdrawal_sat} onChange={e => setS({ ...s, minimum_withdrawal_sat: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
@@ -1415,7 +1427,16 @@ function PromoSection() {
           {promoCodes.map((p: any) => (
             <div key={p.id} className="bg-[#151515] border border-white/5 rounded-lg p-3 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-sm font-bold text-white tracking-widest">{p.code}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm font-bold text-white tracking-widest">{p.code}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(p.code); toast({ title: `Copied: ${p.code}` }); }}
+                    className="text-gray-500 hover:text-white transition-colors"
+                    title="Copy code"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${p.is_active ? 'bg-green-900/40 text-green-400' : 'bg-red-900/40 text-red-400'}`}>
                     {p.is_active ? 'Active' : 'Inactive'}

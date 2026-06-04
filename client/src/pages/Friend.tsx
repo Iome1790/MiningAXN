@@ -19,7 +19,7 @@ const MEDAL: Record<number, { icon: React.ReactNode; color: string; glow: string
   3: { icon: <FaAward size={18} color="#CD7F32" />, color: '#CD7F32', glow: 'rgba(205,127,50,0.07)' },
 };
 
-type LbTab = 'inviters' | 'axn';
+type LbTab = 'cipher' | 'axn';
 
 interface InviterEntry {
   rank: number;
@@ -190,8 +190,8 @@ export default function Friend() {
   const { data: wellData } = useQuery<WellData>({ queryKey: ['/api/referrals/well'], staleTime: 30000 });
   const { data: botInfo } = useQuery<{ username: string }>({ queryKey: ['/api/bot-info'], staleTime: 3600000 });
 
-  const { data: inviterData, isLoading: inviterLoading } = useQuery<{ leaderboard: InviterEntry[]; myRank: InviterEntry | null }>({
-    queryKey: ['/api/leaderboard/referrals'],
+  const { data: inviterData, isLoading: inviterLoading } = useQuery<{ leaderboard: AmountEntry[]; myRank: AmountEntry | null }>({
+    queryKey: ['/api/leaderboard/cipher-earners'],
     staleTime: 60000,
   });
   const { data: axnData, isLoading: axnLoading } = useQuery<{ leaderboard: AmountEntry[]; myRank: AmountEntry | null }>({
@@ -225,7 +225,7 @@ export default function Friend() {
   };
 
   const LB_TABS: { id: LbTab; label: string }[] = [
-    { id: 'inviters', label: 'Top Inviters' },
+    { id: 'cipher', label: 'Top CIPHER' },
     { id: 'axn', label: 'Top AXN' },
   ];
 
@@ -369,16 +369,16 @@ export default function Friend() {
           ))}
         </div>
 
-        {/* Top Inviters — ranked by active friends (>= 500 CIPHER) */}
-        {lbTab === 'inviters' && (
+        {/* Top CIPHER Holders */}
+        {lbTab === 'cipher' && (
           <LeaderboardTable
             entries={inviterData?.leaderboard ?? []}
             myRank={inviterData?.myRank ?? null}
-            getValue={(e) => e.referrals}
-            unit="ACTIVE"
-            myValue={(e) => e.referrals}
+            getValue={(e) => (e as AmountEntry).amount}
+            unit="CIPHER"
+            myValue={(e) => (e as AmountEntry).amount}
             isLoading={inviterLoading}
-            emptyText="Invite friends who earn 500+ CIPHER to appear here!"
+            emptyText="Earn CIPHER by watching ads and completing tasks!"
           />
         )}
 

@@ -34,6 +34,7 @@ export default function Games() {
   const [showStakingPopup, setShowStakingPopup] = useState(false);
   const [showWithdrawPopup, setShowWithdrawPopup] = useState(false);
   const [showPromoPopup, setShowPromoPopup] = useState(false);
+  const [showSwapPopup, setShowSwapPopup] = useState(false);
   const [dailyChecked, setDailyChecked] = useState(() => localStorage.getItem('daily_check_date') === getTodayKey());
   const [dailyAdLoading, setDailyAdLoading] = useState(false);
   const [mysteryOpened, setMysteryOpened] = useState(() => localStorage.getItem('mystery_box_date') === getTodayKey());
@@ -55,6 +56,7 @@ export default function Games() {
 
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
   const { data: botInfo } = useQuery<{ username: string }>({ queryKey: ['/api/bot-info'], staleTime: 3600000 });
+  const { data: swapSettings } = useQuery<{ swapRate: number; swapMinCipher: number }>({ queryKey: ['/api/admin/settings'], staleTime: 60000, select: (d: any) => ({ swapRate: d.swapRate ?? 3, swapMinCipher: d.swapMinCipher ?? 1000 }) });
 
   const axnRaw = parseFloat(user?.walletBalance || '0');
   const axnBalance = Math.floor(axnRaw);
@@ -341,7 +343,7 @@ export default function Games() {
 
             {/* Swap */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
-              <button onClick={() => showNotification('Swap feature coming soon.', 'info')} style={{
+              <button onClick={() => setShowSwapPopup(true)} style={{
                 width: 52, height: 52, borderRadius: '50%',
                 background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
                 border: 'none',
@@ -622,6 +624,16 @@ export default function Games() {
         <PromoPopup
           onClose={() => setShowPromoPopup(false)}
           onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }); setShowPromoPopup(false); }}
+        />
+      )}
+
+      {showSwapPopup && (
+        <SwapPopup
+          onClose={() => setShowSwapPopup(false)}
+          cipherBalance={Math.floor(parseFloat(user?.balance || '0'))}
+          swapRate={swapSettings?.swapRate ?? 3}
+          swapMin={swapSettings?.swapMinCipher ?? 1000}
+          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }); }}
         />
       )}
 
@@ -983,6 +995,125 @@ function _ReceivePopupRemoved({ user, onClose }: { user: any; onClose: () => voi
   );
 }
 
+function SwapPopup({ onClose, cipherBalance, swapRate, swapMin, onSuccess }: { onClose: () => void; cipherBalance: number; swapRate: number; swapMin: number; onSuccess: () => void }) {
+  const [amount, setAmount] = useState('');
+  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+
+  const RATE = swapRate; // configurable: N CIPHER = 1 AXN
+  const MIN_CIPHER = swapMin;
+  const parsed = parseInt(amount) || 0;
+  const rounded = Math.floor(parsed / RATE) * RATE;
+  const axnOut = rounded / RATE;
+  const canSwap = rounded >= MIN_CIPHER && rounded <= cipherBalance;
+
+  const handleSwap = async () => {
+    if (!canSwap || loading) return;
+    setLoading(true);
+    try {
+      const res = await apiRequest('POST', '/api/swap', { cipherAmount: rounded });
+      const data = await res.json();
+      if (data.success) {
+        showNotification(`✅ Swapped ${rounded} CIPHER → ${axnOut} AXN`, 'success');
+        queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+        onSuccess();
+        onClose();
+      } else {
+        showNotification(data.message || 'Swap failed', 'error');
+      }
+    } catch (e: any) {
+      let msg = 'Swap failed';
+      try { const p = JSON.parse(e.message); if (p.message) msg = p.message; } catch {}
+      showNotification(msg, 'error');
+    }
+    setLoading(false);
+  };
+
+  const BLUE = '#3b82f6';
+  const TEXT_DIM = 'rgba(255,255,255,0.38)';
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={onClose} />
+      <div style={{ position: 'relative', width: '100%', background: 'linear-gradient(160deg, #0d0d0f, #111118)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '28px 28px 0 0', overflow: 'hidden' }}>
+        <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)' }} />
+        <div style={{ padding: '24px 20px', paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 20px))' }}>
+          {/* Drag handle */}
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 20px' }} />
+
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>Swap CIPHER → AXN</div>
+            <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 4 }}>Rate: {RATE} CIPHER = 1 AXN · Min: {MIN_CIPHER.toLocaleString()} CIPHER · Balance: {cipherBalance.toLocaleString()} CIPHER</div>
+          </div>
+
+          {/* Quick amount buttons */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            {[MIN_CIPHER, MIN_CIPHER * 3, MIN_CIPHER * 6, MIN_CIPHER * 15].map(v => (
+              <button key={v} onClick={() => setAmount(String(v))} style={{
+                padding: '6px 14px', borderRadius: 20,
+                background: parsed === v ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${parsed === v ? BLUE : 'rgba(255,255,255,0.08)'}`,
+                color: parsed === v ? BLUE : TEXT_DIM,
+                fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              }}>{v}</button>
+            ))}
+            <button onClick={() => setAmount(String(Math.floor(cipherBalance / RATE) * RATE))} style={{
+              padding: '6px 14px', borderRadius: 20,
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
+              color: TEXT_DIM, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            }}>MAX</button>
+          </div>
+
+          {/* Input */}
+          <div style={{ position: 'relative', marginBottom: 12 }}>
+            <input
+              type="number"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="Enter CIPHER amount (min 1000)"
+              style={{
+                width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 12, padding: '12px 14px', color: '#fff', fontSize: 15, fontWeight: 700,
+                outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          {/* Preview */}
+          <div style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: '12px 14px', marginBottom: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 11, color: TEXT_DIM, marginBottom: 2 }}>You pay</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: '#fff' }}>{rounded > 0 ? rounded.toLocaleString() : '—'} CIPHER</div>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={BLUE} strokeWidth="2.2" strokeLinecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 11, color: TEXT_DIM, marginBottom: 2 }}>You receive</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: axnOut > 0 ? '#22c55e' : '#fff' }}>{axnOut > 0 ? axnOut.toLocaleString() : '—'} AXN</div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSwap}
+            disabled={!canSwap || loading}
+            style={{
+              width: '100%', padding: '13px 0', border: 'none', borderRadius: 13,
+              background: !canSwap || loading ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #1d4ed8, #3b82f6)',
+              color: !canSwap || loading ? TEXT_DIM : '#fff',
+              fontSize: 15, fontWeight: 800, cursor: !canSwap || loading ? 'not-allowed' : 'pointer',
+              boxShadow: canSwap && !loading ? '0 4px 16px rgba(37,99,235,0.4)' : 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+            className={canSwap && !loading ? 'active:scale-95 transition-transform' : ''}
+          >
+            {loading && <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />}
+            {loading ? 'Swapping…' : canSwap ? `Swap ${rounded} CIPHER → ${axnOut} AXN` : 'Enter amount'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PromoPopup({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -994,16 +1125,6 @@ function PromoPopup({ onClose, onSuccess }: { onClose: () => void; onSuccess: ()
     setLoading(true);
 
     try {
-      // Step 1: Show Monetag ad
-      setAdStep('watching-ad');
-      showNotification('Watch the ad to unlock your reward...', 'info');
-      try {
-        await showRewardedInterstitial();
-      } catch {
-        // Ad unavailable in dev/some environments — allow continuing
-      }
-
-      // Step 2: Redeem the promo code
       setAdStep('redeeming');
       const res = await apiRequest('POST', '/api/promo-codes/redeem', { code: code.trim() });
       const data = await res.json();
@@ -1021,7 +1142,7 @@ function PromoPopup({ onClose, onSuccess }: { onClose: () => void; onSuccess: ()
     }
   };
 
-  const buttonLabel = adStep === 'watching-ad' ? 'Watching Ad...' : adStep === 'redeeming' ? 'Redeeming...' : 'Watch Ad & Redeem';
+  const buttonLabel = adStep === 'redeeming' ? 'Redeeming...' : 'Redeem';
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 900, display: 'flex', alignItems: 'flex-end' }}>
@@ -1039,9 +1160,6 @@ function PromoPopup({ onClose, onSuccess }: { onClose: () => void; onSuccess: ()
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <span style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>Promo Code</span>
-          <button onClick={!loading ? onClose : undefined} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', cursor: loading ? 'default' : 'pointer', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
         </div>
 
         <div style={{ marginBottom: 8 }}>
