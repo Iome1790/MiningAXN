@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { useTonConnectUI, useTonAddress, TonConnectButton } from "@tonconnect/ui-react";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
@@ -9,41 +9,28 @@ const TREASURY = 'UQDeroBz4zvOntJ4xuMdiwFtNddMhJ4cGxghF9B7fYz50q8b';
 const MIN_AXN = 1000;
 const FEE_NANO = '30000000';
 
-const OPEN_UTC_MINS = 16 * 60 + 30;
-const CLOSE_UTC_MINS = 18 * 60 + 30;
-
-function isWithdrawOpen() {
-  const now = new Date();
-  const t = now.getUTCHours() * 60 + now.getUTCMinutes();
-  return t >= OPEN_UTC_MINS && t < CLOSE_UTC_MINS;
-}
-
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: 'spin' | 'check' | 'fail' | 'clock' }> = {
-  pending_payment: { label: 'Waiting for TON payment', color: '#f59e0b', icon: 'clock' },
-  payment_confirmed: { label: 'Payment confirmed, sending AXN', color: '#3b82f6', icon: 'spin' },
-  axn_sent: { label: 'AXN dispatched', color: '#3b82f6', icon: 'spin' },
-  completed: { label: 'Withdrawal complete', color: '#4ade80', icon: 'check' },
-  failed: { label: 'Failed — contact support', color: '#f87171', icon: 'fail' },
-  expired: { label: 'Expired — balance refunded', color: '#f87171', icon: 'fail' },
+  pending_payment:   { label: 'Waiting for TON payment',        color: '#f59e0b', icon: 'clock' },
+  payment_confirmed: { label: 'Payment confirmed, sending AXN', color: '#3b82f6', icon: 'spin'  },
+  axn_sent:          { label: 'AXN dispatched',                 color: '#3b82f6', icon: 'spin'  },
+  completed:         { label: 'Withdrawal complete',            color: '#4ade80', icon: 'check' },
+  failed:            { label: 'Failed — contact support',       color: '#f87171', icon: 'fail'  },
+  expired:           { label: 'Expired — balance refunded',     color: '#f87171', icon: 'fail'  },
 };
 
 interface Props { onClose: () => void; userBalance: number; isAdmin?: boolean; }
 
-export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }: Props) {
+export default function WithdrawPopup({ onClose, userBalance }: Props) {
   const [tonConnectUI] = useTonConnectUI();
   const connectedAddress = useTonAddress();
 
-  const [amount, setAmount] = useState('');
-  const [claimId, setClaimId] = useState<string | null>(null);
+  const [amount, setAmount]           = useState('');
+  const [claimId, setClaimId]         = useState<string | null>(null);
   const [claimStatus, setClaimStatus] = useState('pending_payment');
-  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
-  const [step, setStep] = useState<'input' | 'paying' | 'tracking'>('input');
-  const [countdown, setCountdown] = useState('');
+  const [expiresAt, setExpiresAt]     = useState<Date | null>(null);
+  const [step, setStep]               = useState<'input' | 'paying' | 'tracking'>('input');
+  const [countdown, setCountdown]     = useState('');
   const queryClient = useQueryClient();
-
-  const shortAddr = connectedAddress
-    ? `${connectedAddress.slice(0, 6)}…${connectedAddress.slice(-4)}`
-    : '';
 
   useEffect(() => {
     if (!expiresAt || step !== 'tracking') return;
@@ -59,7 +46,7 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
 
   const pollStatus = useCallback(async (id: string) => {
     try {
-      const res = await apiRequest('GET', `/api/ton-withdraw/status/${id}`);
+      const res  = await apiRequest('GET', `/api/ton-withdraw/status/${id}`);
       const data = await res.json();
       const status = data.claim?.status;
       if (status) {
@@ -85,8 +72,7 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
       if (!connectedAddress) throw new Error('Connect your TON wallet first');
       if (!amt || amt < MIN_AXN) throw new Error(`Minimum ${MIN_AXN.toLocaleString()} AXN`);
       if (amt > userBalance) throw new Error('Insufficient balance');
-      if (!isAdmin && !isWithdrawOpen()) throw new Error('Withdraw is locked. Opens at 10:00 PM IST (4:30 PM UTC)');
-      const res = await apiRequest('POST', '/api/ton-withdraw/initiate', { walletAddress: connectedAddress, axnAmount: amt });
+      const res  = await apiRequest('POST', '/api/ton-withdraw/initiate', { walletAddress: connectedAddress, axnAmount: amt });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Failed');
       return data;
@@ -103,10 +89,7 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
         setStep('tracking');
         setClaimStatus('pending_payment');
       } catch {
-        // User cancelled TON payment — cancel the withdrawal and refund balance
-        try {
-          await apiRequest('POST', `/api/ton-withdraw/cancel/${data.claimId}`, {});
-        } catch {}
+        try { await apiRequest('POST', `/api/ton-withdraw/cancel/${data.claimId}`, {}); } catch {}
         showNotification('Payment cancelled — your balance has been refunded', 'info');
         setStep('input');
         setClaimId(null);
@@ -120,54 +103,42 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
     },
   });
 
-  const amtNum = parseFloat(amount) || 0;
+  const amtNum       = parseFloat(amount) || 0;
   const isProcessing = initiateMutation.isPending || step === 'paying';
-  const isDone = ['completed', 'failed', 'expired'].includes(claimStatus);
-  const windowOpen = isAdmin || isWithdrawOpen();
-
-  const canSubmit = !!connectedAddress && amtNum >= MIN_AXN && amtNum <= userBalance && windowOpen && !isProcessing;
+  const isDone       = ['completed', 'failed', 'expired'].includes(claimStatus);
+  const canSubmit    = !!connectedAddress && amtNum >= MIN_AXN && amtNum <= userBalance && !isProcessing;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 900, display: 'flex', alignItems: 'flex-end' }} onClick={onClose}>
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 900, display: 'flex', alignItems: 'flex-end' }}
+      onClick={onClose}
+    >
       <style>{`
         @keyframes wd-spin { to { transform: rotate(360deg); } }
-        @keyframes wd-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
+
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} />
 
       <div
         style={{
           position: 'relative', width: '100%',
-          background: 'linear-gradient(160deg, #0d0d0f, #111118)',
+          background: '#0a0a0a',
+          borderRadius: '20px 20px 0 0',
           border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: '28px 28px 0 0',
-          padding: '28px 20px',
-          paddingBottom: 'max(48px, calc(env(safe-area-inset-bottom, 0px) + 24px))',
-          zIndex: 901, overflow: 'hidden',
-          maxHeight: '90vh', overflowY: 'auto',
+          borderBottom: 'none',
+          padding: '0 16px max(32px, calc(env(safe-area-inset-bottom,0px) + 16px))',
+          zIndex: 901, maxHeight: '88vh', overflowY: 'auto',
         }}
         onClick={e => e.stopPropagation()}
       >
         {/* Top accent line */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #2563eb, #3b82f6, #2563eb, transparent)', borderRadius: '20px 20px 0 0' }} />
 
         {/* Drag handle */}
-        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 24px' }} />
+        <div style={{ width: 32, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '12px auto 20px' }} />
 
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
-          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, #1d4ed8, #2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2v14M5 9l7 7 7-7"/><path d="M3 20h18"/>
-            </svg>
-          </div>
-          <div>
-            <div style={{ color: '#fff', fontSize: 17, fontWeight: 900 }}>Withdraw AXN</div>
-            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>
-              {windowOpen ? 'Window open now' : 'Opens 10:00 PM IST · 4:30 PM UTC'}
-            </div>
-          </div>
-        </div>
+        {/* Title */}
+        <div style={{ color: '#fff', fontSize: 18, fontWeight: 800, marginBottom: 20 }}>Withdraw AXN</div>
 
         {/* ── TRACKING VIEW ── */}
         {step === 'tracking' && claimId && (
@@ -185,26 +156,17 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
         {step !== 'tracking' && (
           <>
             {/* Info rows */}
-            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '4px 0', marginBottom: 18 }}>
-              {[
-                { label: 'Your balance', val: `${Math.floor(userBalance).toLocaleString()} AXN` },
-                { label: 'Minimum', val: `${MIN_AXN.toLocaleString()} AXN` },
-                { label: 'Network fee', val: '0.03 TON (to admin wallet)' },
-                { label: 'Window', val: isAdmin ? 'Always open (admin)' : windowOpen ? 'Open now' : '10 PM – 12 AM IST' },
-              ].map((r, i, arr) => (
-                <div key={r.label}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
-                    <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>{r.label}</span>
-                    <span style={{ color: i === 3 && windowOpen ? '#4ade80' : i === 3 ? '#f59e0b' : '#fff', fontSize: 13, fontWeight: 700 }}>{r.val}</span>
-                  </div>
-                  {i < arr.length - 1 && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />}
-                </div>
-              ))}
+            <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, marginBottom: 14, overflow: 'hidden' }}>
+              <Row label="Your balance" value={`${Math.floor(userBalance).toLocaleString()} AXN`} />
+              <Divider />
+              <Row label="Minimum"      value={`${MIN_AXN.toLocaleString()} AXN`} />
+              <Divider />
+              <Row label="Network fee"  value="0.03 TON" sub="Gas fee for on-chain token transfer" />
             </div>
 
             {/* TON Wallet */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
                 TON Wallet
               </div>
               {connectedAddress ? (
@@ -214,7 +176,9 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
                   borderRadius: 12, padding: '11px 14px',
                 }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 13, color: '#d1fae5' }}>{shortAddr}</span>
+                  <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 13, color: '#d1fae5' }}>
+                    {connectedAddress.slice(0, 6)}…{connectedAddress.slice(-4)}
+                  </span>
                   <button
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 600, padding: 0 }}
                     onClick={() => tonConnectUI.disconnect()}
@@ -236,55 +200,39 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
             </div>
 
             {/* Amount */}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Amount</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                  Amount
+                </div>
                 <button
                   onClick={() => setAmount(Math.floor(userBalance).toString())}
-                  style={{ fontSize: 11, color: '#3b82f6', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', fontSize: 11, fontWeight: 700, padding: 0 }}
                 >
-                  Max
+                  MAX
                 </button>
               </div>
-              <input
-                type="number"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder={`Min ${MIN_AXN.toLocaleString()} AXN`}
-                disabled={isProcessing}
-                style={{
-                  width: '100%', padding: '13px 14px', borderRadius: 12,
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  fontSize: 15, color: '#fff',
-                  background: 'rgba(255,255,255,0.04)', outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
+              <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, display: 'flex', alignItems: 'center', padding: '0 16px' }}>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  placeholder={`Min ${MIN_AXN.toLocaleString()}`}
+                  disabled={isProcessing}
+                  style={{
+                    flex: 1, padding: '14px 0', background: 'none', border: 'none', outline: 'none',
+                    color: '#fff', fontSize: 16, fontWeight: 700,
+                  }}
+                />
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, fontWeight: 700 }}>AXN</span>
+              </div>
               {amtNum > 0 && amtNum < MIN_AXN && (
-                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 5 }}>
-                  Minimum {MIN_AXN.toLocaleString()} AXN required
-                </div>
+                <div style={{ color: '#f87171', fontSize: 11, marginTop: 5 }}>Minimum {MIN_AXN.toLocaleString()} AXN required</div>
+              )}
+              {amtNum > userBalance && amtNum > 0 && (
+                <div style={{ color: '#f87171', fontSize: 11, marginTop: 5 }}>Insufficient balance</div>
               )}
             </div>
-
-            {/* Summary */}
-            {amtNum >= MIN_AXN && connectedAddress && (
-              <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '4px 0', marginBottom: 18, animation: 'wd-fade 0.2s ease' }}>
-                {[
-                  { label: 'You receive', val: `${amtNum.toFixed(0)} AXN`, hi: true },
-                  { label: 'Fee', val: '0.03 TON' },
-                  { label: 'Destination', val: shortAddr },
-                ].map((r, i, arr) => (
-                  <div key={r.label}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 16px' }}>
-                      <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>{r.label}</span>
-                      <span style={{ color: r.hi ? '#4ade80' : '#fff', fontSize: 13, fontWeight: 700 }}>{r.val}</span>
-                    </div>
-                    {i < arr.length - 1 && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />}
-                  </div>
-                ))}
-              </div>
-            )}
 
             {/* Submit */}
             <button
@@ -294,28 +242,15 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
               style={{
                 width: '100%', padding: '14px 0', border: 'none', borderRadius: 14,
                 cursor: canSubmit ? 'pointer' : 'not-allowed',
-                background: canSubmit
-                  ? 'linear-gradient(135deg, #1d4ed8, #2563eb)'
-                  : 'rgba(255,255,255,0.06)',
-                color: canSubmit ? '#fff' : 'rgba(255,255,255,0.3)',
-                fontSize: 15, fontWeight: 800,
+                background: canSubmit ? 'linear-gradient(135deg, #2563eb, #3b82f6)' : 'rgba(255,255,255,0.06)',
+                color: canSubmit ? '#fff' : 'rgba(255,255,255,0.2)',
+                fontSize: 14, fontWeight: 800,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                boxShadow: canSubmit ? '0 4px 20px rgba(37,99,235,0.4)' : 'none',
+                boxShadow: canSubmit ? '0 2px 16px rgba(37,99,235,0.35)' : 'none',
               } as React.CSSProperties}
             >
               {isProcessing && <Loader2 size={15} style={{ animation: 'wd-spin 1s linear infinite' }} />}
-              {!connectedAddress
-                ? 'Connect wallet above'
-                : !windowOpen
-                ? 'Locked — opens 10:00 PM IST'
-                : amtNum < MIN_AXN
-                ? `Min ${MIN_AXN.toLocaleString()} AXN`
-                : step === 'paying'
-                ? 'Opening wallet…'
-                : isProcessing
-                ? 'Processing…'
-                : 'Confirm Withdrawal'
-              }
+              {step === 'paying' ? 'Opening wallet…' : isProcessing ? 'Processing…' : 'Confirm Withdrawal'}
             </button>
           </>
         )}
@@ -324,75 +259,87 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
   );
 }
 
+function Row({ label, value, sub, valueColor }: {
+  label: string; value: string; sub?: string; valueColor?: string;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', gap: 12 }}>
+      <div>
+        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>{label}</div>
+        {sub && <div style={{ color: 'rgba(255,255,255,0.22)', fontSize: 11, marginTop: 2 }}>{sub}</div>}
+      </div>
+      <span style={{ color: valueColor || '#fff', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>{value}</span>
+    </div>
+  );
+}
+
+function Divider() {
+  return <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />;
+}
+
 function TrackingView({ claimStatus, claimId, axnAmount, countdown, isDone, onClose }: {
   claimStatus: string; claimId: string; axnAmount: number;
   countdown: string; isDone: boolean; onClose: () => void;
 }) {
-  const info = STATUS_LABELS[claimStatus] || STATUS_LABELS.pending_payment;
-  const steps = [
-    { key: 'pending_payment', label: 'TON fee payment' },
+  const info    = STATUS_LABELS[claimStatus] || STATUS_LABELS.pending_payment;
+  const steps   = [
+    { key: 'pending_payment',   label: 'TON gas fee received'     },
     { key: 'payment_confirmed', label: 'Payment verified on-chain' },
-    { key: 'axn_sent', label: 'AXN dispatched' },
-    { key: 'completed', label: 'Delivered to wallet' },
+    { key: 'axn_sent',          label: 'AXN dispatched to wallet'  },
+    { key: 'completed',         label: 'Delivered successfully'    },
   ];
-  const order = ['pending_payment', 'payment_confirmed', 'axn_sent', 'completed'];
+  const order      = ['pending_payment', 'payment_confirmed', 'axn_sent', 'completed'];
   const currentIdx = order.indexOf(claimStatus);
 
   return (
-    <div style={{ animation: 'wd-fade 0.3s ease' }}>
-      {/* Status icon */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
-        <div style={{
-          width: 60, height: 60, borderRadius: '50%',
-          background: `${info.color}14`, border: `2px solid ${info.color}30`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-        }}>
-          {info.icon === 'spin' && <Loader2 size={26} style={{ color: info.color, animation: 'wd-spin 1s linear infinite' }} />}
-          {info.icon === 'check' && <CheckCircle2 size={26} style={{ color: info.color }} />}
-          {info.icon === 'fail' && <XCircle size={26} style={{ color: info.color }} />}
-          {info.icon === 'clock' && <Clock size={26} style={{ color: info.color }} />}
+    <>
+      {/* Status */}
+      <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+        {info.icon === 'spin'  && <Loader2      size={20} style={{ color: info.color, animation: 'wd-spin 1s linear infinite', flexShrink: 0 }} />}
+        {info.icon === 'check' && <CheckCircle2 size={20} style={{ color: info.color, flexShrink: 0 }} />}
+        {info.icon === 'fail'  && <XCircle      size={20} style={{ color: info.color, flexShrink: 0 }} />}
+        {info.icon === 'clock' && <Clock        size={20} style={{ color: info.color, flexShrink: 0 }} />}
+        <div>
+          <div style={{ color: info.color, fontSize: 14, fontWeight: 700 }}>{info.label}</div>
+          {claimStatus === 'pending_payment' && countdown && (
+            <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, marginTop: 2 }}>Expires in {countdown}</div>
+          )}
+          {claimStatus === 'completed' && (
+            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 }}>{Math.floor(axnAmount).toLocaleString()} AXN sent</div>
+          )}
         </div>
-        <div style={{ color: info.color, fontSize: 15, fontWeight: 800, textAlign: 'center' }}>{info.label}</div>
-        {claimStatus === 'pending_payment' && countdown && (
-          <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, marginTop: 4 }}>Expires in {countdown}</div>
-        )}
-        {claimStatus === 'completed' && (
-          <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 4 }}>{axnAmount.toFixed(0)} AXN sent</div>
-        )}
       </div>
 
       {/* Steps */}
-      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '4px 0', marginBottom: 18 }}>
+      <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, marginBottom: 14, overflow: 'hidden' }}>
         {steps.map((s, idx) => {
-          const done = currentIdx > idx || claimStatus === 'completed';
+          const done   = currentIdx > idx || claimStatus === 'completed';
           const active = currentIdx === idx && !isDone;
           const failed = (claimStatus === 'failed' || claimStatus === 'expired') && idx === Math.max(0, currentIdx);
           return (
             <div key={s.key}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px' }}>
                 <div style={{
-                  width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-                  background: failed ? 'rgba(248,113,113,0.12)' : done ? 'rgba(74,222,128,0.12)' : active ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.04)',
-                  border: `1.5px solid ${failed ? '#f87171' : done ? '#4ade80' : active ? '#3b82f6' : 'rgba(255,255,255,0.1)'}`,
+                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                  border: `1.5px solid ${failed ? '#f87171' : done ? '#4ade80' : active ? '#3b82f6' : 'rgba(255,255,255,0.12)'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 800,
-                  color: failed ? '#f87171' : done ? '#4ade80' : active ? '#3b82f6' : 'rgba(255,255,255,0.25)',
+                  fontSize: 10, fontWeight: 800,
+                  color: failed ? '#f87171' : done ? '#4ade80' : active ? '#3b82f6' : 'rgba(255,255,255,0.2)',
                 }}>
                   {done ? '✓' : failed ? '✕' : idx + 1}
                 </div>
-                <span style={{ flex: 1, color: done ? '#d1fae5' : active ? '#93c5fd' : 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: (done || active) ? 700 : 400 }}>
+                <span style={{ flex: 1, color: done ? '#d1fae5' : active ? '#93c5fd' : 'rgba(255,255,255,0.3)', fontSize: 13, fontWeight: done || active ? 700 : 400 }}>
                   {s.label}
                 </span>
                 {active && !failed && <Loader2 size={12} style={{ color: '#3b82f6', animation: 'wd-spin 1s linear infinite' }} />}
               </div>
-              {idx < steps.length - 1 && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />}
+              {idx < steps.length - 1 && <Divider />}
             </div>
           );
         })}
       </div>
 
-      {/* Request ID */}
-      <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.18)', marginBottom: 18, wordBreak: 'break-all', padding: '0 2px' }}>
+      <div style={{ color: 'rgba(255,255,255,0.14)', fontSize: 10, fontFamily: 'monospace', marginBottom: 14, wordBreak: 'break-all' }}>
         ID: {claimId}
       </div>
 
@@ -400,15 +347,15 @@ function TrackingView({ claimStatus, claimId, axnAmount, countdown, isDone, onCl
         <button
           onClick={onClose}
           style={{
-            width: '100%', padding: '14px 0', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14,
-            cursor: 'pointer',
-            background: claimStatus === 'completed' ? 'linear-gradient(135deg, #14532d, #16a34a)' : 'rgba(255,255,255,0.08)',
+            width: '100%', padding: '14px 0', border: 'none', borderRadius: 14, cursor: 'pointer',
+            background: claimStatus === 'completed' ? 'linear-gradient(135deg, #2563eb, #3b82f6)' : 'rgba(255,255,255,0.07)',
             color: '#fff', fontSize: 14, fontWeight: 800,
+            boxShadow: claimStatus === 'completed' ? '0 2px 16px rgba(37,99,235,0.35)' : 'none',
           }}
         >
           {claimStatus === 'completed' ? 'Done' : 'Close'}
         </button>
       )}
-    </div>
+    </>
   );
 }
