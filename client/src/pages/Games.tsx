@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import { useLocation } from "wouter";
 import { showRewardedInterstitial } from "@/lib/showAd";
 import WithdrawPopup from "@/components/WithdrawPopup";
+import { useAdmin } from "@/hooks/useAdmin";
 import { getTONPrice, axnToTon, tonToUsd, formatTon, formatUsd } from "@/lib/tonPriceService";
 const AXN_PER_TON = 100000;
 
@@ -54,6 +55,7 @@ export default function Games() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
+  const { isAdmin } = useAdmin();
   const { data: user } = useQuery<any>({ queryKey: ['/api/auth/user'], staleTime: 0 });
   const { data: botInfo } = useQuery<{ username: string }>({ queryKey: ['/api/bot-info'], staleTime: 3600000 });
   const { data: swapSettings } = useQuery<{ swapRate: number; swapMinCipher: number }>({ queryKey: ['/api/swap-config'], staleTime: 60000 });
@@ -326,16 +328,25 @@ export default function Games() {
 
             {/* Withdraw */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
-              <button onClick={() => setShowWithdrawPopup(true)} style={{
-                width: 52, height: 52, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
-                border: 'none',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
-              }} className="active:scale-90 transition-transform">
+              <button
+                onClick={() => {
+                  if (isAdmin) {
+                    setShowWithdrawPopup(true);
+                  } else {
+                    showNotification('Withdraw coming soon', 'error');
+                  }
+                }}
+                style={{
+                  width: 52, height: 52, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
+                  border: 'none',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
+                }}
+                className="active:scale-90 transition-transform"
+              >
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2v14M5 9l7 7 7-7"/>
-                  <path d="M3 20h18"/>
+                  <path d="M12 2v14M5 9l7 7 7-7"/><path d="M3 20h18"/>
                 </svg>
               </button>
               <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.48)' }}>Withdraw</span>
@@ -642,6 +653,7 @@ export default function Games() {
         <WithdrawPopup
           onClose={() => setShowWithdrawPopup(false)}
           userBalance={axnBalance}
+          isAdmin={isAdmin}
         />
       )}
 
