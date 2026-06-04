@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Clock, CheckCircle2, XCircle } from "lucide-react";
-import { useTonConnectUI, useTonAddress } from "@tonconnect/ui-react";
+import { useTonConnectUI, useTonAddress, TonConnectButton } from "@tonconnect/ui-react";
 import { showNotification } from "@/components/AppNotification";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -103,8 +103,13 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
         setStep('tracking');
         setClaimStatus('pending_payment');
       } catch {
-        showNotification('Payment cancelled — balance refunded automatically', 'error');
+        // User cancelled TON payment — cancel the withdrawal and refund balance
+        try {
+          await apiRequest('POST', `/api/ton-withdraw/cancel/${data.claimId}`, {});
+        } catch {}
+        showNotification('Payment cancelled — your balance has been refunded', 'info');
         setStep('input');
+        setClaimId(null);
         queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       }
     },
@@ -218,23 +223,9 @@ export default function WithdrawPopup({ onClose, userBalance, isAdmin = false }:
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => tonConnectUI.openModal()}
-                  style={{
-                    width: '100%', padding: '13px 14px', borderRadius: 12,
-                    border: '1px solid rgba(59,130,246,0.35)',
-                    background: 'rgba(59,130,246,0.08)',
-                    color: '#60a5fa', fontSize: 14, fontWeight: 700,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', gap: 8,
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-                    <line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
-                  </svg>
-                  Connect TON Wallet
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <TonConnectButton />
+                </div>
               )}
             </div>
 
