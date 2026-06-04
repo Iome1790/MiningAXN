@@ -97,6 +97,20 @@ app.post('/api/emergency-fix-referrals', async (req: any, res) => {
   }
 });
 
+// Dynamic TonConnect manifest — must be served before Vite so it takes precedence
+app.get('/tonconnect-manifest.json', (req: any, res) => {
+  const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:5000';
+  const proto = (req.headers['x-forwarded-proto'] as string)?.split(',')[0] || 'https';
+  const origin = `${proto}://${host}`;
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.json({
+    url: origin,
+    name: 'Axionet',
+    iconUrl: `${origin}/axn-coin-new.png`,
+  });
+});
+
 // Test endpoint
 app.get('/api/test-direct', (req: any, res) => {
   console.log('✅ Direct test route called!');

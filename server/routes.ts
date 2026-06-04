@@ -9028,11 +9028,26 @@ ${walletAddress}
       const axnAmount = parseFloat(req.body.axnAmount);
 
       if (!walletAddress) return res.status(400).json({ message: 'TON wallet address required' });
-      if (!axnAmount || axnAmount < 20) return res.status(400).json({ message: 'Minimum withdrawal is 20 AXN' });
+      if (!axnAmount || axnAmount < 1000) return res.status(400).json({ message: 'Minimum withdrawal is 1,000 AXN' });
+
+      // Server-side time lock: withdraw only open 10 PM–midnight IST (16:30–18:30 UTC)
+      // Admin (TELEGRAM_ADMIN_ID) is exempt from the time lock
+      const adminTelegramId = process.env.TELEGRAM_ADMIN_ID;
+      const isAdminUser = adminTelegramId && user.telegram_id === adminTelegramId;
+      if (!isAdminUser) {
+        const now = new Date();
+        const utcTotal = now.getUTCHours() * 60 + now.getUTCMinutes();
+        const openAt = 16 * 60 + 30;  // 16:30 UTC = 10:00 PM IST
+        const closeAt = 18 * 60 + 30; // 18:30 UTC = midnight IST
+        if (utcTotal < openAt || utcTotal >= closeAt) {
+          return res.status(400).json({ message: 'Withdraw is currently locked. Opens at 10:00 PM IST (4:30 PM UTC) daily.' });
+        }
+      }
 
       // Check user balance
       const userRow = await pool.query(`SELECT wallet_balance FROM users WHERE id = $1`, [user.id]);
       const balance = parseFloat(userRow.rows[0]?.wallet_balance || '0');
+      if (balance < 1000) return res.status(400).json({ message: 'Minimum 1,000 AXN required to withdraw' });
       if (balance < axnAmount) return res.status(400).json({ message: `Insufficient balance. You have ${Math.floor(balance)} AXN` });
 
       // Block duplicate active claims
