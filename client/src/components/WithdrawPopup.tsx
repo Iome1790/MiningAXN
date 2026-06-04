@@ -170,17 +170,16 @@ export default function WithdrawPopup({ onClose, userBalance }: Props) {
                 TON Wallet
               </div>
               {connectedAddress ? (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)',
-                  borderRadius: 12, padding: '11px 14px',
-                }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 13, color: '#d1fae5' }}>
-                    {connectedAddress.slice(0, 6)}…{connectedAddress.slice(-4)}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <svg width="18" height="18" viewBox="0 0 56 56" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M28 0C12.536 0 0 12.536 0 28s12.536 28 28 28 28-12.536 28-28S43.464 0 28 0z" fill="#0098EA"/>
+                    <path d="M37.115 15.5H18.885c-3.4 0-5.5 3.7-3.7 6.6l10.3 17.8c.8 1.4 2.8 1.4 3.6 0l10.3-17.8c1.7-2.9-.3-6.6-3.7-6.6zm-10.5 16.5l-6.4-11.1h6.4v11.1zm2.8 0V20.9h6.4l-6.4 11.1z" fill="white"/>
+                  </svg>
+                  <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+                    {connectedAddress.slice(0, 8)}…{connectedAddress.slice(-6)}
                   </span>
                   <button
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 600, padding: 0 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 700, padding: 0 }}
                     onClick={() => tonConnectUI.disconnect()}
                   >
                     Disconnect
