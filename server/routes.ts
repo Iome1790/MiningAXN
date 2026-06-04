@@ -686,6 +686,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public swap config — no auth required so Games page can read it
+  app.get('/api/swap-config', async (_req, res) => {
+    try {
+      const rateSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'swap_rate')).limit(1);
+      const minSetting  = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'swap_min_cipher')).limit(1);
+      res.json({
+        swapRate:      parseInt(rateSetting[0]?.settingValue || '3'),
+        swapMinCipher: parseInt(minSetting[0]?.settingValue  || '1000'),
+      });
+    } catch {
+      res.json({ swapRate: 3, swapMinCipher: 1000 });
+    }
+  });
+
   app.get('/api/health', async (req: any, res) => {
     try {
       const dbCheck = await db.select({ count: sql<number>`count(*)` }).from(users);
@@ -3846,6 +3860,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section2_reward: 'ad_section2_reward',
         ad_section2_limit: 'ad_section2_limit',
         withdraw_ads_required: 'withdraw_ads_required',
+        minTradeAmount: 'min_trade_amount',
+        swapRate: 'swap_rate',
+        swapMinCipher: 'swap_min_cipher',
       };
 
       for (const [feKey, dbKey] of Object.entries(settingMap)) {
@@ -8983,5 +9000,217 @@ ${walletAddress}
     }
   });
 
+  // ── TON Auto-Withdrawal System ────────────────────────────────────────────
+  // Create table on first run
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS ton_withdrawals (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id VARCHAR NOT NULL,
+      wallet_address VARCHAR NOT NULL,
+      axn_amount DECIMAL(30,10) NOT NULL,
+      ton_payment_hash VARCHAR,
+      axn_tx_hash VARCHAR,
+      status VARCHAR NOT NULL DEFAULT 'pending_payment',
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  // POST /api/ton-withdraw/initiate
+  app.post('/api/ton-withdraw/initiate', authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: 'Not authenticated' });
+      const { pool } = await import('./db');
+
+      const walletAddress = req.body.walletAddress?.trim();
+      const axnAmount = parseFloat(req.body.axnAmount);
+
+      if (!walletAddress) return res.status(400).json({ message: 'TON wallet address required' });
+      if (!axnAmount || axnAmount < 20) return res.status(400).json({ message: 'Minimum withdrawal is 20 AXN' });
+
+      // Check user balance
+      const userRow = await pool.query(`SELECT wallet_balance FROM users WHERE id = $1`, [user.id]);
+      const balance = parseFloat(userRow.rows[0]?.wallet_balance || '0');
+      if (balance < axnAmount) return res.status(400).json({ message: `Insufficient balance. You have ${Math.floor(balance)} AXN` });
+
+      // Block duplicate active claims
+      const existing = await pool.query(
+        `SELECT id FROM ton_withdrawals WHERE user_id = $1 AND status IN ('pending_payment','payment_confirmed','axn_sent') AND expires_at > NOW()`,
+        [user.id]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ message: 'You already have an active withdrawal. Wait for it to complete or expire.' });
+      }
+
+      // Deduct balance immediately to prevent double-spend
+      await pool.query(
+        `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric,0) - $1 WHERE id = $2`,
+        [axnAmount, user.id]
+      );
+
+      // Create claim (expires in 30 min)
+      const claim = await pool.query(
+        `INSERT INTO ton_withdrawals (user_id, wallet_address, axn_amount, status, expires_at)
+         VALUES ($1, $2, $3, 'pending_payment', NOW() + INTERVAL '30 minutes')
+         RETURNING id, expires_at`,
+        [user.id, walletAddress, axnAmount]
+      );
+      const { id: claimId, expires_at } = claim.rows[0];
+
+      return res.json({
+        success: true,
+        claimId,
+        treasuryAddress: 'UQDeroBz4zvOntJ4xuMdiwFtNddMhJ4cGxghF9B7fYz50q8b',
+        feeNano: '30000000',
+        feeTon: '0.03',
+        axnAmount,
+        expiresAt: expires_at,
+      });
+    } catch (e) {
+      console.error('[TON-WITHDRAW] initiate error:', e);
+      return res.status(500).json({ message: 'Failed to initiate withdrawal' });
+    }
+  });
+
+  // GET /api/ton-withdraw/status/:id
+  app.get('/api/ton-withdraw/status/:id', authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: 'Not authenticated' });
+      const { pool } = await import('./db');
+
+      const row = await pool.query(
+        `SELECT id, axn_amount, wallet_address, ton_payment_hash, axn_tx_hash, status, expires_at, created_at
+         FROM ton_withdrawals WHERE id = $1 AND user_id = $2`,
+        [req.params.id, user.id]
+      );
+      if (!row.rows[0]) return res.status(404).json({ message: 'Claim not found' });
+      return res.json({ claim: row.rows[0] });
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed to get status' });
+    }
+  });
+
+  // GET /api/ton-withdraw/history — user's withdrawal history
+  app.get('/api/ton-withdraw/history', authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: 'Not authenticated' });
+      const { pool } = await import('./db');
+      const rows = await pool.query(
+        `SELECT id, axn_amount, wallet_address, status, ton_payment_hash, axn_tx_hash, created_at, expires_at
+         FROM ton_withdrawals WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`,
+        [user.id]
+      );
+      return res.json({ claims: rows.rows });
+    } catch (e) {
+      return res.status(500).json({ message: 'Failed' });
+    }
+  });
+
+  // Start background TON withdrawal poller
+  startTonPoller();
+
   return httpServer;
+}
+
+// ── TON Withdrawal Background Poller ──────────────────────────────────────
+async function startTonPoller() {
+  const { pool } = await import('./db');
+  const { checkPaymentReceived, sendAXNJetton } = await import('./ton-service');
+
+  async function poll() {
+    try {
+      // 1. Expire old pending_payment claims and refund
+      const expired = await pool.query(
+        `UPDATE ton_withdrawals SET status = 'expired', updated_at = NOW()
+         WHERE status = 'pending_payment' AND expires_at < NOW()
+         RETURNING user_id, axn_amount`
+      );
+      for (const row of expired.rows) {
+        await pool.query(
+          `UPDATE users SET wallet_balance = COALESCE(wallet_balance::numeric,0) + $1 WHERE id = $2`,
+          [parseFloat(row.axn_amount), row.user_id]
+        );
+        console.log(`[TON-POLLER] Expired & refunded ${row.axn_amount} AXN to user ${row.user_id}`);
+      }
+
+      // 2. Check pending_payment claims for received TON
+      const pending = await pool.query(
+        `SELECT id, user_id, wallet_address, axn_amount, created_at
+         FROM ton_withdrawals WHERE status = 'pending_payment' AND expires_at > NOW()`
+      );
+
+      for (const claim of pending.rows) {
+        const { found, txHash } = await checkPaymentReceived(claim.wallet_address, new Date(claim.created_at));
+        if (!found) continue;
+
+        console.log(`[TON-POLLER] Payment confirmed for claim ${claim.id}, hash: ${txHash}`);
+        await pool.query(
+          `UPDATE ton_withdrawals SET status = 'payment_confirmed', ton_payment_hash = $1, updated_at = NOW() WHERE id = $2`,
+          [txHash, claim.id]
+        );
+
+        // Send AXN jetton
+        const sendResult = await sendAXNJetton(claim.wallet_address, parseFloat(claim.axn_amount));
+        if (sendResult.success) {
+          await pool.query(
+            `UPDATE ton_withdrawals SET status = 'completed', axn_tx_hash = $1, updated_at = NOW() WHERE id = $2`,
+            [sendResult.txHash, claim.id]
+          );
+          console.log(`[TON-POLLER] ✅ AXN sent for claim ${claim.id}`);
+
+          // Notify user via Telegram if possible
+          try {
+            const userRow = await pool.query(`SELECT telegram_id FROM users WHERE id = $1`, [claim.user_id]);
+            const telegramId = userRow.rows[0]?.telegram_id;
+            const botToken = process.env.TELEGRAM_BOT_TOKEN;
+            if (telegramId && botToken) {
+              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: telegramId,
+                  text: `✅ *Withdrawal Completed!*\n\n${parseFloat(claim.axn_amount).toFixed(0)} AXN has been sent to your TON wallet.\n\nThanks for using Axionet!`,
+                  parse_mode: 'Markdown',
+                }),
+              });
+            }
+          } catch {}
+        } else {
+          await pool.query(
+            `UPDATE ton_withdrawals SET status = 'failed', updated_at = NOW() WHERE id = $1`,
+            [claim.id]
+          );
+          console.error(`[TON-POLLER] ❌ AXN send failed for claim ${claim.id}: ${sendResult.error}`);
+
+          // Notify admin
+          try {
+            const botToken = process.env.TELEGRAM_BOT_TOKEN;
+            const adminId = process.env.TELEGRAM_ADMIN_ID;
+            if (botToken && adminId) {
+              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: adminId,
+                  text: `🚨 *AXN Send Failed*\nClaim: ${claim.id}\nUser: ${claim.user_id}\nAmount: ${claim.axn_amount} AXN\nError: ${sendResult.error}`,
+                  parse_mode: 'Markdown',
+                }),
+              });
+            }
+          } catch {}
+        }
+      }
+    } catch (e) {
+      console.error('[TON-POLLER] poll error:', e);
+    }
+  }
+
+  // Poll every 30 seconds
+  console.log('[TON-POLLER] Starting TON withdrawal poller...');
+  poll(); // run immediately
+  setInterval(poll, 30_000);
 }
